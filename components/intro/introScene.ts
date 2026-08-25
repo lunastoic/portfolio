@@ -79,6 +79,7 @@ export async function startIntroScene(canvas: HTMLCanvasElement): Promise<() => 
 
   /* ---- main loop: idle drift + parallax ---- */
   const clock = new THREE.Clock();
+  const spring = { x: 0, y: 0, vx: 0, vy: 0 };
   let raf = 0;
   let intervalId: ReturnType<typeof setInterval> | null = null;
   const baseY = 122;
@@ -90,10 +91,15 @@ export async function startIntroScene(canvas: HTMLCanvasElement): Promise<() => 
   const frame = () => {
     const t = clock.getElapsedTime();
 
-    const targetX = Math.sin(t * 0.12) * 7 + pointer.x * 15;
-    const targetY = baseY + Math.sin(t * 0.19) * 2.5 - pointer.y * 8;
-    camera.position.x += (targetX - camera.position.x) * 0.04;
-    camera.position.y += (targetY - camera.position.y) * 0.04;
+    // Damped-spring parallax: heavy, cinematic, capped velocity.
+    const clampV = (v: number) => Math.max(-0.55, Math.min(0.55, v));
+    spring.vx = clampV((spring.vx + (pointer.x * 12 - spring.x) * 0.018) * 0.9);
+    spring.vy = clampV((spring.vy + (-pointer.y * 6 - spring.y) * 0.018) * 0.9);
+    spring.x += spring.vx;
+    spring.y += spring.vy;
+
+    camera.position.x = Math.sin(t * 0.06) * 4 + spring.x;
+    camera.position.y = baseY + Math.sin(t * 0.1) * 1.6 + spring.y;
     camera.lookAt(0, 94, -104);
 
     // Live screen: breathing glow, drifting scanlines, bouncing block,

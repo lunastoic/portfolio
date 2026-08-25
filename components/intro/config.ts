@@ -10,8 +10,9 @@ export const INTRO_ENABLED = false;
 /** Grid density: one character cell per this many CSS pixels. */
 export const TARGET_CELL_PX = 8;
 
-/** Brightness ramp, dark → bright. Index 0 (space) is never drawn. */
-export const CHAR_RAMP = " .:-=+*#%@";
+/** Brightness ramp, dark → bright. Index 0 (space) is never drawn.
+ * 18 steps for smoother tonal gradients (glyphs chosen for mono legibility). */
+export const CHAR_RAMP = " .'`^:;!i~+=*x#%$@";
 
 /** Seconds of idle before the [ ENTER ] prompt fades in. */
 export const ENTER_PROMPT_DELAY_MS = 2500;

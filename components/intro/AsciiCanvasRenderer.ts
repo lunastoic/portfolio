@@ -25,9 +25,12 @@ export interface AsciiColors {
 }
 
 const EDGE_CHARS = "|-+";
+const SLOPE_CHARS = "|-/\\"; // oriented shading for strongly sloped mid-tone surfaces
 const EDGE_THRESHOLD = 110; // sum of |Δrgb| between neighbors, 0..765
 
-const tierOf = (idx: number) => (idx < 4 ? 0 : idx < 7 ? 1 : 2);
+const TIER1 = Math.floor(CHAR_RAMP.length * 0.36);
+const TIER2 = Math.floor(CHAR_RAMP.length * 0.7);
+const tierOf = (idx: number) => (idx < TIER1 ? 0 : idx < TIER2 ? 1 : 2);
 
 export class AsciiCanvasRenderer {
   cols = 0;
@@ -41,6 +44,8 @@ export class AsciiCanvasRenderer {
   private edge = new Uint8Array(0); // 0 none, 1 '|', 2 '-', 3 '+'
   private edgePrev = new Uint8Array(0);
   private edgeShown = new Uint8Array(0);
+  private smoothLum = new Float32Array(0);
+  private cellIdx = new Uint8Array(0);
   private hist = new Uint32Array(256);
   private lo = 0.13; // smoothed low percentile (0..1)
   private frameCount = 0;
@@ -94,6 +99,8 @@ export class AsciiCanvasRenderer {
     this.edge = new Uint8Array(n);
     this.edgePrev = new Uint8Array(n);
     this.edgeShown = new Uint8Array(n);
+    this.smoothLum = new Float32Array(n);
+    this.cellIdx = new Uint8Array(n);
     this.buildAtlas();
   }
 
@@ -106,7 +113,7 @@ export class AsciiCanvasRenderer {
   private buildAtlas() {
     const { glyphW: gw, glyphH: gh } = this;
     this.atlas.width = gw * CHAR_RAMP.length;
-    this.atlas.height = gh * 4;
+    this.atlas.height = gh * 5;
     const actx = this.atlas.getContext("2d")!;
     actx.clearRect(0, 0, this.atlas.width, this.atlas.height);
     actx.font = `${gh}px ${this.fontFamily}`;
@@ -121,6 +128,10 @@ export class AsciiCanvasRenderer {
     actx.fillStyle = this.colors.bright;
     for (let i = 0; i < EDGE_CHARS.length; i++) {
       actx.fillText(EDGE_CHARS[i], i * gw + gw / 2, 3 * gh + gh / 2 + 1);
+    }
+    actx.fillStyle = this.colors.mid;
+    for (let i = 0; i < SLOPE_CHARS.length; i++) {
+      actx.fillText(SLOPE_CHARS[i], i * gw + gw / 2, 4 * gh + gh / 2 + 1);
     }
   }
 
@@ -219,6 +230,8 @@ export class AsciiCanvasRenderer {
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     const rampMax = CHAR_RAMP.length - 1;
 
+    const sm = this.smoothLum;
+    const cells = this.cellIdx;
     for (let row = 0; row < rows; row++) {
       const srcRow = rows - 1 - row; // render target is bottom-up
       const y = row * cellH;
@@ -229,20 +242,41 @@ export class AsciiCanvasRenderer {
           ctx.drawImage(this.atlas, (e - 1) * gw, 3 * gh, gw, gh, col * cellW, y, cellW, cellH);
           continue;
         }
-        const v01 = (lum[i] / 255 - lo) / range;
-        if (v01 <= 0.02) continue;
-        const idx = Math.min(rampMax, 1 + Math.floor(Math.pow(Math.min(1, v01), 0.9) * (rampMax - 1)));
-        ctx.drawImage(
-          this.atlas,
-          idx * gw,
-          tierOf(idx) * gh,
-          gw,
-          gh,
-          col * cellW,
-          y,
-          cellW,
-          cellH
-        );
+
+        // Temporal EMA on normalized luminance kills frame-to-frame boil...
+        const v01 = Math.max(0, Math.min(1, (lum[i] / 255 - lo) / range));
+        const smoothed = (sm[i] += (v01 - sm[i]) * 0.22);
+
+        // ...and per-cell hysteresis: the glyph only changes once the value
+        // moves clearly past the current step's boundary.
+        const target =
+          smoothed <= 0.025 ? 0 : 1 + Math.pow(smoothed, 0.9) * (rampMax - 1);
+        if (Math.abs(target - cells[i]) > 0.62) {
+          cells[i] = Math.max(0, Math.min(rampMax, Math.round(target)));
+        }
+        const idx = cells[i];
+        if (idx === 0) continue;
+
+        const tier = tierOf(idx);
+        // Mid-tone cells on strongly sloped surfaces use oriented strokes
+        // so shading follows form (hand-drawn ASCII style).
+        if (tier === 1) {
+          const p = i * 4;
+          const nx = nb[p] - 128;
+          const nyv = nb[p + 1] - 128;
+          const ax = Math.abs(nx);
+          const ay = Math.abs(nyv);
+          if (ax > 78 || ay > 78) {
+            let g: number;
+            if (ax > ay * 1.6) g = 0; // '|'
+            else if (ay > ax * 1.6) g = 1; // '-'
+            else g = nx * nyv > 0 ? 3 : 2; // '\' or '/'
+            ctx.drawImage(this.atlas, g * gw, 4 * gh, gw, gh, col * cellW, y, cellW, cellH);
+            continue;
+          }
+        }
+
+        ctx.drawImage(this.atlas, idx * gw, tier * gh, gw, gh, col * cellW, y, cellW, cellH);
       }
     }
   }
