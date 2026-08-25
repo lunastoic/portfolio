@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { AsciiCanvasRenderer, type AsciiColors } from "./AsciiCanvasRenderer";
 import { buildIntroRoom } from "./buildIntroRoom";
-import { INTRO_COLS, INTRO_ROWS } from "./config";
+
 
 /**
  * Wires the room, the ASCII canvas renderer, the idle camera, and the
@@ -37,15 +37,9 @@ export async function startIntroScene(canvas: HTMLCanvasElement): Promise<() => 
     antialias: false,
     powerPreference: "high-performance",
   });
-  renderer.setSize(INTRO_COLS, INTRO_ROWS);
+  renderer.setSize(64, 64); // renders happen in grid-sized targets
 
-  const ascii = new AsciiCanvasRenderer(
-    canvas,
-    INTRO_COLS,
-    INTRO_ROWS,
-    fontFamily,
-    readThemeColors()
-  );
+  const ascii = new AsciiCanvasRenderer(canvas, fontFamily, readThemeColors());
 
   const setAspect = () => {
     camera.aspect = (canvas.clientWidth || 1) / (canvas.clientHeight || 1);
@@ -77,6 +71,7 @@ export async function startIntroScene(canvas: HTMLCanvasElement): Promise<() => 
   /* ---- fps meter (?fps=1) ---- */
   let fpsEl: HTMLDivElement | null = null;
   let frames = 0;
+  let frameMsAcc = 0;
   let fpsWindowStart = performance.now();
   if (showFps) {
     fpsEl = document.createElement("div");
@@ -103,19 +98,33 @@ export async function startIntroScene(canvas: HTMLCanvasElement): Promise<() => 
     camera.position.y += (targetY - camera.position.y) * 0.04;
     camera.lookAt(0, 94, -104);
 
-    // Monitor screensaver placeholder: gentle brightness breathing so the
-    // screen clearly reads as ON (bouncing-text screensaver lands in Phase 3).
-    const screenMat = room.monitorScreen.material as THREE.MeshBasicMaterial;
-    screenMat.color.setScalar(0.5 + Math.sin(t * 1.8) * 0.12);
+    // Live screen: breathing glow, drifting scanlines, bouncing block,
+    // occasional single-frame flicker.
+    const { base, strips, quad } = room.screenSaver;
+    const flick = Math.random() < 0.015 ? 0.3 : 0;
+    (base.material as THREE.MeshBasicMaterial).color.setScalar(
+      0.55 + Math.sin(t * 1.7) * 0.07 + flick
+    );
+    strips.forEach((strip, i) => {
+      (strip.material as THREE.MeshBasicMaterial).color.setScalar(
+        0.32 + 0.08 * Math.sin(t * 2.6 + i * 1.4)
+      );
+      strip.position.y = -17.5 + ((i * 7 + t * 2.2) % 42);
+    });
+    quad.position.x = Math.sin(t * 0.62) * 23;
+    quad.position.y = Math.sin(t * 1.07) * 16;
 
+    const drawStart = performance.now();
     ascii.render(renderer, scene, camera);
+    frameMsAcc += performance.now() - drawStart;
 
     if (fpsEl) {
       frames++;
       const now = performance.now();
       if (now - fpsWindowStart >= 1000) {
-        fpsEl.textContent = `${frames} FPS`;
+        fpsEl.textContent = `${frames} FPS · ${(frameMsAcc / Math.max(1, frames)).toFixed(1)} ms/frame · ${ascii.cols}x${ascii.rows}`;
         frames = 0;
+        frameMsAcc = 0;
         fpsWindowStart = now;
       }
     }

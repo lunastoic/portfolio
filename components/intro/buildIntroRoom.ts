@@ -9,10 +9,16 @@ import * as THREE from "three";
  * keyboard, mouse, mug, lamp, shelves + books, drawers, and the dog.
  */
 
+export interface ScreenSaver {
+  base: THREE.Mesh;
+  strips: THREE.Mesh[];
+  quad: THREE.Mesh;
+}
+
 export interface IntroRoom {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
-  monitorScreen: THREE.Mesh;
+  screenSaver: ScreenSaver;
   lampLight: THREE.PointLight;
   mugTop: THREE.Object3D;
   dog: THREE.Group;
@@ -49,21 +55,21 @@ export function buildIntroRoom(): IntroRoom {
 
   /* ---------------- room shell ---------------- */
 
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(620, 420), lambert(0.2));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(620, 420), lambert(0.07));
   floor.rotation.x = -Math.PI / 2;
   floor.position.set(0, 0, -20);
   scene.add(floor);
 
-  const backWall = new THREE.Mesh(new THREE.PlaneGeometry(620, 320), lambert(0.14));
+  const backWall = new THREE.Mesh(new THREE.PlaneGeometry(620, 320), lambert(0.05));
   backWall.position.set(0, 160, -164);
   scene.add(backWall);
 
-  const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(400, 320), lambert(0.1));
+  const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(400, 320), lambert(0.04));
   leftWall.rotation.y = Math.PI / 2;
   leftWall.position.set(-310, 160, -20);
   scene.add(leftWall);
 
-  const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(400, 320), lambert(0.1));
+  const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(400, 320), lambert(0.04));
   rightWall.rotation.y = -Math.PI / 2;
   rightWall.position.set(310, 160, -20);
   scene.add(rightWall);
@@ -71,7 +77,7 @@ export function buildIntroRoom(): IntroRoom {
   /* ---------------- desk ---------------- */
 
   box(scene, 300, 6, 84, 0.72, 0, 76, -102); // top slab
-  box(scene, 300, 46, 4, 0.2, 0, 50, -64); // front panel (quiet)
+  box(scene, 300, 46, 4, 0.1, 0, 50, -64); // front panel (quiet)
   box(scene, 6, 73, 78, 0.18, -144, 36, -102);
   box(scene, 6, 73, 78, 0.18, 144, 36, -102);
 
@@ -85,9 +91,22 @@ export function buildIntroRoom(): IntroRoom {
   /* ---------------- monitor (screen aspect ≈ the 2D UI's 1.5:1) -------- */
 
   box(scene, 74, 52, 6, 0.26, 0, 122, -114); // bezel
-  const monitorScreen = new THREE.Mesh(new THREE.PlaneGeometry(66, 44), basic(0.55));
-  monitorScreen.position.set(0, 122, -110.9);
-  scene.add(monitorScreen);
+  const screenGroup = new THREE.Group();
+  const screenBase = new THREE.Mesh(new THREE.PlaneGeometry(66, 44), basic(0.6));
+  screenGroup.add(screenBase);
+  const strips: THREE.Mesh[] = [];
+  for (let i = 0; i < 6; i++) {
+    const strip = new THREE.Mesh(new THREE.PlaneGeometry(66, 1.8), basic(0.34));
+    strip.position.set(0, -17.5 + i * 7, 0.05);
+    strips.push(strip);
+    screenGroup.add(strip);
+  }
+  const quad = new THREE.Mesh(new THREE.PlaneGeometry(15, 6.5), basic(1));
+  quad.position.set(0, 0, 0.1);
+  screenGroup.add(quad);
+  screenGroup.position.set(0, 122, -110.9);
+  scene.add(screenGroup);
+  const screenSaver: ScreenSaver = { base: screenBase, strips, quad };
   box(scene, 10, 16, 8, 0.38, 0, 88, -114); // stand
   box(scene, 40, 3, 26, 0.45, 0, 80.5, -114); // base
 
@@ -182,17 +201,18 @@ export function buildIntroRoom(): IntroRoom {
   legX.forEach((x) => box(dog, 3, 8, 3, 0.7, x, 4, 3));
   legX.forEach((x) => box(dog, 3, 8, 3, 0.62, x, 4, -3));
   box(dog, 3, 3, 3, 0.85, -14, 17, 0); // tail nub
-  dog.position.set(-128, 0, -4);
-  dog.rotation.y = 0.7;
+  dog.position.set(-84, 0, -18);
+  dog.rotation.y = 0.6;
+  dog.scale.setScalar(0.85);
   scene.add(dog);
 
   /* ---------------- lighting: strong, angled, legible ------------------ */
 
-  const ambient = new THREE.AmbientLight(0xffffff, 0.42);
-  const key = new THREE.DirectionalLight(0xffffff, 1.35);
-  key.position.set(-90, 220, 160);
-  const fill = new THREE.DirectionalLight(0xffffff, 0.4);
-  fill.position.set(140, 120, 80);
+  const ambient = new THREE.AmbientLight(0xffffff, 0.14);
+  const key = new THREE.DirectionalLight(0xffffff, 2.2);
+  key.position.set(-160, 320, 55); // steep raking light from upper-left
+  const fill = new THREE.DirectionalLight(0xffffff, 0.16);
+  fill.position.set(150, 90, 60);
   scene.add(ambient, key, fill);
 
   const dispose = () => {
@@ -205,5 +225,5 @@ export function buildIntroRoom(): IntroRoom {
     });
   };
 
-  return { scene, camera, monitorScreen, lampLight, mugTop, dog, dispose };
+  return { scene, camera, screenSaver, lampLight, mugTop, dog, dispose };
 }

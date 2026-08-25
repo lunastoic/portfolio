@@ -7,9 +7,8 @@
  */
 export const INTRO_ENABLED = false;
 
-/** Fixed character grid (Phase 2 decision: no auto-downscaling yet). */
-export const INTRO_COLS = 150;
-export const INTRO_ROWS = 80;
+/** Grid density: one character cell per this many CSS pixels. */
+export const TARGET_CELL_PX = 8;
 
 /** Brightness ramp, dark → bright. Index 0 (space) is never drawn. */
 export const CHAR_RAMP = " .:-=+*#%@";
