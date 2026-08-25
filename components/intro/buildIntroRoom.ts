@@ -23,12 +23,23 @@ export interface DogParts {
   tail: THREE.Mesh;
 }
 
+export interface PlaqueAnchor {
+  center: THREE.Vector3;
+  w: number;
+  h: number;
+}
+
 export interface IntroRoom {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   screenSaver: ScreenSaver;
   /** Raycast targets for click-to-enter. */
   monitorHit: THREE.Object3D[];
+  /** Raycast target for the lamp toggle. */
+  lampHit: THREE.Object3D;
+  lampBulb: THREE.Mesh;
+  /** Wall plaques above the monitor (text drawn as overlay). */
+  plaques: PlaqueAnchor[];
   lampLight: THREE.PointLight;
   mugTop: THREE.Object3D;
   dog: DogParts;
@@ -183,6 +194,29 @@ export function buildIntroRoom(): IntroRoom {
   tower.position.set(124, 110, -112);
   scene.add(tower);
 
+  /* ------ wall plaques above the monitor (bright frames + dark backing;
+     the text itself is drawn as a crisp overlay each frame) ------ */
+
+  const plaqueFrame = (w: number, h: number, x: number, y: number, z: number) => {
+    const t = 2.4;
+    box(scene, w, t, 2, 0.95, x, y + h / 2 - t / 2, z);
+    box(scene, w, t, 2, 0.95, x, y - h / 2 + t / 2, z);
+    box(scene, t, h, 2, 0.95, x - w / 2 + t / 2, y, z);
+    box(scene, t, h, 2, 0.95, x + w / 2 - t / 2, y, z);
+    const backing = new THREE.Mesh(
+      new THREE.PlaneGeometry(w - t * 2, h - t * 2),
+      lambert(0.02)
+    );
+    backing.position.set(x, y, z + 0.4);
+    scene.add(backing);
+  };
+  plaqueFrame(136, 26, 0, 209, -162);
+  plaqueFrame(136, 36, 0, 176, -162);
+  const plaques: PlaqueAnchor[] = [
+    { center: new THREE.Vector3(0, 209, -161), w: 136, h: 26 },
+    { center: new THREE.Vector3(0, 176, -161), w: 136, h: 36 },
+  ];
+
   /* ---------------- shelves + books + globe ---------------- */
 
   box(scene, 70, 3.5, 20, 0.55, -160, 172, -150);
@@ -245,12 +279,12 @@ export function buildIntroRoom(): IntroRoom {
 
   /* ---------------- lighting: strong, angled, legible ------------------ */
 
-  const ambient = new THREE.AmbientLight(0xffffff, 0.14);
+  const ambient = new THREE.AmbientLight(0xffffff, 0.22);
   // Point light instead of a directional key: distance falloff paints real
   // brightness gradients ACROSS flat surfaces, not just per-face levels.
-  const key = new THREE.PointLight(0xffffff, 52000, 0, 2);
+  const key = new THREE.PointLight(0xffffff, 64000, 0, 2);
   key.position.set(-150, 300, 40);
-  const fill = new THREE.DirectionalLight(0xffffff, 0.16);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.28);
   fill.position.set(150, 90, 60);
   scene.add(ambient, key, fill);
 
@@ -264,5 +298,5 @@ export function buildIntroRoom(): IntroRoom {
     });
   };
 
-  return { scene, camera, screenSaver, monitorHit, lampLight, mugTop, dog, dispose };
+  return { scene, camera, screenSaver, monitorHit, lampHit: lamp, lampBulb: bulb, plaques, lampLight, mugTop, dog, dispose };
 }

@@ -25,7 +25,8 @@ export interface IntroSceneHandle {
   reverseDolly(onDone: () => void): void;
   /** Freeze rendering + room life while the 2D site is up. */
   pause(): void;
-  hitTestMonitor(clientX: number, clientY: number): boolean;
+  hitTest(clientX: number, clientY: number): "monitor" | "lamp" | null;
+  toggleLamp(): void;
 }
 
 const SCREEN_CENTER = new THREE.Vector3(0, 122, -110.9);
@@ -44,10 +45,13 @@ function readThemeColors(): AsciiColors {
   const style = getComputedStyle(document.documentElement);
   const get = (name: string, fallback: string) =>
     style.getPropertyValue(name).trim() || fallback;
+  const rgb = get("--accent-rgb", "53, 255, 109");
   return {
     bg: get("--bg", "#020503"),
-    dim: get("--green-dim", "#0d6b32"),
-    mid: get("--green", "#35ff6d"),
+    // Alpha-scaled accent over the black bg: much brighter glow than the
+    // dark --green-dim token, matching the neon-sign reference.
+    dim: `rgba(${rgb}, 0.52)`,
+    mid: `rgba(${rgb}, 0.85)`,
     bright: get("--green-bright", "#8cffb0"),
   };
 }
@@ -266,14 +270,20 @@ export async function startIntroScene(canvas: HTMLCanvasElement): Promise<IntroS
       mode = "away";
     },
 
-    hitTestMonitor(clientX, clientY) {
-      if (mode !== "idle") return false;
+    hitTest(clientX, clientY) {
+      if (mode !== "idle") return null;
       ndc.set(
         (clientX / window.innerWidth) * 2 - 1,
         -(clientY / window.innerHeight) * 2 + 1
       );
       raycaster.setFromCamera(ndc, camera);
-      return raycaster.intersectObjects(room.monitorHit, false).length > 0;
+      if (raycaster.intersectObjects(room.monitorHit, false).length > 0) return "monitor";
+      if (raycaster.intersectObject(room.lampHit, true).length > 0) return "lamp";
+      return null;
+    },
+
+    toggleLamp() {
+      anims.toggleLamp();
     },
 
     dispose() {

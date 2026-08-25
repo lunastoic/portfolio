@@ -47,6 +47,7 @@ export class IntroAnimations {
   private nextWagAt = 6;
 
   /* lamp */
+  private lampOn = true;
   private readonly lampBase: number;
   private nextFlickerAt = 7;
   private flickerEndAt = 0;
@@ -61,6 +62,10 @@ export class IntroAnimations {
     private ascii: AsciiCanvasRenderer
   ) {
     this.lampBase = room.lampLight.intensity;
+  }
+
+  toggleLamp() {
+    this.lampOn = !this.lampOn;
   }
 
   update(dt: number) {
@@ -167,13 +172,16 @@ export class IntroAnimations {
       this.flickerEndAt = t + 0.25 + Math.random() * 0.4;
       this.nextFlickerAt = t + 9 + Math.random() * 14;
     }
-    if (t < this.flickerEndAt) {
+    if (t < this.flickerEndAt && this.lampOn) {
       // stepped noise: old fluorescent settling, not a strobe
       if (++this.flickerStep % 3 === 0) this.flickerVal = 0.5 + Math.random() * 0.45;
     } else {
       this.flickerVal = 1;
     }
-    light.intensity = this.lampBase * this.flickerVal;
+    light.intensity = this.lampBase * this.flickerVal * (this.lampOn ? 1 : 0.04);
+    (this.room.lampBulb.material as THREE.MeshBasicMaterial).color.setScalar(
+      this.lampOn ? 0.95 * this.flickerVal : 0.18
+    );
   }
 
   /* ------------------------------------------------------------------ */
@@ -216,6 +224,8 @@ export class IntroAnimations {
       this.ascii.overlayChar(p.char, this.v.x, this.v.y, tier, 1.35 - f * 0.4);
     }
 
+    this.drawPlaques(camera);
+
     // LUNA_OS text riding the bouncing quad, scaled by projection
     const { quad } = this.room.screenSaver;
     quad.getWorldPosition(this.v);
@@ -225,6 +235,55 @@ export class IntroAnimations {
     if (c.z <= 1) {
       const pxH = Math.abs(top.y - c.y) * 0.5 * this.ascii.canvasHeight;
       this.ascii.overlayText("LUNA_OS", c.x, c.y, Math.max(9, pxH * 1.6), 2);
+    }
+  }
+
+  /** Crisp name/degree text projected onto the wall plaques. */
+  private drawPlaques(camera: THREE.Camera) {
+    const H = this.ascii.canvasHeight;
+    const [name, degree] = this.room.plaques;
+
+    const project = (x: number, y: number, z: number) =>
+      this.v.set(x, y, z).project(camera).clone();
+
+    // name plaque
+    {
+      const c = project(name.center.x, name.center.y, name.center.z);
+      const top = project(name.center.x, name.center.y + name.h / 2, name.center.z);
+      if (c.z <= 1) {
+        const fullH = Math.abs(top.y - c.y) * H; // full plaque height in px
+        const line = (off: number) => c.y - (off / (H / 2)) * -1; // px→ndc helper below
+        const ndcOff = (px: number) => (px / (H / 2));
+        this.ascii.overlayText(
+          "CHRISTOPHER LUNA",
+          c.x,
+          c.y + ndcOff(fullH * 0.16),
+          fullH * 0.4,
+          2
+        );
+        this.ascii.overlayText(
+          "SOFTWARE ENGINEER",
+          c.x,
+          c.y - ndcOff(fullH * 0.26),
+          fullH * 0.2,
+          1
+        );
+        void line;
+      }
+    }
+
+    // degree plaque
+    {
+      const c = project(degree.center.x, degree.center.y, degree.center.z);
+      const top = project(degree.center.x, degree.center.y + degree.h / 2, degree.center.z);
+      if (c.z <= 1) {
+        const fullH = Math.abs(top.y - c.y) * H;
+        const ndcOff = (px: number) => (px / (H / 2));
+        const size = fullH * 0.17;
+        this.ascii.overlayText("B.S. COMPUTER SCIENCE", c.x, c.y + ndcOff(fullH * 0.26), size, 2);
+        this.ascii.overlayText("CALIFORNIA STATE UNIVERSITY,", c.x, c.y, size, 1);
+        this.ascii.overlayText("DOMINGUEZ HILLS", c.x, c.y - ndcOff(fullH * 0.26), size, 1);
+      }
     }
   }
 }

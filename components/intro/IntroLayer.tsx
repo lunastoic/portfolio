@@ -109,13 +109,13 @@ export default function IntroLayer({
         style={{ cursor: overMonitor && inRoom ? "pointer" : "default" }}
         onPointerMove={(e) => {
           if (!inRoom) return;
-          setOverMonitor(handleRef.current?.hitTestMonitor(e.clientX, e.clientY) ?? false);
+          setOverMonitor((handleRef.current?.hitTest(e.clientX, e.clientY) ?? null) !== null);
         }}
         onClick={(e) => {
           if (!inRoom) return;
-          if (handleRef.current?.hitTestMonitor(e.clientX, e.clientY)) {
-            cbRef.current.onRequestEnter();
-          }
+          const hit = handleRef.current?.hitTest(e.clientX, e.clientY);
+          if (hit === "monitor") cbRef.current.onRequestEnter();
+          else if (hit === "lamp") handleRef.current?.toggleLamp();
         }}
       />
       {showEnter && inRoom && (
