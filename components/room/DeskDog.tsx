@@ -10,58 +10,55 @@ import "./room.css";
  * of the screen, pausing now and then, and woofs when clicked.
  */
 
-/* Tessie the corgi: big ears, long loaf body, stubby legs, nub tail. */
+/*
+ * Tessie the corgi, dot-art style: a filled dot silhouette in profile —
+ * upright ears, snout, long loaf body, stub legs, tail nub.
+ * Left-facing frames are exact mirrors (dot characters are symmetric).
+ */
 
-const RUN_RIGHT: string[] = [
-  [
-    "          /\\_/\\",
-    "  _______/ o o|",
-    " (         __ >",
-    " (___________/",
-    "   |_|    |_|",
-  ].join("\n"),
-  [
-    "          /\\_/\\",
-    "  _______/ o o|",
-    " (         __ >",
-    " (___________/",
-    "   /_/    \\_\\",
-  ].join("\n"),
+const BODY = [
+  "                  .::.  .::.",
+  "                  ::::  ::::",
+  "                  ::::::::::",
+  "                 :::::::: :::",
+  "                 ::::::::::::::.",
+  ".:.              :::::::::::'",
+  " .::::::::::::::::::::::::::",
+  ":::::::::::::::::::::::::::",
+  ":::::::::::::::::::::::::::",
+  "'::::::::::::::::::::::::'",
 ];
 
-const RUN_LEFT: string[] = [
-  [
-    "/\\_/\\",
-    "|o o \\_______",
-    "< __         )",
-    " \\___________)",
-    "   |_|    |_|",
-  ].join("\n"),
-  [
-    "/\\_/\\",
-    "|o o \\_______",
-    "< __         )",
-    " \\___________)",
-    "   \\_\\    /_/",
-  ].join("\n"),
+const LEGS_A = ["  ::::              ::::", "  '::'              '::'"];
+const LEGS_B = [" ::::                ::::", "'::'                  '::'"];
+
+const WAG = [
+  "                  .::.  .::.",
+  "                  ::::  ::::",
+  "                  ::::::::::",
+  "                 :::::::: :::",
+  ".:               ::::::::::::::.",
+  " ':              :::::::::::'",
+  " .::::::::::::::::::::::::::",
+  ":::::::::::::::::::::::::::",
+  ":::::::::::::::::::::::::::",
+  "'::::::::::::::::::::::::'",
 ];
 
-const SIT: string[] = [
-  [
-    "          /\\_/\\",
-    "  _______/ o o|",
-    " (         __ >",
-    " (___________/",
-    "   |_|    |_|",
-  ].join("\n"),
-  [
-    "          /\\_/\\",
-    " ~_______/ o o|",
-    " (         __ >",
-    " (___________/",
-    "   |_|    |_|",
-  ].join("\n"),
-];
+const frame = (body: string[], legs: string[]) => [...body, ...legs].join("\n");
+
+/** Mirror dot art horizontally — every character used is symmetric. */
+const mirror = (art: string): string => {
+  const lines = art.split("\n");
+  const width = Math.max(...lines.map((l) => l.length));
+  return lines
+    .map((l) => l.padEnd(width, " ").split("").reverse().join(""))
+    .join("\n");
+};
+
+const RUN_RIGHT: string[] = [frame(BODY, LEGS_A), frame(BODY, LEGS_B)];
+const RUN_LEFT: string[] = RUN_RIGHT.map(mirror);
+const SIT: string[] = [frame(BODY, LEGS_A), frame(WAG, LEGS_A)];
 
 const SPEED_PX = 3; // per tick
 const TICK_MS = 60;
