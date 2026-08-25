@@ -1,4 +1,4 @@
-import DeskScene from "@/components/room/DeskScene";
+import IntroGate from "@/components/intro/IntroGate";
 
 export default function Home() {
   return (
@@ -6,7 +6,7 @@ export default function Home() {
       <h1 className="sr-only">
         Christopher Luna — Software Engineer Portfolio
       </h1>
-      <DeskScene />
+      <IntroGate />
     </main>
   );
 }
