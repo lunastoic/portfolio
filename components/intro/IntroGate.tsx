@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import DeskScene from "@/components/room/DeskScene";
+import InsideScreen from "./InsideScreen";
 import { INTRO_ENABLED } from "./config";
 import type { IntroApi, IntroPhase } from "./IntroLayer";
 import "./intro.css";
@@ -33,21 +34,26 @@ const prefersReducedMotion = () =>
 /**
  * Orchestrates the whole intro experience:
  *
- *   room ── click ──▶ entering (2D mounts hidden, dolly flies, crossfade
- *   at frame-match) ──▶ away (2D live, intro paused+hidden, EXIT shown)
- *   ── EXIT/ESC/Back ──▶ exiting (fade room back in, reverse dolly) ──▶ room
+ *   room ── click ──▶ entering (fullscreen LUNA OS mounts hidden and starts
+ *   booting, dolly flies, crossfade as the 3D screen fills the frame)
+ *   ──▶ away (inside the machine, intro paused+hidden, EXIT shown)
+ *   ── EXIT/ESC/Back ──▶ exiting (room fades back in, reverse dolly) ──▶ room
  *
  * History: entering pushes #desk so Back exits to the room and Forward
- * re-enters. A refresh on #desk loads the 2D site directly.
+ * re-enters. A refresh on #desk loads straight into the fullscreen OS.
+ * Without the intro (flag off, mobile, reduced motion, no WebGL) the
+ * classic 2D desk scene renders instead.
  */
 export default function IntroGate() {
   const [introEligible, setIntroEligible] = useState(false);
+  const [insideOnly, setInsideOnly] = useState(false); // #desk refresh path
   const [phase, setPhase] = useState<IntroPhase>("room");
   const [faded, setFaded] = useState(false);
   const [instant, setInstant] = useState(false);
-  const [deskMounted, setDeskMounted] = useState(true); // true when intro is off
+  const [insideMounted, setInsideMounted] = useState(false);
   const [showExit, setShowExit] = useState(false);
   const apiRef = useRef<IntroApi | null>(null);
+  const instantRef = useRef(false);
   const phaseRef = useRef<IntroPhase>("room");
   useEffect(() => {
     phaseRef.current = phase;
@@ -67,8 +73,9 @@ export default function IntroGate() {
       if (!eligible) return;
 
       if (window.location.hash === "#desk") {
-        // Refreshed while "inside": load the 2D site directly; Back reloads
-        // out to the room rather than appearing to do nothing.
+        // Refreshed while "inside": load the fullscreen OS directly; Back
+        // reloads out to the room rather than appearing to do nothing.
+        setInsideOnly(true);
         const onPop = () => {
           if (window.location.hash !== "#desk") window.location.reload();
         };
@@ -76,7 +83,6 @@ export default function IntroGate() {
         return;
       }
       setIntroEligible(true);
-      setDeskMounted(false);
       setPhase("room");
     });
     return () => cancelAnimationFrame(id);
@@ -86,13 +92,14 @@ export default function IntroGate() {
   const requestEnter = useCallback(() => {
     if (phaseRef.current !== "room" || !apiRef.current) return;
     const hardCut = prefersReducedMotion();
+    instantRef.current = hardCut;
     setInstant(hardCut);
     setPhase("entering");
-    setDeskMounted(true); // mounts hidden under the opaque canvas; boot starts
-    // Let the 2D scene lay out, then measure its monitor for the dolly target.
+    setInsideMounted(true); // mounts hidden under the opaque canvas; boot starts
+    // Let the fullscreen OS lay out, then measure its screen for the dolly.
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
-        const el = document.querySelector(".monitor__screen");
+        const el = document.querySelector(".inside-screen .monitor__screen");
         const rect = el?.getBoundingClientRect();
         const target =
           rect && rect.height > 0
@@ -100,29 +107,35 @@ export default function IntroGate() {
                 centerYFrac: (rect.top + rect.height / 2) / window.innerHeight,
                 heightFrac: rect.height / window.innerHeight,
               }
-            : { centerYFrac: 0.47, heightFrac: 0.45 };
+            : { centerYFrac: 0.5, heightFrac: 0.85 };
         apiRef.current?.beginDolly(target, hardCut);
       })
     );
   }, []);
 
   const onMatched = useCallback(() => {
-    setFaded(true); // crossfade starts exactly when the frames align
+    setFaded(true); // crossfade starts as the 3D screen fills the frame
     if (window.location.hash !== "#desk") {
       window.history.pushState({ luna: "desk" }, "", "#desk");
     }
   }, []);
 
   const onEnterDone = useCallback(() => {
-    setPhase("away");
-    setShowExit(true);
+    // The fade may still be finishing when the dolly ends — let it complete
+    // before display:none, or the crossfade would cut.
+    const finish = () => {
+      setPhase("away");
+      setShowExit(true);
+    };
+    if (instantRef.current) finish();
+    else window.setTimeout(finish, 460);
   }, []);
 
   /* ---------------- exit ---------------- */
   const performExit = useCallback(() => {
     if (phaseRef.current !== "away" || !apiRef.current) return;
     setShowExit(false);
-    setFaded(false); // room fades back in over the 2D site
+    setFaded(false); // room fades back in over the fullscreen OS
     setPhase("exiting");
     apiRef.current.beginExit();
   }, []);
@@ -135,7 +148,7 @@ export default function IntroGate() {
   }, [performExit]);
 
   const onExitDone = useCallback(() => {
-    setDeskMounted(false); // next enter boots fresh
+    setInsideMounted(false); // next enter boots fresh
     setInstant(false);
     setPhase("room");
   }, []);
@@ -164,9 +177,11 @@ export default function IntroGate() {
   }, [introEligible, performExit, requestEnter, requestExit]);
 
   /* ---------------- render ---------------- */
+  if (insideOnly) return <InsideScreen />;
+
   return (
     <>
-      {deskMounted && <DeskScene />}
+      {introEligible ? insideMounted && <InsideScreen /> : <DeskScene />}
       {introEligible && (
         <IntroLayer
           phase={phase}
