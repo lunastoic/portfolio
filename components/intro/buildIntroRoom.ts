@@ -101,7 +101,7 @@ export function buildIntroRoom(): IntroRoom {
     strips.push(strip);
     screenGroup.add(strip);
   }
-  const quad = new THREE.Mesh(new THREE.PlaneGeometry(15, 6.5), basic(1));
+  const quad = new THREE.Mesh(new THREE.PlaneGeometry(15, 6.5), basic(0.9));
   quad.position.set(0, 0, 0.1);
   screenGroup.add(quad);
   screenGroup.position.set(0, 122, -110.9);
@@ -209,8 +209,10 @@ export function buildIntroRoom(): IntroRoom {
   /* ---------------- lighting: strong, angled, legible ------------------ */
 
   const ambient = new THREE.AmbientLight(0xffffff, 0.14);
-  const key = new THREE.DirectionalLight(0xffffff, 2.2);
-  key.position.set(-160, 320, 55); // steep raking light from upper-left
+  // Point light instead of a directional key: distance falloff paints real
+  // brightness gradients ACROSS flat surfaces, not just per-face levels.
+  const key = new THREE.PointLight(0xffffff, 52000, 0, 2);
+  key.position.set(-150, 300, 40);
   const fill = new THREE.DirectionalLight(0xffffff, 0.16);
   fill.position.set(150, 90, 60);
   scene.add(ambient, key, fill);

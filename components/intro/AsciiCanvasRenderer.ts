@@ -39,6 +39,8 @@ export class AsciiCanvasRenderer {
   private normalBuf = new Uint8Array(0);
   private lum = new Uint8Array(0);
   private edge = new Uint8Array(0); // 0 none, 1 '|', 2 '-', 3 '+'
+  private edgePrev = new Uint8Array(0);
+  private edgeShown = new Uint8Array(0);
   private hist = new Uint32Array(256);
   private lo = 0.13; // smoothed low percentile (0..1)
   private frameCount = 0;
@@ -90,6 +92,8 @@ export class AsciiCanvasRenderer {
     this.normalBuf = new Uint8Array(n * 4);
     this.lum = new Uint8Array(n);
     this.edge = new Uint8Array(n);
+    this.edgePrev = new Uint8Array(n);
+    this.edgeShown = new Uint8Array(n);
     this.buildAtlas();
   }
 
@@ -170,8 +174,9 @@ export class AsciiCanvasRenderer {
           break;
         }
       }
-      this.lo += (Math.max(p2 / 255, 0.13) - this.lo) * 0.12;
-      this.hi += (p98 / 255 - this.hi) * 0.12;
+      const rate = this.frameCount < 4 ? 1 : 0.025; // settle fast, then hold
+      this.lo += (Math.max(p2 / 255, 0.13) - this.lo) * rate;
+      this.hi += (p98 / 255 - this.hi) * rate;
     }
     const lo = this.lo;
     const range = Math.max(0.08, this.hi - lo);
@@ -180,6 +185,7 @@ export class AsciiCanvasRenderer {
     const nb = this.normalBuf;
     const edge = this.edge;
     if (runEdges) {
+    this.edgePrev.set(edge);
     edge.fill(0);
     for (let y = 0; y < rows - 1; y++) {
       for (let x = 0; x < cols - 1; x++) {
@@ -202,6 +208,10 @@ export class AsciiCanvasRenderer {
         else if (d) edge[i] = 2;
       }
     }
+    // Only show edges confirmed in two consecutive computations (kills crawl)
+    for (let i = 0; i < edge.length; i++) {
+      this.edgeShown[i] = edge[i] > 0 && this.edgePrev[i] > 0 ? edge[i] : 0;
+    }
     }
 
     /* ---- draw ---- */
@@ -214,7 +224,7 @@ export class AsciiCanvasRenderer {
       const y = row * cellH;
       for (let col = 0; col < cols; col++) {
         const i = srcRow * cols + col;
-        const e = edge[i];
+        const e = this.edgeShown[i];
         if (e > 0) {
           ctx.drawImage(this.atlas, (e - 1) * gw, 3 * gh, gw, gh, col * cellW, y, cellW, cellH);
           continue;

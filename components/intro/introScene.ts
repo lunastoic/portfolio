@@ -24,10 +24,8 @@ export async function startIntroScene(canvas: HTMLCanvasElement): Promise<() => 
   await document.fonts.ready;
 
   const params = new URLSearchParams(window.location.search);
-  const useMono = params.get("introfont") === "mono";
-  const fontFamily = useMono
-    ? '"Courier New", monospace'
-    : getComputedStyle(document.body).fontFamily;
+  // Font locked after the Phase 2 A/B: mono won.
+  const fontFamily = '"Courier New", monospace';
   const showFps = params.get("fps") === "1";
 
   const room = buildIntroRoom();
@@ -101,7 +99,7 @@ export async function startIntroScene(canvas: HTMLCanvasElement): Promise<() => 
     // Live screen: breathing glow, drifting scanlines, bouncing block,
     // occasional single-frame flicker.
     const { base, strips, quad } = room.screenSaver;
-    const flick = Math.random() < 0.015 ? 0.3 : 0;
+    const flick = Math.random() < 0.007 ? 0.25 : 0;
     (base.material as THREE.MeshBasicMaterial).color.setScalar(
       0.55 + Math.sin(t * 1.7) * 0.07 + flick
     );
