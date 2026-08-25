@@ -28,6 +28,9 @@ export class IntroAnimations {
   private v = new THREE.Vector3();
   private v2 = new THREE.Vector3();
 
+  /** Internal clock: pausing update() freezes the room's life. */
+  private tAcc = 0;
+
   /* steam */
   private steam: SteamParticle[] = [];
   private nextSteamAt = 1;
@@ -60,7 +63,9 @@ export class IntroAnimations {
     this.lampBase = room.lampLight.intensity;
   }
 
-  update(t: number, dt: number) {
+  update(dt: number) {
+    this.tAcc += dt;
+    const t = this.tAcc;
     this.updateSteam(t, dt);
     this.updateDog(t, dt);
     this.updateLamp(t);

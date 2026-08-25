@@ -48,6 +48,7 @@ export class AsciiCanvasRenderer {
   private cellIdx = new Uint8Array(0);
   private hist = new Uint32Array(256);
   private lo = 0.13; // smoothed low percentile (0..1)
+  private alpha = 0.22; // temporal smoothing strength
   private frameCount = 0;
   private hi = 0.7; // smoothed high percentile
 
@@ -245,7 +246,7 @@ export class AsciiCanvasRenderer {
 
         // Temporal EMA on normalized luminance kills frame-to-frame boil...
         const v01 = Math.max(0, Math.min(1, (lum[i] / 255 - lo) / range));
-        const smoothed = (sm[i] += (v01 - sm[i]) * 0.22);
+        const smoothed = (sm[i] += (v01 - sm[i]) * this.alpha);
 
         // ...and per-cell hysteresis: the glyph only changes once the value
         // moves clearly past the current step's boundary.
@@ -308,6 +309,11 @@ export class AsciiCanvasRenderer {
     const x = (ndcX * 0.5 + 0.5) * this.canvas.width;
     const y = (1 - (ndcY * 0.5 + 0.5)) * this.canvas.height;
     ctx.fillText(text, x, y);
+  }
+
+  /** Deeper = more responsive (used during the dolly). */
+  setSmoothing(alpha: number) {
+    this.alpha = alpha;
   }
 
   get canvasHeight() {

@@ -27,6 +27,8 @@ export interface IntroRoom {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   screenSaver: ScreenSaver;
+  /** Raycast targets for click-to-enter. */
+  monitorHit: THREE.Object3D[];
   lampLight: THREE.PointLight;
   mugTop: THREE.Object3D;
   dog: DogParts;
@@ -98,7 +100,7 @@ export function buildIntroRoom(): IntroRoom {
 
   /* ---------------- monitor (screen aspect ≈ the 2D UI's 1.5:1) -------- */
 
-  box(scene, 74, 52, 6, 0.26, 0, 122, -114); // bezel
+  const bezel = box(scene, 74, 52, 6, 0.26, 0, 122, -114);
   const screenGroup = new THREE.Group();
   const screenBase = new THREE.Mesh(new THREE.PlaneGeometry(66, 44), basic(0.6));
   screenGroup.add(screenBase);
@@ -115,6 +117,7 @@ export function buildIntroRoom(): IntroRoom {
   screenGroup.position.set(0, 122, -110.9);
   scene.add(screenGroup);
   const screenSaver: ScreenSaver = { base: screenBase, strips, quad };
+  const monitorHit: THREE.Object3D[] = [bezel, screenBase];
   box(scene, 10, 16, 8, 0.38, 0, 88, -114); // stand
   box(scene, 40, 3, 26, 0.45, 0, 80.5, -114); // base
 
@@ -261,5 +264,5 @@ export function buildIntroRoom(): IntroRoom {
     });
   };
 
-  return { scene, camera, screenSaver, lampLight, mugTop, dog, dispose };
+  return { scene, camera, screenSaver, monitorHit, lampLight, mugTop, dog, dispose };
 }
