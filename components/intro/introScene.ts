@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { AsciiCanvasRenderer, type AsciiColors } from "./AsciiCanvasRenderer";
 import { buildIntroRoom } from "./buildIntroRoom";
+import { IntroAnimations } from "./introAnimations";
 
 
 /**
@@ -38,6 +39,7 @@ export async function startIntroScene(canvas: HTMLCanvasElement): Promise<() => 
   renderer.setSize(64, 64); // renders happen in grid-sized targets
 
   const ascii = new AsciiCanvasRenderer(canvas, fontFamily, readThemeColors());
+  const anims = new IntroAnimations(room, ascii);
 
   const setAspect = () => {
     camera.aspect = (canvas.clientWidth || 1) / (canvas.clientHeight || 1);
@@ -88,8 +90,11 @@ export async function startIntroScene(canvas: HTMLCanvasElement): Promise<() => 
   // scheduler; production always uses requestAnimationFrame.
   const useIntervalTick = params.get("introtick") === "interval";
 
+  let prevT = 0;
   const frame = () => {
     const t = clock.getElapsedTime();
+    const dt = Math.min(0.1, t - prevT);
+    prevT = t;
 
     // Damped-spring parallax: heavy, cinematic, capped velocity.
     const clampV = (v: number) => Math.max(-0.55, Math.min(0.55, v));
@@ -102,24 +107,11 @@ export async function startIntroScene(canvas: HTMLCanvasElement): Promise<() => 
     camera.position.y = baseY + Math.sin(t * 0.1) * 1.6 + spring.y;
     camera.lookAt(0, 94, -104);
 
-    // Live screen: breathing glow, drifting scanlines, bouncing block,
-    // occasional single-frame flicker.
-    const { base, strips, quad } = room.screenSaver;
-    const flick = Math.random() < 0.007 ? 0.25 : 0;
-    (base.material as THREE.MeshBasicMaterial).color.setScalar(
-      0.55 + Math.sin(t * 1.7) * 0.07 + flick
-    );
-    strips.forEach((strip, i) => {
-      (strip.material as THREE.MeshBasicMaterial).color.setScalar(
-        0.32 + 0.08 * Math.sin(t * 2.6 + i * 1.4)
-      );
-      strip.position.y = -17.5 + ((i * 7 + t * 2.2) % 42);
-    });
-    quad.position.x = Math.sin(t * 0.62) * 23;
-    quad.position.y = Math.sin(t * 1.07) * 16;
+    anims.update(t, dt);
 
     const drawStart = performance.now();
     ascii.render(renderer, scene, camera);
+    anims.drawOverlays(camera);
     frameMsAcc += performance.now() - drawStart;
 
     if (fpsEl) {

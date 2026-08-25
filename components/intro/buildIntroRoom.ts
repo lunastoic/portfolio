@@ -15,13 +15,21 @@ export interface ScreenSaver {
   quad: THREE.Mesh;
 }
 
+export interface DogParts {
+  group: THREE.Group;
+  head: THREE.Group;
+  /** Hip-pivoted legs; the first four are the rear pair rows. */
+  legs: THREE.Mesh[];
+  tail: THREE.Mesh;
+}
+
 export interface IntroRoom {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   screenSaver: ScreenSaver;
   lampLight: THREE.PointLight;
   mugTop: THREE.Object3D;
-  dog: THREE.Group;
+  dog: DogParts;
   dispose: () => void;
 }
 
@@ -153,7 +161,7 @@ export function buildIntroRoom(): IntroRoom {
   lamp.position.set(-100, 79, -92);
   scene.add(lamp);
 
-  const lampLight = new THREE.PointLight(0xffffff, 2.4, 260, 1.1);
+  const lampLight = new THREE.PointLight(0xffffff, 9500, 0, 2);
   lampLight.position.set(-100, 122, -88);
   scene.add(lampLight);
 
@@ -190,21 +198,47 @@ export function buildIntroRoom(): IntroRoom {
 
   /* ---------------- the dog (blocky corgi, floor level) -------------- */
 
-  const dog = new THREE.Group();
-  box(dog, 26, 10, 11, 0.8, 0, 13, 0); // loaf body
-  const head = box(dog, 10, 9, 9, 0.86, 16, 19, 0);
-  box(dog, 5, 3.5, 5, 0.95, 22, 17, 0); // snout
-  box(dog, 2.6, 5, 2, 0.75, 13.5, 26, 2.5); // ears
-  box(dog, 2.6, 5, 2, 0.75, 13.5, 26, -2.5);
-  head.rotation.z = -0.05;
-  const legX = [-9, -3, 7, 12];
-  legX.forEach((x) => box(dog, 3, 8, 3, 0.7, x, 4, 3));
-  legX.forEach((x) => box(dog, 3, 8, 3, 0.62, x, 4, -3));
-  box(dog, 3, 3, 3, 0.85, -14, 17, 0); // tail nub
-  dog.position.set(-84, 0, -18);
-  dog.rotation.y = 0.6;
-  dog.scale.setScalar(0.85);
-  scene.add(dog);
+  const dogGroup = new THREE.Group();
+  box(dogGroup, 26, 10, 11, 0.8, 0, 13, 0); // loaf body
+
+  const head = new THREE.Group();
+  head.position.set(16, 19, 0);
+  box(head, 10, 9, 9, 0.86, 0, 0, 0);
+  box(head, 5, 3.5, 5, 0.95, 6, -2, 0); // snout
+  box(head, 2.6, 5, 2, 0.75, -2.5, 7, 2.5); // ears
+  box(head, 2.6, 5, 2, 0.75, -2.5, 7, -2.5);
+  dogGroup.add(head);
+
+  const mkLeg = (x: number, z: number, shade: number) => {
+    const geo = new THREE.BoxGeometry(3, 8, 3);
+    geo.translate(0, -4, 0); // pivot at the hip
+    const leg = new THREE.Mesh(geo, lambert(shade));
+    leg.position.set(x, 8, z);
+    dogGroup.add(leg);
+    return leg;
+  };
+  const legs: THREE.Mesh[] = [
+    mkLeg(-9, 3, 0.7),
+    mkLeg(-9, -3, 0.62),
+    mkLeg(-3, 3, 0.7),
+    mkLeg(-3, -3, 0.62),
+    mkLeg(7, 3, 0.7),
+    mkLeg(7, -3, 0.62),
+    mkLeg(12, 3, 0.7),
+    mkLeg(12, -3, 0.62),
+  ];
+
+  const tailGeo = new THREE.BoxGeometry(3, 3, 3);
+  tailGeo.translate(-1.5, 0, 0); // pivot where it meets the body
+  const tail = new THREE.Mesh(tailGeo, lambert(0.85));
+  tail.position.set(-13, 17, 0);
+  dogGroup.add(tail);
+
+  dogGroup.position.set(-84, 0, -18);
+  dogGroup.rotation.y = 0.6;
+  dogGroup.scale.setScalar(0.85);
+  scene.add(dogGroup);
+  const dog: DogParts = { group: dogGroup, head, legs, tail };
 
   /* ---------------- lighting: strong, angled, legible ------------------ */
 

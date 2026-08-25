@@ -281,6 +281,39 @@ export class AsciiCanvasRenderer {
     }
   }
 
+  /**
+   * Overlay glyphs: literal characters drawn on top of the ASCII frame at
+   * projected NDC positions (steam, screensaver text). They bypass the
+   * temporal smoothing entirely, so animated overlays never cause boil.
+   */
+  overlayChar(char: string, ndcX: number, ndcY: number, tier: 0 | 1 | 2, scale = 1.2) {
+    if (ndcX < -1 || ndcX > 1 || ndcY < -1 || ndcY > 1) return;
+    const { ctx } = this;
+    ctx.font = `${Math.round(this.glyphH * scale)}px ${this.fontFamily}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = [this.colors.dim, this.colors.mid, this.colors.bright][tier];
+    const x = (ndcX * 0.5 + 0.5) * this.canvas.width;
+    const y = (1 - (ndcY * 0.5 + 0.5)) * this.canvas.height;
+    ctx.fillText(char, x, y);
+  }
+
+  overlayText(text: string, ndcX: number, ndcY: number, pxSize: number, tier: 0 | 1 | 2) {
+    if (ndcX < -1 || ndcX > 1 || ndcY < -1 || ndcY > 1) return;
+    const { ctx } = this;
+    ctx.font = `bold ${Math.round(pxSize)}px ${this.fontFamily}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = [this.colors.dim, this.colors.mid, this.colors.bright][tier];
+    const x = (ndcX * 0.5 + 0.5) * this.canvas.width;
+    const y = (1 - (ndcY * 0.5 + 0.5)) * this.canvas.height;
+    ctx.fillText(text, x, y);
+  }
+
+  get canvasHeight() {
+    return this.canvas.height;
+  }
+
   dispose() {
     this.fillTarget?.dispose();
     this.normalTarget?.dispose();
