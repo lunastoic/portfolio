@@ -1,0 +1,297 @@
+/* ==========================================================================
+   LUNA OS — global design tokens & base styles
+   Matrix green / black retro terminal aesthetic
+   ========================================================================== */
+
+:root {
+  --bg: #020503;
+  --bg-panel: #041008;
+  --bg-screen: #01130a;
+  --bg-hard: #04140a;
+  --bg-deep: #020905;
+  --accent-rgb: 53, 255, 109;
+  --green: #35ff6d;
+  --green-bright: #8cffb0;
+  --green-mid: #2bd968;
+  --green-dim: #0d6b32;
+  --green-faint: #07351c;
+  --green-ghost: rgba(var(--accent-rgb), 0.08);
+
+  /* Per-section accents shown on the dock buttons */
+  --accent-about: #35ff6d;
+  --accent-projects: #ff9f35;
+  --accent-resume: #40a9ff;
+  --accent-contact: #ebebe1;
+
+  /* dither / halftone textures */
+  --dither-fine: radial-gradient(rgba(var(--accent-rgb), 0.13) 1px, transparent 1px);
+  --dither-coarse: radial-gradient(rgba(var(--accent-rgb), 0.18) 1px, transparent 1.2px);
+
+  --font-term: var(--font-vt323), "Courier New", ui-monospace, monospace;
+}
+
+/* ==========================================================================
+   Section themes — the whole site re-tints when a section opens.
+   ABOUT keeps the default green; the others swap the full token ladder.
+   ========================================================================== */
+
+:root[data-theme="projects"] {
+  --accent-rgb: 255, 159, 53;
+  --green: #ff9f35;
+  --green-bright: #ffd08c;
+  --green-mid: #e0a12b;
+  --green-dim: #6b470d;
+  --green-faint: #352207;
+  --bg-panel: #100a04;
+  --bg-screen: #130c01;
+  --bg-hard: #140d04;
+  --bg-deep: #090503;
+}
+
+:root[data-theme="resume"] {
+  --accent-rgb: 64, 169, 255;
+  --green: #40a9ff;
+  --green-bright: #9dd4ff;
+  --green-mid: #379be0;
+  --green-dim: #0d476b;
+  --green-faint: #072335;
+  --bg-panel: #04080f;
+  --bg-screen: #010913;
+  --bg-hard: #040a14;
+  --bg-deep: #020508;
+}
+
+:root[data-theme="contact"] {
+  --accent-rgb: 235, 235, 225;
+  --green: #ebebe1;
+  --green-bright: #ffffff;
+  --green-mid: #c8c8bd;
+  --green-dim: #61615a;
+  --green-faint: #30302c;
+  --bg-panel: #0b0b09;
+  --bg-screen: #0e0e0c;
+  --bg-hard: #0f0f0d;
+  --bg-deep: #060606;
+}
+
+/* Theme-switch ripple: the new theme is revealed by a JS-driven expanding
+   circle (clip-path on ::view-transition-new); disable the default crossfade. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 2;
+}
+
+/* The monitor is its own transition layer: it swaps to the new theme
+   instantly, and the page ripple grows out from behind it. */
+::view-transition-group(monitor) {
+  animation: none;
+}
+
+::view-transition-old(monitor) {
+  display: none;
+}
+
+::view-transition-new(monitor) {
+  animation: none;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--green);
+  font-family: var(--font-term);
+  font-size: 18px;
+  line-height: 1.25;
+  -webkit-font-smoothing: none;
+  text-rendering: optimizeSpeed;
+}
+
+::selection {
+  background: var(--green);
+  color: var(--bg);
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+a {
+  color: var(--green);
+}
+
+/* Visible focus state everywhere — accessibility over subtlety */
+:focus-visible {
+  outline: 2px solid var(--green-bright);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.25);
+}
+
+/* Retro scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--green-dim) var(--bg-screen);
+}
+*::-webkit-scrollbar {
+  width: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: var(--bg-screen);
+  border-left: 1px solid var(--green-faint);
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--green-dim);
+  border: 2px solid var(--bg-screen);
+}
+
+/* ==========================================================================
+   CRT overlay — scanlines + vignette + very subtle flicker
+   ========================================================================== */
+
+.crt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0.18) 3px,
+    rgba(0, 0, 0, 0) 4px
+  );
+}
+
+.crt-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 58%,
+    rgba(0, 0, 0, 0.5) 100%
+  );
+}
+
+.crt-flicker {
+  position: fixed;
+  inset: 0;
+  z-index: 101;
+  pointer-events: none;
+  background: rgba(var(--accent-rgb), 0.02);
+  animation: crt-flicker 6s infinite steps(1);
+}
+
+@keyframes crt-flicker {
+  0%, 92%, 96%, 100% { opacity: 0; }
+  93% { opacity: 1; }
+  94% { opacity: 0.4; }
+  95% { opacity: 0.8; }
+}
+
+/* ==========================================================================
+   Shared keyframes
+   ========================================================================== */
+
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes lamp-flicker {
+  0% { opacity: 1; }
+  10% { opacity: 0.2; }
+  20% { opacity: 0.9; }
+  35% { opacity: 0.3; }
+  50% { opacity: 1; }
+  65% { opacity: 0.5; }
+  80% { opacity: 1; }
+  90% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+@keyframes loading-bar {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+@keyframes window-in {
+  from {
+    opacity: 0;
+    transform: scaleY(0.05);
+  }
+  60% {
+    opacity: 1;
+    transform: scaleY(1.02);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes scanline-reveal {
+  from { clip-path: inset(0 0 100% 0); }
+  to { clip-path: inset(0 0 0% 0); }
+}
+
+.cursor-blink {
+  display: inline-block;
+  width: 0.55em;
+  height: 1em;
+  vertical-align: -0.15em;
+  background: var(--green);
+  animation: blink 1.06s infinite step-end;
+}
+
+/* ==========================================================================
+   Reduced motion — kill all animation, keep everything visible
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .crt-flicker {
+    display: none;
+  }
+  .cursor-blink {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* Screen-reader only text */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

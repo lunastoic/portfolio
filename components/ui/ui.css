@@ -1,0 +1,118 @@
+/* ==========================================================================
+   Shared UI primitives — pixel buttons, tooltips
+   ========================================================================== */
+
+.pixel-btn {
+  display: inline-block;
+  padding: 0.3em 1em 0.25em;
+  font-family: inherit;
+  font-size: 1em;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: 2px solid var(--green);
+  box-shadow: 3px 3px 0 var(--green-dim);
+  transition: none;
+}
+
+.pixel-btn--outline {
+  background: var(--bg-screen);
+  color: var(--green);
+}
+
+.pixel-btn--solid {
+  background: var(--green-dim);
+  color: var(--green-bright);
+}
+
+.pixel-btn:hover {
+  background: var(--green);
+  color: var(--bg);
+}
+
+.pixel-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--green-dim);
+}
+
+.pixel-btn[aria-disabled="true"] {
+  border-color: var(--green-dim);
+  color: var(--green-dim);
+  box-shadow: 3px 3px 0 var(--green-faint);
+  cursor: not-allowed;
+}
+
+.pixel-btn[aria-disabled="true"]:hover {
+  background: var(--bg-screen);
+  color: var(--green-dim);
+}
+
+/* --------------------------------------------------------------------------
+   Desk-object tooltip: <element class="has-tooltip"><Tooltip/></element>
+   -------------------------------------------------------------------------- */
+
+.has-tooltip {
+  position: relative;
+}
+
+.desk-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  padding: 2px 8px;
+  white-space: nowrap;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  color: var(--green-bright);
+  background: var(--bg);
+  border: 1px solid var(--green);
+  box-shadow: 2px 2px 0 var(--green-dim);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.desk-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--green);
+}
+
+.has-tooltip:hover .desk-tooltip,
+.has-tooltip:focus-visible .desk-tooltip {
+  opacity: 1;
+}
+
+/* --------------------------------------------------------------------------
+   ASCII steam (coffee mug + coffee mode window)
+   -------------------------------------------------------------------------- */
+
+.ascii-steam {
+  font-family: inherit;
+  line-height: 1;
+  white-space: pre;
+  color: var(--green-mid);
+  text-align: center;
+  user-select: none;
+}
+
+.ascii-steam--small {
+  font-size: 12px;
+}
+
+.ascii-steam--big {
+  font-size: 16px;
+  color: var(--green);
+}
+
+/* Subtle highlight for interactive desk objects */
+.has-tooltip:hover,
+.has-tooltip:focus-visible {
+  filter: brightness(1.35);
+}

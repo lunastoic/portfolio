@@ -1,0 +1,947 @@
+/* ==========================================================================
+   The desk scene — POV composition, wall, desk, objects
+   Layout: shared visual styles first, then desktop / mobile media queries.
+   ========================================================================== */
+
+.scene {
+  position: relative;
+  min-height: 100svh;
+  max-width: 1600px;
+  margin: 0 auto;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.room-frame {
+  position: absolute;
+  inset: 8px;
+  z-index: 1;
+  pointer-events: none;
+  border: 2px solid var(--green-dim);
+  outline: 1px solid var(--green-faint);
+  outline-offset: 4px;
+}
+
+/* Lamp-off dimming — pixel-brightness change, no glow */
+.scene[data-lamp="off"] .wall,
+.scene[data-lamp="off"] .dimmable {
+  filter: brightness(0.55);
+}
+
+/* ==========================================================================
+   Wall + identity panels
+   ========================================================================== */
+
+.wall {
+  position: absolute;
+  inset: 0 0 30% 0;
+  z-index: 2;
+  background-image: var(--dither-fine);
+  background-size: 5px 5px;
+}
+
+.identity-panels {
+  position: absolute;
+  top: 2.5%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: clamp(300px, 32vw, 440px);
+}
+
+.identity-panel {
+  padding: 8px 16px;
+  text-align: center;
+  background: var(--bg-panel);
+  background-image: var(--dither-fine);
+  background-size: 4px 4px;
+  border: 3px solid var(--green);
+  border-radius: 10px;
+  box-shadow:
+    inset 0 0 0 3px var(--bg),
+    inset 0 0 0 5px var(--green-dim),
+    4px 4px 0 rgba(var(--accent-rgb), 0.15);
+}
+
+.identity-panel__name {
+  font-size: clamp(20px, 1.9vw, 30px);
+  letter-spacing: 0.22em;
+  color: var(--green-bright);
+}
+
+.identity-panel__role {
+  margin-top: 2px;
+  font-size: clamp(13px, 1.05vw, 17px);
+  letter-spacing: 0.3em;
+  color: var(--green);
+  border-top: 1px dashed var(--green-dim);
+  padding-top: 4px;
+}
+
+.identity-panel--edu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: left;
+}
+
+.identity-panel__cap {
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--green-bright);
+}
+
+.identity-panel__edu {
+  font-size: clamp(12px, 0.95vw, 15px);
+  letter-spacing: 0.12em;
+  line-height: 1.35;
+}
+
+/* ==========================================================================
+   Wall snake — autonomous Snake game roaming the wall
+   ========================================================================== */
+
+.wall-snake {
+  position: absolute;
+  inset: 0;
+  z-index: 1; /* under panels/shelves/gear */
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.wall-snake__seg {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 12px;
+  height: 12px;
+  background: var(--green-dim);
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.13s linear;
+}
+
+.wall-snake__seg--head {
+  background: var(--green);
+}
+
+.wall-snake__seg:hover {
+  background: var(--green-bright);
+}
+
+.wall-snake__food {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 8px;
+  height: 8px;
+  background: var(--green-bright);
+  animation: blink 0.9s infinite step-end;
+}
+
+/* ==========================================================================
+   Wall gear — headphones + movie poster
+   ========================================================================== */
+
+.wall-gear {
+  position: absolute;
+  z-index: 3;
+}
+
+.wall-gear pre {
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.05;
+  color: var(--green);
+  white-space: pre;
+}
+
+.wall-gear--music {
+  left: 26%;
+  top: 9%;
+}
+
+.wall-gear--media {
+  right: 26%;
+  top: 8%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 12px;
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  color: var(--green-mid);
+  border: 2px solid var(--green-dim);
+  background: var(--bg-panel);
+  box-shadow: 3px 3px 0 rgba(var(--accent-rgb), 0.12);
+}
+
+.wall-gear__title {
+  color: var(--green-bright);
+  border-bottom: 1px dashed var(--green-dim);
+  padding-bottom: 2px;
+}
+
+.wall-gear__sub {
+  color: var(--green-dim);
+}
+
+/* ==========================================================================
+   Desk dog — resident good boy
+   ========================================================================== */
+
+.desk-dog {
+  position: absolute;
+  left: 7%;
+  bottom: 10px;
+  z-index: 6;
+  padding: 0;
+}
+
+/* Roaming Tessie: positioned from the left edge, moved via transform */
+.desk-dog--roam {
+  left: 0;
+  will-change: transform;
+}
+
+.desk-dog pre {
+  font-family: inherit;
+  font-size: 21px;
+  line-height: 1.05;
+  color: var(--green);
+  white-space: pre;
+  text-align: left;
+}
+
+/* ==========================================================================
+   Shelves + wall decor
+   ========================================================================== */
+
+.shelf-zone {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.shelf-zone--left {
+  left: 3%;
+  top: 13%;
+  width: 240px;
+  align-items: flex-start;
+}
+
+.shelf-zone--right {
+  right: 3%;
+  top: 9%;
+  width: 250px;
+  align-items: flex-end;
+}
+
+.shelf {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 0 14px 8px;
+}
+
+.shelf__board {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 7px;
+  background: var(--green-dim);
+  background-image: var(--dither-coarse);
+  background-size: 3px 3px;
+  box-shadow: 0 3px 0 rgba(var(--accent-rgb), 0.15);
+}
+
+.plant {
+  padding: 0;
+}
+
+.plant pre,
+.robot,
+.globe,
+.hanging-plant {
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.05;
+  color: var(--green);
+  white-space: pre;
+}
+
+.hanging-plant {
+  color: var(--green-mid);
+  margin-bottom: -30px;
+}
+
+.book {
+  position: relative;
+  border: 2px solid var(--green);
+  background: var(--bg-panel);
+  background-image: var(--dither-fine);
+  background-size: 3px 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.book span {
+  writing-mode: vertical-rl;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--green-bright);
+  overflow: hidden;
+  max-height: 100%;
+}
+
+.book--tall {
+  width: 22px;
+  height: 68px;
+}
+
+.book--short {
+  width: 18px;
+  height: 46px;
+}
+
+.poster {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-left: 14px;
+  padding: 8px 12px;
+  border: 2px solid var(--green-dim);
+  background: var(--bg-panel);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: var(--green-mid);
+}
+
+.poster pre {
+  font-family: inherit;
+  line-height: 1;
+  color: var(--green);
+}
+
+.stickies {
+  display: flex;
+  gap: 10px;
+  margin-left: 10px;
+}
+
+.sticky {
+  width: 58px;
+  height: 58px;
+  padding: 6px;
+  font-size: 11px;
+  line-height: 1.3;
+  letter-spacing: 0.08em;
+  color: var(--bg);
+  background: var(--green-mid);
+  transform: rotate(-2deg);
+}
+
+.sticky--smile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  width: 44px;
+  height: 44px;
+  align-self: flex-end;
+  transform: rotate(3deg);
+  background: var(--green-dim);
+  color: var(--green-bright);
+}
+
+.heart-widget {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  margin-right: 30px;
+  font-size: 22px;
+  color: var(--green);
+  border: 2px solid var(--green-dim);
+  background: var(--bg-panel);
+  box-shadow: 3px 3px 0 rgba(var(--accent-rgb), 0.15);
+}
+
+.heart-widget span:not(.desk-tooltip) {
+  animation: blink 2.4s infinite step-end;
+}
+
+/* ==========================================================================
+   Desk area — monitor + objects (desktop positions in media query below)
+   ========================================================================== */
+
+.desk-area {
+  z-index: 5; /* above the desk front so the keyboard/mouse sit on it */
+}
+
+/* ---- Lamp ---- */
+
+.lamp {
+  position: relative;
+  padding: 0;
+  text-align: left;
+}
+
+.lamp__art {
+  position: relative;
+  z-index: 2;
+  font-family: inherit;
+  font-size: 17px;
+  line-height: 1.05;
+  color: var(--green);
+  white-space: pre;
+}
+
+.lamp__glow {
+  position: absolute;
+  z-index: 1;
+  top: -78px;
+  left: -66px;
+  width: 220px;
+  height: 220px;
+  pointer-events: none;
+  border-radius: 50%;
+  background-image:
+    radial-gradient(rgba(var(--accent-rgb), 0.35) 1px, transparent 1.4px),
+    radial-gradient(circle, rgba(var(--accent-rgb), 0.16), transparent 62%);
+  background-size: 4px 4px, 100% 100%;
+  -webkit-mask-image: radial-gradient(circle, black 30%, transparent 68%);
+  mask-image: radial-gradient(circle, black 30%, transparent 68%);
+}
+
+.lamp--off .lamp__glow {
+  opacity: 0.06;
+}
+
+.lamp--flicker .lamp__glow,
+.lamp--flicker .lamp__art {
+  animation: lamp-flicker 0.45s steps(8);
+}
+
+/* ---- Xbox 360 ---- */
+
+.xbox {
+  padding: 0;
+}
+
+.xbox__body {
+  position: relative;
+  display: block;
+  width: 92px;
+  height: 34px;
+  border: 2px solid var(--green-mid);
+  border-radius: 6px 6px 4px 4px;
+  background: var(--bg-hard);
+  background-image: var(--dither-fine);
+  background-size: 3px 3px;
+  box-shadow: 3px 3px 0 rgba(var(--accent-rgb), 0.12);
+}
+
+.xbox__slot {
+  position: absolute;
+  left: 10px;
+  top: 8px;
+  width: 40px;
+  height: 4px;
+  background: var(--green-dim);
+  box-shadow: 0 9px 0 var(--green-faint);
+}
+
+.xbox__ring {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--green);
+  border-radius: 50%;
+}
+
+.xbox__ring::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: blink 2.2s infinite step-end;
+}
+
+/* ---- Clock device ---- */
+
+.clock-device {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 14px 6px;
+  border: 2px solid var(--green-dim);
+  background: var(--bg-screen);
+  box-shadow: inset 0 0 12px rgba(var(--accent-rgb), 0.12), 3px 3px 0 rgba(var(--accent-rgb), 0.12);
+}
+
+.clock-device__time {
+  font-size: 26px;
+  letter-spacing: 0.14em;
+  color: var(--green-bright);
+}
+
+.clock-device__icon {
+  font-size: 9px;
+  color: var(--green-dim);
+}
+
+/* ---- Coffee cup ---- */
+
+.coffee-cup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+}
+
+.coffee-cup__mug {
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.05;
+  color: var(--green);
+  white-space: pre;
+}
+
+/* ---- Status sign ---- */
+
+.status-sign {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 150px;
+  padding: 6px 10px;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  line-height: 1.25;
+  color: var(--green-mid);
+  background: var(--bg);
+  border: 2px solid var(--green-dim);
+}
+
+.status-sign__title {
+  color: var(--green);
+  border-bottom: 1px solid var(--green-faint);
+  padding-bottom: 2px;
+}
+
+.status-sign__bar {
+  letter-spacing: 1px;
+  color: var(--green);
+}
+
+.status-sign--active {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.status-sign--active .status-sign__bar {
+  animation: blink 1s infinite step-end;
+}
+
+/* ---- Tower ---- */
+
+.tower {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: clamp(90px, 7.5vw, 118px);
+  height: clamp(200px, 26vh, 280px);
+  padding: 14px 10px 10px;
+  border: 3px solid var(--green-mid);
+  background: var(--bg-hard);
+  background-image: var(--dither-fine);
+  background-size: 4px 4px;
+  box-shadow: 5px 5px 0 rgba(var(--accent-rgb), 0.12);
+}
+
+.tower__slot {
+  width: 80%;
+  height: 10px;
+  border: 2px solid var(--green-dim);
+}
+
+.tower__slot--thin {
+  height: 6px;
+}
+
+.tower__led {
+  width: 8px;
+  height: 8px;
+  align-self: flex-start;
+  margin-left: 10%;
+  background: var(--green);
+  animation: blink 2s infinite step-end;
+}
+
+.tower__vents {
+  flex: 1;
+  width: 80%;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--green-faint) 0 2px,
+    transparent 2px 6px
+  );
+}
+
+.tower__power {
+  font-size: 16px;
+  color: var(--green);
+}
+
+/* ---- Keyboard + mouse ---- */
+
+.keyboard {
+  height: 44px;
+  border: 2px solid var(--green-mid);
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(to right, transparent 0 4px, var(--bg) 4px 6px),
+    repeating-linear-gradient(to bottom, transparent 0 8px, var(--bg) 8px 10px),
+    var(--green-faint);
+  box-shadow: 0 4px 0 rgba(var(--accent-rgb), 0.15);
+}
+
+.mousepad {
+  width: 96px;
+  height: 62px;
+  border: 2px solid var(--green-dim);
+  border-radius: 6px;
+  background: var(--bg-panel);
+  background-image: var(--dither-fine);
+  background-size: 4px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mouse {
+  position: relative;
+  width: 26px;
+  height: 38px;
+  border: 2px solid var(--green);
+  border-radius: 10px 10px 12px 12px;
+  background: var(--bg-panel);
+}
+
+.mouse::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 8px;
+  background: var(--green);
+}
+
+.mouse::after {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  width: 2px;
+  height: 26px;
+  background: var(--green-dim);
+}
+
+/* ==========================================================================
+   Desk front + drawers
+   ========================================================================== */
+
+.desk-front {
+  position: absolute;
+  left: 3%;
+  right: 3%;
+  bottom: 0;
+  height: 24%;
+  z-index: 4;
+  border-top: 5px solid var(--green-mid);
+  background: var(--bg-deep);
+  background-image: var(--dither-coarse);
+  background-size: 6px 6px;
+}
+
+.desk-label {
+  position: absolute;
+  top: 0;
+  transform: translateY(-50%);
+  padding: 1px 10px;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  color: var(--green);
+  background: var(--bg);
+  border: 1px solid var(--green-dim);
+}
+
+.desk-label--right {
+  right: 5%;
+}
+
+.drawers {
+  position: absolute;
+  right: 6%;
+  top: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 190px;
+}
+
+.drawer {
+  height: 42px;
+  border: 2px solid var(--green-dim);
+  background: var(--bg-panel);
+  position: relative;
+}
+
+.drawer::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 6px;
+  border: 2px solid var(--green-mid);
+}
+
+/* ==========================================================================
+   DESKTOP layout (positions)
+   ========================================================================== */
+
+@media (min-width: 900px) {
+  .scene {
+    min-height: max(100svh, 700px);
+  }
+
+  .desk-area {
+    position: absolute;
+    inset: 0 0 24% 0;
+    pointer-events: none;
+  }
+
+  .desk-area > * {
+    pointer-events: auto;
+  }
+
+  .desk-objects {
+    position: static;
+    pointer-events: none;
+  }
+
+  .desk-objects > * {
+    pointer-events: auto;
+  }
+
+  .monitor-slot {
+    position: absolute;
+    left: 50%;
+    bottom: -6px;
+    transform: translateX(-50%);
+    width: clamp(360px, 42vw, 660px);
+    /* Above the desk objects: at narrow widths the mug/sign tuck behind
+       the monitor bezel instead of overlapping on top of it. */
+    z-index: 7;
+  }
+
+  .lamp {
+    position: absolute;
+    left: 12%;
+    bottom: -4px;
+    z-index: 9;
+  }
+
+  .xbox {
+    position: absolute;
+    left: 21%;
+    bottom: -2px;
+    z-index: 6;
+  }
+
+  .clock-device {
+    position: absolute;
+    right: 12.5%;
+    bottom: -4px;
+  }
+
+  .coffee-cup {
+    position: absolute;
+    right: 23%;
+    bottom: -4px;
+  }
+
+  .status-sign {
+    position: absolute;
+    right: 13.5%;
+    bottom: 130px;
+  }
+
+  .tower {
+    position: absolute;
+    right: 2.5%;
+    bottom: -4px;
+  }
+
+  .desk-label--right {
+    right: auto;
+    left: 50%;
+    top: 74px;
+    transform: translateX(-50%);
+  }
+
+  .keyboard {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: -58px;
+    width: clamp(260px, 24vw, 380px);
+    z-index: 5;
+  }
+
+  .mousepad {
+    position: absolute;
+    right: 29%;
+    bottom: -62px;
+    z-index: 5;
+  }
+}
+
+/* ==========================================================================
+   MOBILE layout (< 900px) — same desk, reframed vertically
+   ========================================================================== */
+
+@media (max-width: 899px) {
+  .scene {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 22px 14px 0;
+    overflow: visible;
+  }
+
+  .wall {
+    position: static;
+    inset: auto;
+    background: none;
+  }
+
+  .identity-panels {
+    position: static;
+    transform: none;
+    width: 100%;
+  }
+
+  .identity-panel__name {
+    font-size: 26px;
+  }
+
+  /* Shelf decor doesn't fit the mobile frame — hide, keep the essentials */
+  .shelf-zone,
+  .wall-gear {
+    display: none;
+  }
+
+  .desk-dog {
+    position: static;
+    margin: 4px auto 12px;
+  }
+
+  .desk-area {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .monitor-slot {
+    width: 100%;
+  }
+
+  .monitor__screen {
+    height: clamp(400px, 62vh, 580px);
+  }
+
+  /* The desk surface becomes a strip of interactive objects */
+  .desk-objects {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 20px;
+    padding: 16px 8px 12px;
+    border-top: 5px solid var(--green-mid);
+    background-image: var(--dither-coarse);
+    background-size: 6px 6px;
+  }
+
+  .lamp__art {
+    font-size: 12px;
+  }
+
+  .lamp__glow {
+    top: -30px;
+    left: -35px;
+    width: 170px;
+    height: 170px;
+  }
+
+  .tower {
+    width: 84px;
+    height: 130px;
+    padding-top: 10px;
+  }
+
+  .status-sign {
+    width: 132px;
+  }
+
+  .keyboard,
+  .mousepad {
+    display: none;
+  }
+
+  .desk-front {
+    position: relative;
+    height: 84px;
+    margin: 0 -14px;
+  }
+
+  .drawers {
+    right: 8%;
+    top: 16px;
+    width: 150px;
+  }
+
+  .drawer {
+    height: 26px;
+  }
+
+  .desk-label {
+    font-size: 11px;
+  }
+}
