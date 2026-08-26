@@ -135,7 +135,41 @@
 .inside-screen .monitor__screen {
   flex: 1;
   height: auto;
-  font-size: 22px;
+  font-size: 26px;
+}
+
+.inside-screen .boot-sequence__lines {
+  font-size: 1.3em;
+  line-height: 1.45;
+}
+
+.inside-screen .main-menu__welcome {
+  font-size: 2.6em;
+}
+
+.inside-screen .main-menu__hint {
+  font-size: 1.25em;
+}
+
+.inside-screen .main-menu__grid {
+  gap: 28px;
+  margin-top: 26px;
+}
+
+.inside-screen .main-menu__item {
+  width: 150px;
+  gap: 10px;
+}
+
+.inside-screen .main-menu__icon {
+  width: 104px;
+  height: 84px;
+  font-size: 2.1em;
+  box-shadow: 5px 5px 0 color-mix(in srgb, currentColor 40%, black);
+}
+
+.inside-screen .main-menu__label {
+  font-size: 1.15em;
 }
 
 .inside-screen .monitor__brand,
