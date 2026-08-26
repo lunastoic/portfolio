@@ -26,7 +26,30 @@ export interface AsciiColors {
 
 const EDGE_CHARS = "|-+";
 const SLOPE_CHARS = "|-/\\"; // oriented shading for strongly sloped mid-tone surfaces
-const EDGE_THRESHOLD = 110; // sum of |Δrgb| between neighbors, 0..765
+const EDGE_THRESHOLD = 110; // sum of |Δnormal rgb| between neighbors, 0..765
+const DEPTH_THRESHOLD = 7; // |Δdepth| in bytes (depth packed into alpha)
+
+/** Normals in RGB + linear view-depth in A — one pass feeds both edge tests. */
+const depthNormalMaterial = () =>
+  new THREE.ShaderMaterial({
+    vertexShader: `
+      varying vec3 vNormal;
+      varying float vDepth;
+      void main() {
+        vNormal = normalize(normalMatrix * normal);
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vDepth = -mv.z;
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: `
+      varying vec3 vNormal;
+      varying float vDepth;
+      void main() {
+        gl_FragColor = vec4(vNormal * 0.5 + 0.5, clamp(vDepth / 620.0, 0.0, 1.0));
+      }
+    `,
+  });
 
 const TIER1 = Math.floor(CHAR_RAMP.length * 0.36);
 const TIER2 = Math.floor(CHAR_RAMP.length * 0.7);
@@ -52,7 +75,8 @@ export class AsciiCanvasRenderer {
   private frameCount = 0;
   private hi = 0.7; // smoothed high percentile
 
-  private normalMat = new THREE.MeshNormalMaterial();
+  private normalMat = depthNormalMaterial();
+  private edgeClearColor = new THREE.Color(0, 0, 0);
   private ctx: CanvasRenderingContext2D;
   private canvas: HTMLCanvasElement;
   private atlas: HTMLCanvasElement;
@@ -88,13 +112,13 @@ export class AsciiCanvasRenderer {
     const n = this.cols * this.rows;
     this.fillTarget?.dispose();
     this.normalTarget?.dispose();
-    this.fillTarget = new THREE.WebGLRenderTarget(this.cols, this.rows, {
+    this.fillTarget = new THREE.WebGLRenderTarget(this.cols * 2, this.rows * 2, {
       depthBuffer: true,
     });
     this.normalTarget = new THREE.WebGLRenderTarget(this.cols, this.rows, {
       depthBuffer: true,
     });
-    this.fillBuf = new Uint8Array(n * 4);
+    this.fillBuf = new Uint8Array(n * 4 * 4); // 2x2 supersampled
     this.normalBuf = new Uint8Array(n * 4);
     this.lum = new Uint8Array(n);
     this.edge = new Uint8Array(n);
@@ -140,34 +164,51 @@ export class AsciiCanvasRenderer {
     const { cols, rows, ctx, cellW, cellH, glyphW: gw, glyphH: gh } = this;
     if (!this.fillTarget || !this.normalTarget) return;
 
-    /* ---- pass 1: lit scene ---- */
+    /* ---- pass 1: lit scene, 2x supersampled ---- */
     renderer.setRenderTarget(this.fillTarget);
     renderer.render(scene, camera);
-    renderer.readRenderTargetPixels(this.fillTarget, 0, 0, cols, rows, this.fillBuf);
+    renderer.readRenderTargetPixels(this.fillTarget, 0, 0, cols * 2, rows * 2, this.fillBuf);
 
-    /* ---- pass 2: normals for edge detection (every other frame) ---- */
+    /* ---- pass 2: depth+normals for edge detection (every other frame) ---- */
     this.frameCount++;
     const runEdges = this.frameCount % 2 === 0;
     if (runEdges) {
+    const prevBg = scene.background;
+    scene.background = null;
+    renderer.setClearColor(this.edgeClearColor, 1); // background depth = far
     scene.overrideMaterial = this.normalMat;
     renderer.setRenderTarget(this.normalTarget);
     renderer.render(scene, camera);
     scene.overrideMaterial = null;
+    scene.background = prevBg;
     renderer.readRenderTargetPixels(this.normalTarget, 0, 0, cols, rows, this.normalBuf);
     }
     renderer.setRenderTarget(null);
 
-    /* ---- luminance + histogram (sRGB-encode the linear readback) ---- */
+    /* ---- luminance: average each 2x2 block, then sRGB-encode ---- */
     const lum = this.lum;
     const hist = this.hist;
     hist.fill(0);
     let count = 0;
-    for (let i = 0, p = 0; i < cols * rows; i++, p += 4) {
-      const v = Math.round(Math.pow(this.fillBuf[p + 1] / 255, 1 / 2.2) * 255);
-      lum[i] = v;
-      if (v > 6) {
-        hist[v]++;
-        count++;
+    const w2 = cols * 2;
+    for (let row = 0; row < rows; row++) {
+      const r0 = row * 2 * w2;
+      const r1 = r0 + w2;
+      for (let col = 0; col < cols; col++) {
+        const c0 = col * 2;
+        const linear =
+          (this.fillBuf[(r0 + c0) * 4 + 1] +
+            this.fillBuf[(r0 + c0 + 1) * 4 + 1] +
+            this.fillBuf[(r1 + c0) * 4 + 1] +
+            this.fillBuf[(r1 + c0 + 1) * 4 + 1]) *
+          0.25;
+        const v = Math.round(Math.pow(linear / 255, 1 / 2.2) * 255);
+        const i = row * cols + col;
+        lum[i] = v;
+        if (v > 6) {
+          hist[v]++;
+          count++;
+        }
       }
     }
 
@@ -213,8 +254,10 @@ export class AsciiCanvasRenderer {
           Math.abs(nb[p] - nb[pd]) +
           Math.abs(nb[p + 1] - nb[pd + 1]) +
           Math.abs(nb[p + 2] - nb[pd + 2]);
-        const r = dRight > EDGE_THRESHOLD;
-        const d = dDown > EDGE_THRESHOLD;
+        const zRight = Math.abs(nb[p + 3] - nb[pr + 3]);
+        const zDown = Math.abs(nb[p + 3] - nb[pd + 3]);
+        const r = dRight > EDGE_THRESHOLD || zRight > DEPTH_THRESHOLD;
+        const d = dDown > EDGE_THRESHOLD || zDown > DEPTH_THRESHOLD;
         if (r && d) edge[i] = 3;
         else if (r) edge[i] = 1;
         else if (d) edge[i] = 2;
