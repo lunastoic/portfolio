@@ -76,21 +76,21 @@ export function buildIntroRoom(): IntroRoom {
 
   /* ---------------- room shell ---------------- */
 
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(620, 420), lambert(0.07));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(620, 420), lambert(0.13));
   floor.rotation.x = -Math.PI / 2;
   floor.position.set(0, 0, -20);
   scene.add(floor);
 
-  const backWall = new THREE.Mesh(new THREE.PlaneGeometry(620, 320), lambert(0.05));
+  const backWall = new THREE.Mesh(new THREE.PlaneGeometry(620, 320), lambert(0.09));
   backWall.position.set(0, 160, -164);
   scene.add(backWall);
 
-  const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(400, 320), lambert(0.04));
+  const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(400, 320), lambert(0.07));
   leftWall.rotation.y = Math.PI / 2;
   leftWall.position.set(-310, 160, -20);
   scene.add(leftWall);
 
-  const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(400, 320), lambert(0.04));
+  const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(400, 320), lambert(0.07));
   rightWall.rotation.y = -Math.PI / 2;
   rightWall.position.set(310, 160, -20);
   scene.add(rightWall);
@@ -98,14 +98,14 @@ export function buildIntroRoom(): IntroRoom {
   /* ---------------- desk ---------------- */
 
   box(scene, 300, 6, 84, 0.72, 0, 76, -102); // top slab
-  box(scene, 300, 46, 4, 0.1, 0, 50, -64); // front panel (quiet)
-  box(scene, 6, 73, 78, 0.18, -144, 36, -102);
-  box(scene, 6, 73, 78, 0.18, 144, 36, -102);
+  box(scene, 300, 46, 4, 0.32, 0, 50, -64); // front panel
+  box(scene, 6, 73, 78, 0.3, -144, 36, -102);
+  box(scene, 6, 73, 78, 0.3, 144, 36, -102);
 
   // drawer unit (right) with bright handles
-  box(scene, 62, 46, 4, 0.3, 100, 50, -62);
-  box(scene, 50, 16, 2, 0.52, 100, 58, -59.5);
-  box(scene, 50, 16, 2, 0.52, 100, 38, -59.5);
+  box(scene, 62, 46, 4, 0.5, 100, 50, -62);
+  box(scene, 50, 16, 2, 0.66, 100, 58, -59.5);
+  box(scene, 50, 16, 2, 0.66, 100, 38, -59.5);
   box(scene, 16, 3, 2, 0.9, 100, 58, -58);
   box(scene, 16, 3, 2, 0.9, 100, 38, -58);
 
@@ -129,16 +129,16 @@ export function buildIntroRoom(): IntroRoom {
   scene.add(screenGroup);
   const screenSaver: ScreenSaver = { base: screenBase, strips, quad };
   const monitorHit: THREE.Object3D[] = [bezel, screenBase];
-  box(scene, 10, 16, 8, 0.38, 0, 88, -114); // stand
-  box(scene, 40, 3, 26, 0.45, 0, 80.5, -114); // base
+  box(scene, 10, 16, 8, 0.55, 0, 88, -114); // stand
+  box(scene, 40, 3, 26, 0.6, 0, 80.5, -114); // base
 
   /* ---------------- keyboard + mouse ---------------- */
 
-  box(scene, 60, 3, 20, 0.82, -6, 79.4, -72);
+  box(scene, 60, 3, 20, 0.92, -6, 79.4, -72);
   for (let i = 0; i < 4; i++) {
     box(scene, 52, 1.2, 2.2, 0.22, -6, 81.2, -78.5 + i * 4.2); // key rows
   }
-  box(scene, 26, 1, 20, 0.26, 44, 78.5, -72);
+  box(scene, 26, 1, 20, 0.4, 44, 78.5, -72);
   box(scene, 7, 3.4, 12, 0.85, 44, 80.7, -72);
 
   /* ---------------- coffee mug ---------------- */
@@ -157,12 +157,29 @@ export function buildIntroRoom(): IntroRoom {
   mug.position.set(74, 79, -84);
   scene.add(mug);
 
+  /* ---------------- xbox 360 (between lamp and monitor) ---------------- */
+
+  const xbox = new THREE.Group();
+  xbox.add(new THREE.Mesh(new THREE.BoxGeometry(24, 7.5, 16), lambert(0.85)));
+  const xslot = new THREE.Mesh(new THREE.BoxGeometry(11, 1.2, 0.8), lambert(0.15));
+  xslot.position.set(-4, 1.8, 8.2);
+  const xring = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.7, 8, 16), lambert(1));
+  xring.position.set(6.5, 0.3, 8.2);
+  const xled = new THREE.Mesh(
+    new THREE.SphereGeometry(0.8, 8, 8),
+    new THREE.MeshBasicMaterial({ color: gray(1) })
+  );
+  xled.position.set(6.5, 0.3, 8.6);
+  xbox.add(xslot, xring, xled);
+  xbox.position.set(-62, 82.7, -84);
+  scene.add(xbox);
+
   /* ---------------- desk lamp + its light ---------------- */
 
   const lamp = new THREE.Group();
-  const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(10, 11, 3, 16), lambert(0.5));
+  const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(10, 11, 3, 16), lambert(0.68));
   lampBase.position.y = 1.5;
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, 40, 8), lambert(0.55));
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, 40, 8), lambert(0.72));
   stem.position.y = 22;
   const shade = new THREE.Mesh(
     new THREE.CylinderGeometry(6, 13, 16, 14, 1, true),
@@ -182,7 +199,7 @@ export function buildIntroRoom(): IntroRoom {
   /* ---------------- PC tower ---------------- */
 
   const tower = new THREE.Group();
-  tower.add(new THREE.Mesh(new THREE.BoxGeometry(32, 62, 28), lambert(0.5)));
+  tower.add(new THREE.Mesh(new THREE.BoxGeometry(32, 62, 28), lambert(0.68)));
   for (let i = 0; i < 3; i++) {
     const slot = new THREE.Mesh(new THREE.BoxGeometry(20, 2, 1), lambert(0.16));
     slot.position.set(0, 24 - i * 6, 14.6);
@@ -219,13 +236,13 @@ export function buildIntroRoom(): IntroRoom {
 
   /* ---------------- shelves + books + globe ---------------- */
 
-  box(scene, 70, 3.5, 20, 0.55, -160, 172, -150);
+  box(scene, 70, 3.5, 20, 0.72, -160, 172, -150);
   const bookShades = [0.62, 0.4, 0.7, 0.48];
   bookShades.forEach((s, i) => {
     box(scene, 5, 20 + (i % 2) * 4, 14, s, -182 + i * 9, 184, -150);
   });
 
-  box(scene, 70, 3.5, 20, 0.55, 160, 178, -150);
+  box(scene, 70, 3.5, 20, 0.72, 160, 178, -150);
   const globe = new THREE.Mesh(new THREE.SphereGeometry(8, 12, 10), lambert(0.68));
   globe.position.set(182, 190, -150);
   scene.add(globe);

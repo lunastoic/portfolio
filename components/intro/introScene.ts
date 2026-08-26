@@ -50,8 +50,8 @@ function readThemeColors(): AsciiColors {
     bg: get("--bg", "#020503"),
     // Alpha-scaled accent over the black bg: much brighter glow than the
     // dark --green-dim token, matching the neon-sign reference.
-    dim: `rgba(${rgb}, 0.52)`,
-    mid: `rgba(${rgb}, 0.85)`,
+    dim: `rgba(${rgb}, 0.62)`,
+    mid: `rgba(${rgb}, 0.94)`,
     bright: get("--green-bright", "#8cffb0"),
   };
 }
