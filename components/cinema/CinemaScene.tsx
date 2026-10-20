@@ -26,11 +26,14 @@ interface LayoutArt {
   spritesPct?: Record<string, PctBox>;
   spriteFiles?: Record<string, string>;
   antPct?: { from: number[]; to: number[] };
+  decksPct?: PctBox[];
 }
 
 const SIT_MS = 1000;
-/** Standing, the art sits this much smaller than its seated cover-fit, with the dark room around it. */
-const STAND_SCALE: Record<LayoutKey, number> = { desktop: 0.78, mobile: 0.84 };
+/** Seated, the painted screen stands this tall relative to the viewport. */
+const SEAT_FRACTION: Record<LayoutKey, number> = { desktop: 0.6, mobile: 0.55 };
+/** Seated, the crop starts at least this far (art px) below the decks, so they stay out of view. */
+const DECK_CLEARANCE = 6;
 /** Progress at which the live OS takes over from the painted screen. */
 const SCREEN_ON_AT = 0.9;
 const HINT_DELAY_MS = 2200;
@@ -50,8 +53,8 @@ interface Stage extends Rect {
 const pickLayout = (vw: number, vh: number): LayoutKey =>
   vw > 0 && (vw < 900 || vh > vw * 1.15) ? "mobile" : "desktop";
 
-/** Seated at the desk: cover-fit the art, keeping the monitor as centered as the crop allows. */
-function seatedStage(art: LayoutArt, vw: number, vh: number): Stage {
+/** Standing back from the desk: the whole painting cover-fits the viewport, monitor as centered as the crop allows. */
+function standingStage(art: LayoutArt, vw: number, vh: number): Stage {
   const { width: W, height: H } = art.size;
   const [fx, fy] = art.focalPoint;
   const scale = Math.max(vw / W, vh / H);
@@ -62,13 +65,27 @@ function seatedStage(art: LayoutArt, vw: number, vh: number): Stage {
   return { x, y, w, h, scale };
 }
 
-/** Standing back from the desk: the seated framing scaled down about the viewport center. */
-function standingStage(art: LayoutArt, layout: LayoutKey, vw: number, vh: number): Stage {
-  const s = seatedStage(art, vw, vh);
-  const k = STAND_SCALE[layout];
-  const cx = vw / 2;
-  const cy = vh / 2;
-  return { x: cx - (cx - s.x) * k, y: cy - (cy - s.y) * k, w: s.w * k, h: s.h * k, scale: s.scale * k };
+/**
+ * Seated at the desk: zoomed in so the painted screen stands SEAT_FRACTION of the
+ * viewport tall, centered on it, but never showing the decks above the monitor and
+ * never leaving the painting (no blank edges).
+ */
+function seatedStage(art: LayoutArt, layout: LayoutKey, vw: number, vh: number): Stage {
+  const { width: W, height: H } = art.size;
+  const [sx0, sy0, sx1, sy1] = art.screenPx;
+  const cover = Math.max(vw / W, vh / H);
+  // tall enough to read, but never wider than the viewport (phones are narrow)
+  const fit = Math.min((SEAT_FRACTION[layout] * vh) / (sy1 - sy0), (0.94 * vw) / (sx1 - sx0));
+  const scale = Math.max(cover * 1.12, fit);
+  const cropW = vw / scale;
+  const cropH = vh / scale;
+  const deckBottom = (art.decksPct ?? []).reduce((m, d) => Math.max(m, ((d.top + d.height) / 100) * H), 0);
+  const minTop = deckBottom ? deckBottom + DECK_CLEARANCE : 0;
+  let top = Math.max(minTop, (sy0 + sy1) / 2 - cropH / 2);
+  top = Math.min(top, H - cropH);
+  let left = (sx0 + sx1) / 2 - cropW / 2;
+  left = Math.min(Math.max(0, left), W - cropW);
+  return { x: -left * scale, y: -top * scale, w: W * scale, h: H * scale, scale };
 }
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -101,9 +118,10 @@ const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: r
 type Egg = "mug" | "note1" | "note2" | "note3" | "lamp" | "plant";
 
 /**
- * v2 — the lo-fi pixel desk. You arrive standing back in the dark room with
- * the painted desk in front of you. Clicking it sits you down: the art
- * grows to fill the window and the live LUNA_OS takes over the glass. Seated,
+ * v2 — the lo-fi pixel desk. You arrive standing back, the whole painted room
+ * filling the window. Clicking the desk sits you down: the view zooms in on
+ * the monitor (the decks above it slide out of frame) and the live LUNA_OS
+ * takes over the glass. Seated,
  * the mug, lamp, plant and wall notes are little easter eggs. ESC,
  * [ STAND UP ] or clicking the room stands you back up.
  */
@@ -238,7 +256,7 @@ export default function CinemaScene() {
   /* ---------------- geometry ---------------- */
 
   const ready = vp.w > 0;
-  const stage = ready ? lerpStage(standingStage(art, layout, vp.w, vp.h), seatedStage(art, vp.w, vp.h), progress) : null;
+  const stage = ready ? lerpStage(standingStage(art, vp.w, vp.h), seatedStage(art, layout, vp.w, vp.h), progress) : null;
   const screen = stage ? screenRect(art, stage) : null;
   const screenOn = pose === "seated" || (pose === "sitting" && progress >= SCREEN_ON_AT);
 

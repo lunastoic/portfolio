@@ -105,16 +105,16 @@
     },
     "decksPct": [
       {
-        "left": 71.53,
-        "top": 7.01,
-        "width": 6.46,
-        "height": 45.91
+        "left": 46.17,
+        "top": 1.49,
+        "width": 17.94,
+        "height": 7.01
       },
       {
-        "left": 80.02,
-        "top": 7.01,
-        "width": 6.46,
-        "height": 45.91
+        "left": 46.17,
+        "top": 10.2,
+        "width": 17.94,
+        "height": 7.01
       }
     ],
     "antPct": {
@@ -210,16 +210,16 @@
     },
     "decksPct": [
       {
-        "left": 70.07,
-        "top": 5.83,
-        "width": 10.2,
-        "height": 19.87
+        "left": 66.04,
+        "top": 3.71,
+        "width": 31.68,
+        "height": 3.44
       },
       {
-        "left": 84.83,
-        "top": 5.83,
-        "width": 10.2,
-        "height": 19.87
+        "left": 66.04,
+        "top": 8.21,
+        "width": 31.68,
+        "height": 3.44
       }
     ],
     "antPct": {

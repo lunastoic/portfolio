@@ -157,7 +157,7 @@ class Painting:
 
 
 def deck(w, h, base, band, logo):
-    """Top-view deck silhouette at half resolution, scaled 2x for the chunky pixel look, hung vertically."""
+    """Top-view deck silhouette at half resolution, scaled 2x for the chunky pixel look, hung horizontally."""
     im = Image.new("RGBA", (w, h), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
     d.rounded_rectangle([0, 0, w - 1, h - 1], radius=h // 2, fill=base, outline=OUTLINE, width=2)
     lighter = tuple(min(255, int(v * 1.18)) for v in base)
@@ -172,7 +172,7 @@ def deck(w, h, base, band, logo):
     if logo == "stripes":
         for i in range(int(w * 0.28), int(w * 0.72), 12):
             d.line([i, h - 4, i + h - 8, 4], fill=OUTLINE, width=3)
-    return im.resize((w * 2, h * 2), Image.NEAREST).rotate(90, expand=True)
+    return im.resize((w * 2, h * 2), Image.NEAREST)
 
 
 def compose(P, spec, prefix):
@@ -273,7 +273,7 @@ DESK_SPEC = {
     "wall_strips": [(756, 0, 848, 172), (482, 172, 504, 614)],
     "keep_boxes": [(505, 172, 1152, 745)],          # the monitor overlaps the window
     "plant_from": (1392, 376),                       # the big plant overlaps it too
-    "deck_size": (216, 54), "deck_at": [(1196, 66), (1338, 66)],
+    "deck_size": (150, 33), "deck_at": [(772, 14), (772, 96)],
 }
 d_sprites, d_decks = compose(desk, DESK_SPEC, "")
 save_pixel(desk.image(), f"{OUT}/desk.webp")
@@ -301,7 +301,7 @@ MOBILE_SPEC = {
     "wall_strips": [(455, 0, 485, 472)],
     "keep_boxes": [],
     "plant_from": None,
-    "deck_size": (150, 38), "deck_at": [(522, 88), (632, 88)],
+    "deck_size": (118, 26), "deck_at": [(492, 56), (492, 124)],
 }
 m_sprites, m_decks = compose(mob, MOBILE_SPEC, "m-")
 save_pixel(mob.image(), f"{OUT}/desk-mobile.webp")

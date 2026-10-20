@@ -45,7 +45,7 @@
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  box-shadow: inset 0 0 120px 36px rgba(11, 8, 7, 0.9);
+  box-shadow: inset 0 0 90px 10px rgba(11, 8, 7, 0.5); /* a touch of room darkness at the edges */
   transition: opacity 0.45s ease;
 }
 
@@ -56,7 +56,6 @@
 
 .cinema--standing .cinema__stage {
   cursor: pointer;
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.75);
 }
 
 /* ---- props cut from the painting, each with a little easter egg ---- */
