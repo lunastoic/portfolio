@@ -12,7 +12,8 @@
   position: fixed;
   inset: 0;
   overflow: hidden;
-  background: #1b1a22;
+  /* the dark room around the desk, seen when standing back */
+  background: radial-gradient(ellipse at 50% 42%, #2d1f18 0%, #171009 52%, #0b0807 100%);
 }
 
 /* ---- the art: JS animates this rect between standing and seated ---- */
@@ -38,11 +39,142 @@
   pointer-events: none;
 }
 
-/* ---- hotspots over objects in the art (standing only) ---- */
+/* room darkness at the edges while standing; lifts as you sit down */
+.cinema__dark {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  box-shadow: inset 0 0 120px 36px rgba(11, 8, 7, 0.9);
+  transition: opacity 0.45s ease;
+}
+
+.cinema--sitting .cinema__dark,
+.cinema--seated .cinema__dark {
+  opacity: 0;
+}
+
+.cinema--standing .cinema__stage {
+  cursor: pointer;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.75);
+}
+
+/* ---- props cut from the painting, each with a little easter egg ---- */
+
+.cinema__sprite {
+  position: absolute;
+  z-index: 4;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  image-rendering: pixelated;
+}
+
+.cinema__sprite img {
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.cinema--standing .cinema__sprite {
+  cursor: pointer;
+}
+
+.cinema__sprite:focus-visible {
+  outline: 3px dashed var(--lofi-hi);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.cinema__sprite--mug.is-poked {
+  animation: cinema-slip 0.6s steps(7) both;
+}
+
+@keyframes cinema-slip {
+  0% { transform: none; }
+  30% { transform: translate(9%, -2%) rotate(-5deg); }
+  55% { transform: translate(15%, 0) rotate(3deg); }
+  80% { transform: translate(12%, 0) rotate(0); }
+  100% { transform: none; }
+}
+
+.cinema__sprite--note1,
+.cinema__sprite--note2,
+.cinema__sprite--note3 {
+  transform-origin: 50% 6%; /* swing from the pin */
+}
+
+.cinema__sprite--note1.is-poked,
+.cinema__sprite--note2.is-poked,
+.cinema__sprite--note3.is-poked {
+  animation: cinema-wiggle 0.7s steps(8) both;
+}
+
+@keyframes cinema-wiggle {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(-9deg); }
+  40% { transform: rotate(7deg); }
+  60% { transform: rotate(-4deg); }
+  80% { transform: rotate(2deg); }
+}
+
+/* the lamp's loose bulb */
+.cinema__flicker {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: #0b0807;
+  opacity: 0;
+  animation: cinema-flicker 0.75s steps(1) both;
+}
+
+@keyframes cinema-flicker {
+  0% { opacity: 0; }
+  12% { opacity: 0.55; }
+  22% { opacity: 0; }
+  38% { opacity: 0.7; }
+  50% { opacity: 0.1; }
+  64% { opacity: 0.45; }
+  78% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* an ant out of the plant pot, across the desk */
+.cinema__ant {
+  position: absolute;
+  z-index: 5;
+  width: 1.7%;
+  pointer-events: none;
+  animation: cinema-ant 2.8s steps(56) forwards;
+}
+
+.cinema__ant img {
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+@keyframes cinema-ant {
+  0% { transform: translate(0, 0) scaleX(-1); opacity: 0; }
+  6% { opacity: 1; }
+  94% { opacity: 1; }
+  100% { transform: translate(var(--ant-dx), var(--ant-dy)) scaleX(-1); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinema__sprite.is-poked,
+  .cinema__flicker,
+  .cinema__ant {
+    animation: none;
+  }
+}
+
+/* ---- hotspots over objects in the art ---- */
 
 .cinema__hotspot {
   position: absolute;
-  z-index: 3;
+  z-index: 4;
   padding: 0;
   background: none;
   border: 0;
@@ -180,14 +312,51 @@ body:has(.cinema) .crt-flicker {
   padding: 3.5% 4.5% 3%;
   font-family: var(--font-lofi), var(--font-term), monospace;
   font-weight: 500;
-  font-size: calc(var(--screen-w) * 0.036);
+  font-size: calc(var(--screen-w) * 0.04);
   line-height: 1.2;
   color: var(--lofi-text);
   animation: lofi-in 0.25s steps(3);
 }
 
+/* phones: the seated screen is only about 280px wide, so everything packs tighter, one line each */
 .cinema[data-layout="mobile"] .lofi {
-  font-size: calc(var(--screen-w) * 0.05);
+  padding: 3% 4% 2.5%;
+  font-size: calc(var(--screen-w) * 0.046);
+}
+
+.cinema[data-layout="mobile"] .lofi__name {
+  font-size: 1.55em;
+}
+
+.cinema[data-layout="mobile"] .lofi__title {
+  font-size: 0.95em;
+}
+
+.cinema[data-layout="mobile"] .lofi__body {
+  gap: 3%;
+  margin: 0.25em 0;
+}
+
+.cinema[data-layout="mobile"] .lofi__art {
+  width: 30%;
+}
+
+.cinema[data-layout="mobile"] .lofi__menu {
+  gap: 0.1em;
+}
+
+.cinema[data-layout="mobile"] .lofi__item {
+  padding: 0.1em 0.4em 0.1em 0.25em;
+  font-size: 1.02em;
+  white-space: nowrap;
+}
+
+.cinema[data-layout="mobile"] .lofi__footer {
+  font-size: 0.85em;
+}
+
+.cinema[data-layout="mobile"] .lofi__rule {
+  margin: 0.3em 0;
 }
 
 /* ASCII art and code-ish blocks stay on the monospace terminal face */

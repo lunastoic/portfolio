@@ -40,41 +40,23 @@
         "width": 38.58,
         "height": 61.11
       },
-      "mug": {
-        "left": 17.34,
-        "top": 59.51,
-        "width": 11.36,
-        "height": 24.44
-      },
       "lamp": {
         "left": 7.78,
         "top": 22.32,
         "width": 15.25,
         "height": 35.07
       },
-      "books": {
-        "left": 2.39,
-        "top": 63.23,
-        "width": 15.07,
-        "height": 20.72
-      },
-      "notes": {
-        "left": 20.33,
-        "top": 20.19,
-        "width": 8.37,
-        "height": 27.63
-      },
-      "window": {
-        "left": 50.84,
-        "top": 0.0,
-        "width": 38.88,
-        "height": 63.76
-      },
       "plant": {
         "left": 83.43,
         "top": 40.38,
         "width": 16.57,
         "height": 44.63
+      },
+      "books": {
+        "left": 2.39,
+        "top": 63.23,
+        "width": 15.07,
+        "height": 20.72
       },
       "pencup": {
         "left": 75.96,
@@ -88,12 +70,68 @@
         "width": 5.98,
         "height": 14.35
       }
+    },
+    "spritesPct": {
+      "mug": {
+        "left": 17.05,
+        "top": 58.98,
+        "width": 12.08,
+        "height": 26.04
+      },
+      "note1": {
+        "left": 21.05,
+        "top": 19.13,
+        "width": 3.71,
+        "height": 7.86
+      },
+      "note2": {
+        "left": 23.68,
+        "top": 26.35,
+        "width": 4.67,
+        "height": 10.2
+      },
+      "note3": {
+        "left": 21.41,
+        "top": 39.11,
+        "width": 4.43,
+        "height": 8.93
+      }
+    },
+    "spriteFiles": {
+      "mug": "sprite-mug.png",
+      "note1": "sprite-note1.png",
+      "note2": "sprite-note2.png",
+      "note3": "sprite-note3.png"
+    },
+    "decksPct": [
+      {
+        "left": 71.53,
+        "top": 7.01,
+        "width": 6.46,
+        "height": 45.91
+      },
+      {
+        "left": 80.02,
+        "top": 7.01,
+        "width": 6.46,
+        "height": 45.91
+      }
+    ],
+    "antPct": {
+      "from": [
+        87.92,
+        74.39
+      ],
+      "to": [
+        70.57,
+        80.77
+      ]
     }
   },
   "mobile": {
     "image": "desk-mobile.webp",
     "size": {
-      "width": 810,
+      "width": 745,
       "height": 1510
     },
     "screenPx": [
@@ -103,46 +141,96 @@
       962
     ],
     "screenPct": {
-      "left": 17.16,
+      "left": 18.66,
       "top": 35.1,
-      "width": 63.83,
+      "width": 69.4,
       "height": 28.61
     },
     "focalPoint": [
-      49.07,
+      53.36,
       49.4
     ],
     "hotspotsPct": {
       "monitor": {
-        "left": 11.6,
-        "top": 31.13,
-        "width": 74.07,
-        "height": 36.42
-      },
-      "mug": {
-        "left": 3.58,
-        "top": 64.24,
-        "width": 19.14,
-        "height": 13.91
+        "left": 12.75,
+        "top": 32.12,
+        "width": 80.54,
+        "height": 35.43
       },
       "lamp": {
         "left": 0.0,
-        "top": 20.53,
-        "width": 25.19,
-        "height": 11.92
+        "top": 19.21,
+        "width": 26.85,
+        "height": 13.91
+      },
+      "plant": {
+        "left": 92.62,
+        "top": 31.79,
+        "width": 7.38,
+        "height": 18.54
       },
       "sticky": {
-        "left": 73.33,
-        "top": 64.24,
-        "width": 11.11,
-        "height": 7.62
-      },
-      "window": {
-        "left": 58.52,
-        "top": 0.0,
-        "width": 34.57,
-        "height": 31.13
+        "left": 80.0,
+        "top": 63.58,
+        "width": 11.81,
+        "height": 8.28
       }
+    },
+    "spritesPct": {
+      "mug": {
+        "left": 2.68,
+        "top": 62.91,
+        "width": 22.82,
+        "height": 15.89
+      },
+      "note1": {
+        "left": 38.12,
+        "top": 18.01,
+        "width": 9.66,
+        "height": 5.17
+      },
+      "note2": {
+        "left": 49.13,
+        "top": 20.13,
+        "width": 11.01,
+        "height": 5.83
+      },
+      "note3": {
+        "left": 41.88,
+        "top": 24.24,
+        "width": 11.28,
+        "height": 5.7
+      }
+    },
+    "spriteFiles": {
+      "mug": "m-sprite-mug.png",
+      "note1": "m-sprite-note1.png",
+      "note2": "m-sprite-note2.png",
+      "note3": "m-sprite-note3.png"
+    },
+    "decksPct": [
+      {
+        "left": 70.07,
+        "top": 5.83,
+        "width": 10.2,
+        "height": 19.87
+      },
+      {
+        "left": 84.83,
+        "top": 5.83,
+        "width": 10.2,
+        "height": 19.87
+      }
+    ],
+    "antPct": {
+      "from": [
+        96.11,
+        49.14
+      ],
+      "to": [
+        80.54,
+        65.23
+      ]
     }
   }
 }

@@ -9,9 +9,28 @@ import "./cinema.css";
 type Pose = "standing" | "sitting" | "seated" | "rising";
 type LayoutKey = "desktop" | "mobile";
 
+interface PctBox {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** One layout's art, as the manifest describes it (sprites and decks only where composed). */
+interface LayoutArt {
+  image: string;
+  size: { width: number; height: number };
+  screenPx: number[];
+  focalPoint: number[];
+  hotspotsPct: Record<string, PctBox>;
+  spritesPct?: Record<string, PctBox>;
+  spriteFiles?: Record<string, string>;
+  antPct?: { from: number[]; to: number[] };
+}
+
 const SIT_MS = 1000;
-/** Seated, the screen fills this much of the viewport (phones get nearly all of it). */
-const SEAT_FRACTION: Record<LayoutKey, number> = { desktop: 0.75, mobile: 0.96 };
+/** Standing, the art sits this much smaller than its seated cover-fit, with the dark room around it. */
+const STAND_SCALE: Record<LayoutKey, number> = { desktop: 0.78, mobile: 0.84 };
 /** Progress at which the live OS takes over from the painted screen. */
 const SCREEN_ON_AT = 0.9;
 const HINT_DELAY_MS = 2200;
@@ -31,10 +50,10 @@ interface Stage extends Rect {
 const pickLayout = (vw: number, vh: number): LayoutKey =>
   vw > 0 && (vw < 900 || vh > vw * 1.15) ? "mobile" : "desktop";
 
-/** Standing: cover-fit the art, keeping the monitor as centered as the crop allows. */
-function restStage(layout: LayoutKey, vw: number, vh: number): Stage {
-  const { width: W, height: H } = manifest[layout].size;
-  const [fx, fy] = manifest[layout].focalPoint;
+/** Seated at the desk: cover-fit the art, keeping the monitor as centered as the crop allows. */
+function seatedStage(art: LayoutArt, vw: number, vh: number): Stage {
+  const { width: W, height: H } = art.size;
+  const [fx, fy] = art.focalPoint;
   const scale = Math.max(vw / W, vh / H);
   const w = W * scale;
   const h = H * scale;
@@ -43,19 +62,13 @@ function restStage(layout: LayoutKey, vw: number, vh: number): Stage {
   return { x, y, w, h, scale };
 }
 
-/** Seated: scale and place the art so its screen sits head-on, centered, at SEAT_FRACTION of the viewport. */
-function seatedStage(layout: LayoutKey, vw: number, vh: number): Stage {
-  const { width: W, height: H } = manifest[layout].size;
-  const [sx0, sy0, sx1, sy1] = manifest[layout].screenPx;
-  const sw = sx1 - sx0;
-  const sh = sy1 - sy0;
-  const f = SEAT_FRACTION[layout];
-  const targetW = Math.min(vw * f, vh * f * (sw / sh));
-  const scale = targetW / sw;
-  const targetH = sh * scale;
-  const x = (vw - targetW) / 2 - sx0 * scale;
-  const y = (vh - targetH) / 2 - sy0 * scale;
-  return { x, y, w: W * scale, h: H * scale, scale };
+/** Standing back from the desk: the seated framing scaled down about the viewport center. */
+function standingStage(art: LayoutArt, layout: LayoutKey, vw: number, vh: number): Stage {
+  const s = seatedStage(art, vw, vh);
+  const k = STAND_SCALE[layout];
+  const cx = vw / 2;
+  const cy = vh / 2;
+  return { x: cx - (cx - s.x) * k, y: cy - (cy - s.y) * k, w: s.w * k, h: s.h * k, scale: s.scale * k };
 }
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -68,14 +81,14 @@ const lerpStage = (a: Stage, b: Stage, t: number): Stage => ({
 });
 
 /** Where the art's screen is on the page for a given stage rect. */
-function screenRect(layout: LayoutKey, s: Stage): Rect {
-  const [x0, y0, x1, y1] = manifest[layout].screenPx;
+function screenRect(art: LayoutArt, s: Stage): Rect {
+  const [x0, y0, x1, y1] = art.screenPx;
   return { x: s.x + x0 * s.scale, y: s.y + y0 * s.scale, w: (x1 - x0) * s.scale, h: (y1 - y0) * s.scale };
 }
 
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-const pctBox = (r: { left: number; top: number; width: number; height: number }): CSSProperties => ({
+const pctBox = (r: PctBox): CSSProperties => ({
   left: `${r.left}%`,
   top: `${r.top}%`,
   width: `${r.width}%`,
@@ -84,12 +97,15 @@ const pctBox = (r: { left: number; top: number; width: number; height: number })
 
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+/** Easter eggs on the desk; each click restarts its little animation. */
+type Egg = "mug" | "note1" | "note2" | "note3" | "lamp" | "plant";
+
 /**
- * v2 — the lo-fi pixel desk. You arrive standing in the room; the painted
- * monitor shows LUNA_OS. Clicking it (or the mug) sits you down: the art
- * scales up around the screen until the screen sits head-on at 75% of the
- * viewport, and the live OS takes over the glass. ESC, [ STAND UP ] or
- * clicking the room stands you back up. Phones get the portrait art.
+ * v2 — the lo-fi pixel desk. You arrive standing back in the dark room with
+ * the painted desk in front of you. Clicking it sits you down: the art
+ * grows to fill the window and the live LUNA_OS takes over the glass. Seated,
+ * the mug, lamp, plant and wall notes are little easter eggs. ESC,
+ * [ STAND UP ] or clicking the room stands you back up.
  */
 export default function CinemaScene() {
   const [vp, setVp] = useState({ w: 0, h: 0 });
@@ -98,6 +114,8 @@ export default function CinemaScene() {
   const [loadedImage, setLoadedImage] = useState<string | null>(null);
   const [hint, setHint] = useState(false);
   const [pendingPopup, setPendingPopup] = useState<LofiPopup>(null);
+  const [eggs, setEggs] = useState<Record<Egg, number>>({ mug: 0, note1: 0, note2: 0, note3: 0, lamp: 0, plant: 0 });
+  const [antRun, setAntRun] = useState(0); // > 0 while an ant is out
   const progressRef = useRef(0);
   const rafRef = useRef(0);
   const fallbackRef = useRef(0);
@@ -122,11 +140,14 @@ export default function CinemaScene() {
     []
   );
 
+  const layout = pickLayout(vp.w, vp.h);
+  const art = manifest[layout] as LayoutArt;
+
   // Reveal the art once its image is in: the load event, or the image was
   // already complete when attached (cached / decoded before hydration), or
   // a short timeout so a slow network never leaves the room black.
-  const artImage = manifest[pickLayout(vp.w, vp.h)].image;
-  const loaded = loadedImage === artImage;
+  const loaded = loadedImage === art.image;
+  const artImage = art.image;
   useEffect(() => {
     const t = setTimeout(() => setLoadedImage(artImage), 4000);
     return () => clearTimeout(t);
@@ -200,24 +221,49 @@ export default function CinemaScene() {
     return () => window.removeEventListener("keydown", onKey);
   }, [pose, standUp]);
 
+  const poke = useCallback(
+    (egg: Egg) => (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (pose === "standing") {
+        sitDown(egg === "mug" ? "coffee" : null);
+        return;
+      }
+      if (pose !== "seated") return;
+      setEggs((v) => ({ ...v, [egg]: v[egg] + 1 }));
+      if (egg === "plant") setAntRun((n) => n + 1);
+    },
+    [pose, sitDown]
+  );
+
   /* ---------------- geometry ---------------- */
 
-  const layout = pickLayout(vp.w, vp.h);
-  const art = manifest[layout];
   const ready = vp.w > 0;
-  const stage = ready ? lerpStage(restStage(layout, vp.w, vp.h), seatedStage(layout, vp.w, vp.h), progress) : null;
-  const screen = stage ? screenRect(layout, stage) : null;
+  const stage = ready ? lerpStage(standingStage(art, layout, vp.w, vp.h), seatedStage(art, vp.w, vp.h), progress) : null;
+  const screen = stage ? screenRect(art, stage) : null;
   const screenOn = pose === "seated" || (pose === "sitting" && progress >= SCREEN_ON_AT);
 
+  const antStyle = (): CSSProperties | undefined => {
+    if (!art.antPct || !stage) return undefined;
+    const { from, to } = art.antPct;
+    return {
+      left: `${from[0]}%`,
+      top: `${from[1]}%`,
+      "--ant-dx": `${((to[0] - from[0]) / 100) * stage.w}px`,
+      "--ant-dy": `${((to[1] - from[1]) / 100) * stage.h}px`,
+    } as CSSProperties;
+  };
+
   const classes = ["cinema", `cinema--${pose}`, ready && loaded ? "cinema--ready" : ""].filter(Boolean).join(" ");
+  const sprites = art.spritesPct ?? {};
 
   return (
     <div className={classes} data-layout={layout}>
-      {/* Clicking the room stands you up; ESC and [ STAND UP ] cover keyboard users */}
+      {/* Standing, any click on the desk sits you down; seated, the room (not the props) stands you up.
+          ESC and [ STAND UP ] cover keyboard users. */}
       <div
         className="cinema__stage"
         style={stage ? { left: stage.x, top: stage.y, width: stage.w, height: stage.h } : undefined}
-        onClick={pose === "seated" ? standUp : undefined}
+        onClick={pose === "seated" ? standUp : pose === "standing" ? () => sitDown() : undefined}
       >
         <Image
           key={art.image}
@@ -234,24 +280,47 @@ export default function CinemaScene() {
           onError={() => setLoadedImage(art.image)}
         />
 
-        {pose === "standing" && (
-          <>
-            <button
-              type="button"
-              className="cinema__hotspot"
-              style={pctBox(art.hotspotsPct.monitor)}
-              onClick={() => sitDown()}
-              aria-label="Sit down at the computer"
-            />
-            <button
-              type="button"
-              className="cinema__hotspot"
-              style={pctBox(art.hotspotsPct.mug)}
-              onClick={() => sitDown("coffee")}
-              aria-label="Grab the coffee and sit down"
-            />
-          </>
+        {/* Props cut out of the painting, back in their places, each with a little animation */}
+        {(Object.keys(sprites) as Egg[]).map((k) => (
+          <button
+            key={`${k}-${eggs[k] ?? 0}`}
+            type="button"
+            className={`cinema__sprite cinema__sprite--${k} ${eggs[k] ? "is-poked" : ""}`}
+            style={pctBox(sprites[k])}
+            onClick={poke(k)}
+            aria-label={k === "mug" ? "Nudge the coffee mug" : "Flick the sticky note"}
+          >
+            <Image src={`/cinema/${art.spriteFiles?.[k]}`} alt="" fill unoptimized draggable={false} />
+          </button>
+        ))}
+
+        {art.hotspotsPct.lamp && (
+          <button
+            type="button"
+            className="cinema__hotspot"
+            style={pctBox(art.hotspotsPct.lamp)}
+            onClick={poke("lamp")}
+            aria-label="Tap the desk lamp"
+          />
         )}
+        {art.hotspotsPct.plant && (
+          <button
+            type="button"
+            className="cinema__hotspot"
+            style={pctBox(art.hotspotsPct.plant)}
+            onClick={poke("plant")}
+            aria-label="Rustle the plant"
+          />
+        )}
+
+        {antRun > 0 && art.antPct && (
+          <div key={antRun} className="cinema__ant" style={antStyle()} onAnimationEnd={() => setAntRun(0)} aria-hidden="true">
+            <Image src="/cinema/sprite-ant.png" alt="" width={28} height={16} unoptimized draggable={false} />
+          </div>
+        )}
+
+        {eggs.lamp > 0 && <div key={eggs.lamp} className="cinema__flicker" aria-hidden="true" />}
+        <div className="cinema__dark" aria-hidden="true" />
       </div>
 
       {/* The live screen rides the painted one; it only lights up seated */}
@@ -275,7 +344,7 @@ export default function CinemaScene() {
 
       {hint && pose === "standing" && (
         <p className="cinema__hint" aria-hidden="true">
-          ▸ {layout === "mobile" ? "TAP" : "CLICK"} THE SCREEN TO SIT DOWN
+          ▸ {layout === "mobile" ? "TAP" : "CLICK"} THE DESK TO SIT DOWN
         </p>
       )}
       {pose === "seated" && (
