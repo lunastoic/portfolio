@@ -95,13 +95,12 @@ export default function CinemaScene() {
   const [vp, setVp] = useState({ w: 0, h: 0 });
   const [pose, setPose] = useState<Pose>("standing");
   const [progress, setProgress] = useState(0); // 0 = standing, 1 = seated (already eased)
-  const [loaded, setLoaded] = useState(false);
+  const [loadedImage, setLoadedImage] = useState<string | null>(null);
   const [hint, setHint] = useState(false);
   const [pendingPopup, setPendingPopup] = useState<LofiPopup>(null);
   const progressRef = useRef(0);
   const rafRef = useRef(0);
   const fallbackRef = useRef(0);
-  const backdropRef = useRef<HTMLImageElement>(null);
 
   useLayoutEffect(() => {
     const update = () => setVp({ w: window.innerWidth, h: window.innerHeight });
@@ -124,19 +123,20 @@ export default function CinemaScene() {
   );
 
   // Reveal the art once its image is in: the load event, or the image was
-  // already complete (cached / loaded before hydration), or a short timeout
-  // so a slow network never leaves the room black.
+  // already complete when attached (cached / decoded before hydration), or
+  // a short timeout so a slow network never leaves the room black.
   const artImage = manifest[pickLayout(vp.w, vp.h)].image;
+  const loaded = loadedImage === artImage;
   useEffect(() => {
-    setLoaded(false);
-    const img = backdropRef.current;
-    if (img?.complete && img.naturalWidth > 0) {
-      setLoaded(true);
-      return;
-    }
-    const t = setTimeout(() => setLoaded(true), 4000);
+    const t = setTimeout(() => setLoadedImage(artImage), 4000);
     return () => clearTimeout(t);
   }, [artImage]);
+  const attachBackdrop = useCallback(
+    (img: HTMLImageElement | null) => {
+      if (img?.complete && img.naturalWidth > 0) setLoadedImage(artImage);
+    },
+    [artImage]
+  );
 
   /** Ease progress from where it is to `to`; duration scales with the distance left. */
   const animateTo = useCallback((to: 0 | 1, onDone: () => void) => {
@@ -229,9 +229,9 @@ export default function CinemaScene() {
           sizes="100vw"
           draggable={false}
           className="cinema__backdrop"
-          ref={backdropRef}
-          onLoad={() => setLoaded(true)}
-          onError={() => setLoaded(true)}
+          ref={attachBackdrop}
+          onLoad={() => setLoadedImage(art.image)}
+          onError={() => setLoadedImage(art.image)}
         />
 
         {pose === "standing" && (
