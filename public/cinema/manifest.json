@@ -4,279 +4,203 @@
     "text": "#56e474",
     "highlight": "#5cf17e",
     "highlightText": "#032311",
-    "bezel": "#392519"
+    "bezel": "#392519",
+    "coffee": {
+      "dark": "#2e1608",
+      "mid": "#6b3512",
+      "hi": "#a8703a"
+    }
   },
   "screenArt": {
     "file": "screen-art.png",
     "width": 160,
     "height": 132
   },
-  "desktop": {
-    "image": "desk.webp",
-    "size": {
-      "width": 1672,
-      "height": 941
+  "image": "desk.webp",
+  "size": {
+    "width": 1672,
+    "height": 941
+  },
+  "screenPx": [
+    585,
+    377,
+    1022,
+    693
+  ],
+  "screenPct": {
+    "left": 34.988,
+    "top": 40.064,
+    "width": 26.136,
+    "height": 33.581
+  },
+  "focalPoint": [
+    48.06,
+    56.85
+  ],
+  "monitorPct": {
+    "left": 32.775,
+    "top": 35.919,
+    "width": 30.861,
+    "height": 45.909
+  },
+  "decksPct": [
+    {
+      "left": 29.605,
+      "top": 2.125,
+      "width": 36.902,
+      "height": 17.003
     },
-    "screenPx": [
-      585,
-      377,
-      1022,
-      693
-    ],
-    "screenPct": {
-      "left": 34.99,
-      "top": 40.06,
-      "width": 26.14,
-      "height": 33.58
-    },
-    "focalPoint": [
-      48.06,
-      56.85
-    ],
-    "hotspotsPct": {
-      "monitor": {
-        "left": 32.78,
-        "top": 35.92,
-        "width": 30.86,
-        "height": 45.91
+    {
+      "left": 29.605,
+      "top": 19.66,
+      "width": 36.902,
+      "height": 15.834
+    }
+  ],
+  "props": {
+    "mug": {
+      "file": "sprite-mug.png",
+      "boxPct": {
+        "left": 20.335,
+        "top": 58.236,
+        "width": 11.962,
+        "height": 27.418
       },
-      "headphones": {
-        "left": 0.9,
-        "top": 29.22,
-        "width": 5.98,
-        "height": 13.82
-      },
-      "camera": {
-        "left": 1.2,
-        "top": 6.91,
-        "width": 5.68,
-        "height": 7.44
-      },
-      "tower": {
-        "left": 88.52,
-        "top": 47.29,
-        "width": 11.48,
-        "height": 33.48
-      },
-      "sign": {
-        "left": 65.49,
-        "top": 38.79,
-        "width": 7.18,
-        "height": 23.91
-      },
-      "books": {
-        "left": 0.0,
-        "top": 64.29,
-        "width": 17.34,
-        "height": 18.6
-      },
-      "notebook": {
-        "left": 2.39,
-        "top": 83.95,
-        "width": 21.53,
-        "height": 9.56
-      }
-    },
-    "spritesPct": {
-      "mug": {
-        "left": 20.93,
-        "top": 58.98,
-        "width": 10.77,
-        "height": 26.04
-      },
-      "note1": {
-        "left": 24.28,
-        "top": 39.32,
-        "width": 6.46,
-        "height": 12.75
-      },
-      "lamp": {
-        "left": 6.28,
-        "top": 26.57,
-        "width": 18.54,
-        "height": 33.48
-      },
-      "plant-pot": {
-        "left": 73.44,
-        "top": 52.6,
-        "width": 17.58,
-        "height": 31.56
-      },
-      "plant-leaves": {
-        "left": 73.44,
-        "top": 52.6,
-        "width": 17.58,
-        "height": 31.56
-      }
-    },
-    "spriteFiles": {
-      "mug": "sprite-mug.png",
-      "note1": "sprite-note1.png",
-      "lamp": "sprite-lamp.png",
-      "plant-pot": "sprite-plant-pot.png",
-      "plant-leaves": "sprite-plant-leaves.png"
-    },
-    "spill": {
-      "drop": "sprite-drop.png",
-      "puddle": "sprite-puddle.png"
-    },
-    "decksPct": [
-      {
-        "left": 29.61,
-        "top": 2.13,
-        "width": 36.9,
-        "height": 17.0
-      },
-      {
-        "left": 29.61,
-        "top": 19.66,
-        "width": 36.9,
-        "height": 15.83
-      }
-    ],
-    "antPct": {
-      "from": [
-        78.35,
-        82.68
+      "boxPx": [
+        340,
+        548,
+        540,
+        806
       ],
-      "to": [
-        64.59,
-        85.02
+      "originPct": [
+        21.5,
+        91.86
+      ],
+      "spill": {
+        "boxPct": {
+          "left": 14.952,
+          "top": 57.386,
+          "width": 17.644,
+          "height": 29.118
+        },
+        "width": 295,
+        "height": 274,
+        "pivot": [
+          133,
+          245
+        ],
+        "rim": [
+          116,
+          125
+        ],
+        "landY": 242,
+        "mugLeft": 133
+      }
+    },
+    "steam": {
+      "file": "sprite-steam.png",
+      "boxPct": {
+        "left": 24.222,
+        "top": 59.086,
+        "width": 5.084,
+        "height": 11.902
+      },
+      "boxPx": [
+        405,
+        556,
+        490,
+        668
+      ],
+      "originPct": [
+        50,
+        100
+      ]
+    },
+    "note": {
+      "file": "sprite-note.png",
+      "boxPct": {
+        "left": 23.923,
+        "top": 38.47,
+        "width": 7.177,
+        "height": 14.24
+      },
+      "boxPx": [
+        400,
+        362,
+        520,
+        496
+      ],
+      "originPct": [
+        50,
+        5
+      ]
+    },
+    "lamp-head": {
+      "file": "sprite-lamp-head.png",
+      "boxPct": {
+        "left": 12.38,
+        "top": 26.886,
+        "width": 11.663,
+        "height": 21.36
+      },
+      "boxPx": [
+        207,
+        253,
+        402,
+        454
+      ],
+      "originPct": [
+        15.9,
+        32.34
+      ]
+    },
+    "plant-pot": {
+      "file": "sprite-plant-pot.png",
+      "boxPct": {
+        "left": 73.086,
+        "top": 51.86,
+        "width": 18.301,
+        "height": 32.944
+      },
+      "boxPx": [
+        1222,
+        488,
+        1528,
+        798
+      ],
+      "originPct": [
+        50,
+        100
+      ]
+    },
+    "plant-leaves": {
+      "file": "sprite-plant-leaves.png",
+      "boxPct": {
+        "left": 73.086,
+        "top": 51.86,
+        "width": 18.301,
+        "height": 32.944
+      },
+      "boxPx": [
+        1222,
+        488,
+        1528,
+        798
+      ],
+      "originPct": [
+        50,
+        86
       ]
     }
   },
-  "mobile": {
-    "image": "desk.webp",
-    "size": {
-      "width": 1672,
-      "height": 941
-    },
-    "screenPx": [
-      585,
-      377,
-      1022,
-      693
+  "antPct": {
+    "from": [
+      78.35,
+      82.68
     ],
-    "screenPct": {
-      "left": 34.99,
-      "top": 40.06,
-      "width": 26.14,
-      "height": 33.58
-    },
-    "focalPoint": [
-      48.06,
-      56.85
-    ],
-    "hotspotsPct": {
-      "monitor": {
-        "left": 32.78,
-        "top": 35.92,
-        "width": 30.86,
-        "height": 45.91
-      },
-      "headphones": {
-        "left": 0.9,
-        "top": 29.22,
-        "width": 5.98,
-        "height": 13.82
-      },
-      "camera": {
-        "left": 1.2,
-        "top": 6.91,
-        "width": 5.68,
-        "height": 7.44
-      },
-      "tower": {
-        "left": 88.52,
-        "top": 47.29,
-        "width": 11.48,
-        "height": 33.48
-      },
-      "sign": {
-        "left": 65.49,
-        "top": 38.79,
-        "width": 7.18,
-        "height": 23.91
-      },
-      "books": {
-        "left": 0.0,
-        "top": 64.29,
-        "width": 17.34,
-        "height": 18.6
-      },
-      "notebook": {
-        "left": 2.39,
-        "top": 83.95,
-        "width": 21.53,
-        "height": 9.56
-      }
-    },
-    "spritesPct": {
-      "mug": {
-        "left": 20.93,
-        "top": 58.98,
-        "width": 10.77,
-        "height": 26.04
-      },
-      "note1": {
-        "left": 24.28,
-        "top": 39.32,
-        "width": 6.46,
-        "height": 12.75
-      },
-      "lamp": {
-        "left": 6.28,
-        "top": 26.57,
-        "width": 18.54,
-        "height": 33.48
-      },
-      "plant-pot": {
-        "left": 73.44,
-        "top": 52.6,
-        "width": 17.58,
-        "height": 31.56
-      },
-      "plant-leaves": {
-        "left": 73.44,
-        "top": 52.6,
-        "width": 17.58,
-        "height": 31.56
-      }
-    },
-    "spriteFiles": {
-      "mug": "sprite-mug.png",
-      "note1": "sprite-note1.png",
-      "lamp": "sprite-lamp.png",
-      "plant-pot": "sprite-plant-pot.png",
-      "plant-leaves": "sprite-plant-leaves.png"
-    },
-    "spill": {
-      "drop": "sprite-drop.png",
-      "puddle": "sprite-puddle.png"
-    },
-    "decksPct": [
-      {
-        "left": 29.61,
-        "top": 2.13,
-        "width": 36.9,
-        "height": 17.0
-      },
-      {
-        "left": 29.61,
-        "top": 19.66,
-        "width": 36.9,
-        "height": 15.83
-      }
-    ],
-    "antPct": {
-      "from": [
-        78.35,
-        82.68
-      ],
-      "to": [
-        64.59,
-        85.02
-      ]
-    }
+    "to": [
+      64.59,
+      85.02
+    ]
   }
 }
