@@ -40,18 +40,6 @@
         "width": 30.86,
         "height": 45.91
       },
-      "lamp": {
-        "left": 7.18,
-        "top": 26.57,
-        "width": 16.75,
-        "height": 28.69
-      },
-      "plant": {
-        "left": 73.86,
-        "top": 53.67,
-        "width": 15.85,
-        "height": 29.76
-      },
       "headphones": {
         "left": 0.9,
         "top": 29.22,
@@ -101,11 +89,36 @@
         "top": 39.32,
         "width": 6.46,
         "height": 12.75
+      },
+      "lamp": {
+        "left": 6.28,
+        "top": 26.57,
+        "width": 18.54,
+        "height": 33.48
+      },
+      "plant-pot": {
+        "left": 73.44,
+        "top": 52.6,
+        "width": 17.58,
+        "height": 31.56
+      },
+      "plant-leaves": {
+        "left": 73.44,
+        "top": 52.6,
+        "width": 17.58,
+        "height": 31.56
       }
     },
     "spriteFiles": {
       "mug": "sprite-mug.png",
-      "note1": "sprite-note1.png"
+      "note1": "sprite-note1.png",
+      "lamp": "sprite-lamp.png",
+      "plant-pot": "sprite-plant-pot.png",
+      "plant-leaves": "sprite-plant-leaves.png"
+    },
+    "spill": {
+      "drop": "sprite-drop.png",
+      "puddle": "sprite-puddle.png"
     },
     "decksPct": [
       {
@@ -161,18 +174,6 @@
         "width": 30.86,
         "height": 45.91
       },
-      "lamp": {
-        "left": 7.18,
-        "top": 26.57,
-        "width": 16.75,
-        "height": 28.69
-      },
-      "plant": {
-        "left": 73.86,
-        "top": 53.67,
-        "width": 15.85,
-        "height": 29.76
-      },
       "headphones": {
         "left": 0.9,
         "top": 29.22,
@@ -222,11 +223,36 @@
         "top": 39.32,
         "width": 6.46,
         "height": 12.75
+      },
+      "lamp": {
+        "left": 6.28,
+        "top": 26.57,
+        "width": 18.54,
+        "height": 33.48
+      },
+      "plant-pot": {
+        "left": 73.44,
+        "top": 52.6,
+        "width": 17.58,
+        "height": 31.56
+      },
+      "plant-leaves": {
+        "left": 73.44,
+        "top": 52.6,
+        "width": 17.58,
+        "height": 31.56
       }
     },
     "spriteFiles": {
       "mug": "sprite-mug.png",
-      "note1": "sprite-note1.png"
+      "note1": "sprite-note1.png",
+      "lamp": "sprite-lamp.png",
+      "plant-pot": "sprite-plant-pot.png",
+      "plant-leaves": "sprite-plant-leaves.png"
+    },
+    "spill": {
+      "drop": "sprite-drop.png",
+      "puddle": "sprite-puddle.png"
     },
     "decksPct": [
       {

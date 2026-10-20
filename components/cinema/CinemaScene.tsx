@@ -25,6 +25,7 @@ interface LayoutArt {
   hotspotsPct: Record<string, PctBox>;
   spritesPct?: Record<string, PctBox>;
   spriteFiles?: Record<string, string>;
+  spill?: { drop: string; puddle: string };
   antPct?: { from: number[]; to: number[] };
   decksPct?: PctBox[];
 }
@@ -115,14 +116,25 @@ const pctBox = (r: PctBox): CSSProperties => ({
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /** Easter eggs on the desk; each click restarts its little animation. */
-type Egg = "mug" | "note1" | "note2" | "note3" | "lamp" | "plant";
+type Egg = "mug" | "note" | "lamp" | "plant";
+/** Which egg each cut-out prop belongs to (the plant is two sprites: pot and leaves). */
+const EGG_OF: Record<string, Egg> = { mug: "mug", note1: "note", lamp: "lamp", "plant-pot": "plant", "plant-leaves": "plant" };
+/** Back-to-front draw order: the leaves sit over the pot. */
+const SPRITE_ORDER = ["lamp", "note1", "plant-pot", "plant-leaves", "mug"];
+const SPRITE_LABEL: Record<string, string> = {
+  mug: "Tap the coffee mug",
+  note1: "Flick the sticky note",
+  lamp: "Tap the desk lamp",
+  "plant-pot": "Nudge the plant",
+  "plant-leaves": "Rustle the plant",
+};
 
 /**
  * v2 — the lo-fi pixel desk. You arrive standing back, the whole painted room
  * filling the window. Clicking the desk sits you down: the view zooms in on
  * the monitor (the decks above it slide out of frame) and the live LUNA_OS
  * takes over the glass. Standing, the mug, lamp, plant and wall note are
- * little easter eggs. Seated, ESC, [ STAND UP ] or a click anywhere outside
+ * cut-out props with little easter eggs (the mug spills, the plant rustles). Seated, ESC, [ STAND UP ] or a click anywhere outside
  * the screen stands you back up.
  */
 export default function CinemaScene() {
@@ -132,7 +144,7 @@ export default function CinemaScene() {
   const [loadedImage, setLoadedImage] = useState<string | null>(null);
   const [hint, setHint] = useState(false);
   const [pendingPopup, setPendingPopup] = useState<LofiPopup>(null);
-  const [eggs, setEggs] = useState<Record<Egg, number>>({ mug: 0, note1: 0, note2: 0, note3: 0, lamp: 0, plant: 0 });
+  const [eggs, setEggs] = useState<Record<Egg, number>>({ mug: 0, note: 0, lamp: 0, plant: 0 });
   const [antRun, setAntRun] = useState(0); // > 0 while an ant is out
   const progressRef = useRef(0);
   const rafRef = useRef(0);
@@ -297,48 +309,46 @@ export default function CinemaScene() {
         />
 
         {/* Props cut out of the painting, back in their places, each with a little animation */}
-        {(Object.keys(sprites) as Egg[]).map((k) => (
-          <button
-            key={`${k}-${eggs[k] ?? 0}`}
-            type="button"
-            className={`cinema__sprite cinema__sprite--${k} ${eggs[k] ? "is-poked" : ""}`}
-            style={pctBox(sprites[k])}
-            onClick={poke(k)}
-            tabIndex={pose === "standing" ? 0 : -1}
-            aria-label={k === "mug" ? "Nudge the coffee mug" : "Flick the sticky note"}
-          >
-            <Image src={`/cinema/${art.spriteFiles?.[k]}`} alt="" fill unoptimized draggable={false} />
-          </button>
-        ))}
+        {SPRITE_ORDER.filter((k) => sprites[k]).map((k) => {
+          const egg = EGG_OF[k];
+          const n = eggs[egg];
+          return (
+            <button
+              key={`${k}-${n}`}
+              type="button"
+              className={`cinema__sprite cinema__sprite--${k} ${n ? "is-poked" : ""}`}
+              style={pctBox(sprites[k])}
+              onClick={poke(egg)}
+              tabIndex={pose === "standing" ? 0 : -1}
+              aria-label={SPRITE_LABEL[k]}
+            >
+              <Image src={`/cinema/${art.spriteFiles?.[k]}`} alt="" fill unoptimized draggable={false} />
+            </button>
+          );
+        })}
+
+        {/* A tapped mug tips and slops coffee onto the desk beside it */}
+        {eggs.mug > 0 && art.spill && sprites.mug && (
+          <div key={`spill-${eggs.mug}`} className="cinema__spill" style={pctBox(sprites.mug)} aria-hidden="true">
+            <span className="cinema__puddle">
+              <Image src={`/cinema/${art.spill.puddle}`} alt="" width={114} height={36} unoptimized draggable={false} />
+            </span>
+            {[0, 1, 2].map((i) => (
+              <span key={i} className={`cinema__drop cinema__drop--${i}`}>
+                <Image src={`/cinema/${art.spill.drop}`} alt="" width={15} height={18} unoptimized draggable={false} />
+              </span>
+            ))}
+          </div>
+        )}
 
         {pose === "standing" && (
-          <>
-            <button
-              type="button"
-              className="cinema__hotspot cinema__hotspot--monitor"
-              style={pctBox(art.hotspotsPct.monitor)}
-              onClick={() => sitDown()}
-              aria-label="Sit down at the computer"
-            />
-            {art.hotspotsPct.lamp && (
-              <button
-                type="button"
-                className="cinema__hotspot"
-                style={pctBox(art.hotspotsPct.lamp)}
-                onClick={poke("lamp")}
-                aria-label="Tap the desk lamp"
-              />
-            )}
-            {art.hotspotsPct.plant && (
-              <button
-                type="button"
-                className="cinema__hotspot"
-                style={pctBox(art.hotspotsPct.plant)}
-                onClick={poke("plant")}
-                aria-label="Rustle the plant"
-              />
-            )}
-          </>
+          <button
+            type="button"
+            className="cinema__hotspot cinema__hotspot--monitor"
+            style={pctBox(art.hotspotsPct.monitor)}
+            onClick={() => sitDown()}
+            aria-label="Sit down at the computer"
+          />
         )}
 
         {antRun > 0 && art.antPct && (

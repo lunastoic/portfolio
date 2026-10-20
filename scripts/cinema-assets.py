@@ -201,6 +201,59 @@ def compose(P, spec, prefix):
         P.sprite(box, nm).save(f"{OUT}/{prefix}sprite-{k}.png", optimize=True)
         P.fill_rows(box, dilate(nm, 3))
         sprites[k] = box
+    # ---- lamp: shade, cap, bulb, arm and base, all outlined; one seeded region ----
+    if spec.get("lamp"):
+        lb = spec["lamp"]["box"]
+        lm = dilate(P.fill_holes(P.grow(lb, spec["lamp"]["seeds"], spec["lamp"].get("tol", 60))), 2)
+        P.sprite(lb, lm).save(f"{OUT}/{prefix}sprite-lamp.png", optimize=True)
+        P.fill_cols(lb, dilate(lm, 4))
+        sprites["lamp"] = lb
+        print("lamp px", int(lm.sum()))
+    # ---- plant: leaves by colour (greens incl. sunlit yellow-greens, closed over veins), pot by seeded region ----
+    if spec.get("plant"):
+        pb = spec["plant"]["box"]
+        c = P.A[pb[1]:pb[3], pb[0]:pb[2]]
+        green = (c[..., 1] >= c[..., 0] * 0.8) & (c[..., 1] > c[..., 2] * 1.25) & (c[..., 1] > 45)
+        closed = np.asarray(Image.fromarray((dilate(green, 3) * 255).astype(np.uint8)).filter(ImageFilter.MinFilter(7))) > 0
+        leaves = dilate(green | closed, 2)
+        # the pot: everything its dark outline encloses (flood the outside from the pot box's edge)
+        pbox = spec["plant"]["pot_box"]
+        pc = P.A[pbox[1]:pbox[3], pbox[0]:pbox[2]]; ph, pw = pc.shape[:2]
+        isdark = pc.max(-1) < spec["plant"].get("outline_dark", 70)
+        outside = np.zeros((ph, pw), bool); q = deque()
+        for yy in range(ph):
+            for xx in range(pw):
+                if (yy in (0, ph - 1) or xx in (0, pw - 1)) and not isdark[yy, xx]:
+                    outside[yy, xx] = True; q.append((yy, xx))
+        while q:
+            yy, xx = q.popleft()
+            for ny, nx in ((yy + 1, xx), (yy - 1, xx), (yy, xx + 1), (yy, xx - 1)):
+                if 0 <= ny < ph and 0 <= nx < pw and not outside[ny, nx] and not isdark[ny, nx]:
+                    outside[ny, nx] = True; q.append((ny, nx))
+        pot_full = np.zeros_like(leaves)
+        pot_full[pbox[1] - pb[1]:pbox[3] - pb[1], pbox[0] - pb[0]:pbox[2] - pb[0]] = ~outside
+        pot_full = dilate(pot_full, 1)
+        pot_vis = pot_full & ~leaves
+        holes = pot_full & leaves
+        # the pot behind the leaves: patch leaf-shaped holes with pot colour from above/below
+        pot_rgba = np.asarray(P.sprite(pb, pot_full)).copy()
+        for col in range(holes.shape[1]):
+            ys = np.nonzero(holes[:, col])[0]
+            if ys.size == 0: continue
+            vis = np.nonzero(pot_vis[:, col])[0]
+            if vis.size == 0: continue
+            for y in ys:
+                above = vis[vis < y]; below = vis[vis > y]
+                if above.size and below.size:
+                    a, b = above[-1], below[0]; t = (y - a) / max(1, b - a)
+                    pot_rgba[y, col, :3] = (1 - t) * pot_rgba[a, col, :3] + t * pot_rgba[b, col, :3]
+                elif above.size: pot_rgba[y, col, :3] = pot_rgba[above[-1], col, :3]
+                else: pot_rgba[y, col, :3] = pot_rgba[below[0], col, :3]
+        Image.fromarray(pot_rgba).save(f"{OUT}/{prefix}sprite-plant-pot.png", optimize=True)
+        P.sprite(pb, leaves).save(f"{OUT}/{prefix}sprite-plant-leaves.png", optimize=True)
+        P.fill_cols(pb, dilate(leaves | pot_full, 6))
+        sprites["plant-pot"] = pb; sprites["plant-leaves"] = pb
+        print("leaves px", int(leaves.sum()), "pot px", int(pot_full.sum()))
     # ---- window → wall (only for art that has one) ----
     win = spec.get("window")
     if not win:
@@ -271,13 +324,17 @@ SPEC = {
     "mug": {"box": (350, 555, 530, 800), "seeds": [(420, 720), (505, 715), (400, 672), (470, 674), (430, 680)],
             "wall_sample": (520, 560, 545, 615), "steam_zone": (410, 560, 480, 660), "steam_lum": 100},
     "notes": {"note1": ((406, 370, 514, 490), [(430, 395), (490, 465)])},
+    "lamp": {"box": (105, 250, 415, 565),
+             "seeds": [(300, 340), (260, 370), (280, 285), (300, 400), (300, 428), (190, 378), (160, 490), (135, 440), (235, 322), (160, 545)],
+             "tol": 60},
+    "plant": {"box": (1228, 495, 1522, 792), "pot_box": (1322, 664, 1476, 792)},
     # painted decks above the monitor (brackets included): the seated crop starts below them
     "deck_boxes": [(495, 20, 1112, 180), (495, 185, 1112, 334)],
 }
 d_sprites, d_decks = compose(desk, SPEC, "")
 save_pixel(desk.image(), f"{OUT}/desk.webp")
 d_hot = {
-  "monitor": [548, 338, 1064, 770], "lamp": [120, 250, 400, 520], "plant": [1235, 505, 1500, 785],
+  "monitor": [548, 338, 1064, 770],
   "headphones": [15, 275, 115, 405], "camera": [20, 65, 115, 135], "tower": [1480, 445, 1672, 760],
   "sign": [1095, 365, 1215, 590], "books": [0, 605, 290, 780], "notebook": [40, 790, 400, 880],
 }
@@ -290,6 +347,14 @@ ant = Image.new("RGBA", (14, 8), (0, 0, 0, 0)); d = ImageDraw.Draw(ant)
 for cx in (2, 6, 11): d.ellipse([cx - 2, 2, cx + 2, 6], fill=(28, 18, 8))
 for lx in (3, 6, 9): d.line([lx, 6, lx - 1, 7], fill=(28, 18, 8)); d.line([lx, 2, lx + 1, 1], fill=(28, 18, 8))
 ant.resize((28, 16), Image.NEAREST).save(f"{OUT}/sprite-ant.png")
+COFFEE, COFFEE_DARK, COFFEE_HI = (74, 34, 16), (40, 20, 8), (128, 72, 40)
+drop = Image.new("RGBA", (5, 6), (0, 0, 0, 0)); dd = ImageDraw.Draw(drop)
+dd.ellipse([0, 1, 4, 5], fill=COFFEE, outline=COFFEE_DARK); dd.point([(2, 0)], fill=COFFEE); dd.point([(1, 2)], fill=COFFEE_HI)
+drop.resize((15, 18), Image.NEAREST).save(f"{OUT}/sprite-drop.png")
+pud = Image.new("RGBA", (38, 12), (0, 0, 0, 0)); pd = ImageDraw.Draw(pud)
+pd.ellipse([0, 2, 37, 11], fill=COFFEE, outline=COFFEE_DARK); pd.ellipse([6, 4, 20, 7], fill=COFFEE_HI)
+pd.ellipse([24, 1, 33, 6], fill=COFFEE, outline=COFFEE_DARK)
+pud.resize((114, 36), Image.NEAREST).save(f"{OUT}/sprite-puddle.png")
 
 layout = {"image": "desk.webp", "size": {"width": W, "height": H},
           "screenPx": d_screen, "screenPct": pct(d_screen, W, H),
@@ -297,6 +362,7 @@ layout = {"image": "desk.webp", "size": {"width": W, "height": H},
           "hotspotsPct": {k: pct(v, W, H) for k, v in d_hot.items()},
           "spritesPct": {k: pct(v, W, H) for k, v in d_sprites.items()},
           "spriteFiles": {k: f"sprite-{k}.png" for k in d_sprites},
+          "spill": {"drop": "sprite-drop.png", "puddle": "sprite-puddle.png"},
           "decksPct": [pct(v, W, H) for v in d_decks],
           "antPct": {"from": [round(100 * d_ant["from"][0] / W, 2), round(100 * d_ant["from"][1] / H, 2)],
                      "to": [round(100 * d_ant["to"][0] / W, 2), round(100 * d_ant["to"][1] / H, 2)]}}

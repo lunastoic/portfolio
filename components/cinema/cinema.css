@@ -87,27 +87,82 @@
   box-shadow: none;
 }
 
-.cinema__sprite--mug.is-poked {
-  animation: cinema-slip 0.6s steps(7) both;
+/* mug: a tap tips it away from the handle; it rocks back */
+.cinema__sprite--mug {
+  transform-origin: 18% 96%;
 }
 
-@keyframes cinema-slip {
+.cinema__sprite--mug.is-poked {
+  animation: cinema-tip 0.9s steps(9) both;
+}
+
+@keyframes cinema-tip {
   0% { transform: none; }
-  30% { transform: translate(9%, -2%) rotate(-5deg); }
-  55% { transform: translate(15%, 0) rotate(3deg); }
-  80% { transform: translate(12%, 0) rotate(0); }
+  22% { transform: rotate(-16deg) translate(-2%, 0); }
+  48% { transform: rotate(7deg); }
+  68% { transform: rotate(-3deg); }
+  84% { transform: rotate(1.5deg); }
   100% { transform: none; }
 }
 
-.cinema__sprite--note1,
-.cinema__sprite--note2,
-.cinema__sprite--note3 {
-  transform-origin: 50% 6%; /* swing from the pin */
+/* the coffee that slops out: three drops off the rim, then a puddle on the desk */
+.cinema__spill {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
 }
 
-.cinema__sprite--note1.is-poked,
-.cinema__sprite--note2.is-poked,
-.cinema__sprite--note3.is-poked {
+.cinema__spill img {
+  width: 100%;
+  height: auto;
+  display: block;
+  image-rendering: pixelated;
+}
+
+.cinema__drop {
+  position: absolute;
+  left: 12%;
+  top: 44%;
+  width: 8%;
+  opacity: 0;
+  animation: cinema-drop 0.75s steps(8) both;
+}
+
+.cinema__drop--0 { --dx: -190%; --dy: 600%; animation-delay: 0.1s; }
+.cinema__drop--1 { --dx: -330%; --dy: 620%; animation-delay: 0.18s; }
+.cinema__drop--2 { --dx: -90%; --dy: 640%; animation-delay: 0.26s; }
+
+@keyframes cinema-drop {
+  0% { transform: translate(0, 0); opacity: 0; }
+  10% { opacity: 1; }
+  55% { transform: translate(var(--dx), calc(var(--dy) * 0.55)); opacity: 1; }
+  100% { transform: translate(calc(var(--dx) * 1.25), var(--dy)); opacity: 0; }
+}
+
+.cinema__puddle {
+  position: absolute;
+  left: -9%;
+  top: 87%;
+  width: 48%;
+  transform-origin: 60% 50%;
+  animation: cinema-puddle 3s steps(12) both;
+  animation-delay: 0.45s;
+}
+
+@keyframes cinema-puddle {
+  0% { transform: scale(0.1, 0.2); opacity: 0; }
+  20% { transform: scale(0.45, 0.5); opacity: 1; }
+  45% { transform: scale(1, 1); opacity: 1; }
+  80% { transform: scale(1, 1); opacity: 1; }
+  100% { transform: scale(1, 1); opacity: 0; }
+}
+
+/* note: swings from its pin */
+.cinema__sprite--note1 {
+  transform-origin: 50% 6%;
+}
+
+.cinema__sprite--note1.is-poked {
   animation: cinema-wiggle 0.7s steps(8) both;
 }
 
@@ -117,6 +172,58 @@
   40% { transform: rotate(7deg); }
   60% { transform: rotate(-4deg); }
   80% { transform: rotate(2deg); }
+}
+
+/* lamp: the head bobs on its arm (plus the flicker below) */
+.cinema__sprite--lamp {
+  transform-origin: 20% 62%;
+}
+
+.cinema__sprite--lamp.is-poked {
+  animation: cinema-bob 0.9s steps(9) both;
+}
+
+@keyframes cinema-bob {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-3deg); }
+  55% { transform: rotate(2deg); }
+  80% { transform: rotate(-1deg); }
+}
+
+/* plant: the pot gets nudged and the leaves rustle, settling at different rates */
+.cinema__sprite--plant-pot {
+  transform-origin: 50% 100%;
+}
+
+.cinema__sprite--plant-pot.is-poked {
+  animation: cinema-nudge 0.8s steps(8) both;
+}
+
+@keyframes cinema-nudge {
+  0% { transform: none; }
+  25% { transform: translate(2.5%, 0) rotate(2deg); }
+  55% { transform: translate(-1.5%, 0) rotate(-1.5deg); }
+  80% { transform: translate(0.5%, 0) rotate(0.5deg); }
+  100% { transform: none; }
+}
+
+.cinema__sprite--plant-leaves {
+  z-index: 5;
+  transform-origin: 50% 82%;
+}
+
+.cinema__sprite--plant-leaves.is-poked {
+  animation: cinema-sway 1.5s steps(15) both;
+}
+
+@keyframes cinema-sway {
+  0% { transform: none; }
+  15% { transform: rotate(-5deg) translate(1%, 0); }
+  35% { transform: rotate(4deg); }
+  55% { transform: rotate(-2.5deg); }
+  75% { transform: rotate(1.5deg); }
+  90% { transform: rotate(-0.5deg); }
+  100% { transform: none; }
 }
 
 /* the lamp's loose bulb */
@@ -166,7 +273,9 @@
 @media (prefers-reduced-motion: reduce) {
   .cinema__sprite.is-poked,
   .cinema__flicker,
-  .cinema__ant {
+  .cinema__ant,
+  .cinema__drop,
+  .cinema__puddle {
     animation: none;
   }
 }
