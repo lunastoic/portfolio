@@ -1,0 +1,30 @@
+/* Dev-only V1 | V2 switch, bottom-right (the Next.js indicator sits bottom-left) */
+.dev-switch {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 90;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  font-family: var(--font-term);
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid var(--green-dim);
+}
+
+.dev-switch a {
+  padding: 2px 10px;
+  color: var(--green-mid);
+  text-decoration: none;
+}
+
+.dev-switch a:hover {
+  color: var(--green-bright);
+}
+
+.dev-switch a[aria-current="page"] {
+  background: var(--green);
+  color: var(--bg);
+}

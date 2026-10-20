@@ -1,0 +1,308 @@
+/* ==========================================================================
+   v2 — cinematic desk scene (photo backdrop + live CRT)
+   Nothing here touches v1; the Monitor overrides are scoped to .cinema__screen.
+   ========================================================================== */
+
+.cinema {
+  --sit-ease: cubic-bezier(0.65, 0, 0.35, 1); /* matches the JS ease for the glass */
+  --sit-ms: 1100ms;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.cinema--ready {
+  opacity: 1;
+}
+
+/* ---- the photo: cover-fitted by JS; zooms toward the glass when you sit ---- */
+
+.cinema__stage {
+  position: absolute;
+  will-change: transform;
+  transition:
+    transform var(--sit-ms) var(--sit-ease),
+    filter var(--sit-ms) var(--sit-ease);
+}
+
+.cinema[data-zoomed="true"] .cinema__stage {
+  transform: var(--stage-zoom);
+  filter: blur(7px) brightness(0.5) saturate(0.85);
+}
+
+.cinema--seated .cinema__stage {
+  cursor: zoom-out; /* click the room to stand back up */
+}
+
+.cinema__backdrop {
+  object-fit: fill; /* the stage already has the photo's aspect ratio */
+  user-select: none;
+  pointer-events: none;
+}
+
+.cinema__backdrop--lamp-off {
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.cinema[data-lamp="off"] .cinema__backdrop--lamp-off {
+  opacity: 1;
+}
+
+/* ---- head-on CRT chassis (only when seated) ---- */
+
+.cinema__bezel {
+  position: absolute;
+  z-index: 1;
+  opacity: 0;
+  pointer-events: none;
+  border-radius: 3.2% / 4.2%;
+  background: linear-gradient(170deg, #24272b, #0e1011 60%, #090a0b);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.04),
+    inset 0 -14px 30px rgba(0, 0, 0, 0.6),
+    0 30px 80px rgba(0, 0, 0, 0.7);
+  transition: opacity 0.3s ease;
+}
+
+.cinema--sitting .cinema__bezel,
+.cinema--seated .cinema__bezel {
+  opacity: 1;
+  transition-delay: 450ms;
+}
+
+.cinema__bezel-brand {
+  position: absolute;
+  left: 50%;
+  bottom: 1.4%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  letter-spacing: 0.35em;
+  color: rgba(255, 255, 255, 0.26);
+}
+
+.cinema__bezel-led {
+  position: absolute;
+  right: 3%;
+  bottom: 1.9%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2a2f2a;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.cinema--powered .cinema__bezel-led {
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+}
+
+/* ---- the glass: projected onto the photo's CRT, straight when seated ---- */
+
+.cinema__screen {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  transform-origin: 0 0;
+  overflow: hidden;
+  pointer-events: none; /* dark and inert until you sit down */
+  border-radius: calc(var(--screen-w) * 0.02);
+  background: #050806;
+  transition: background 0.3s, box-shadow 0.4s;
+}
+
+.cinema--seated .cinema__screen {
+  pointer-events: auto;
+}
+
+.cinema--powered .cinema__screen {
+  background: var(--bg-screen);
+  /* phosphor bleed onto the bezel; follows the section theme */
+  box-shadow:
+    0 0 28px 6px rgba(var(--accent-rgb), 0.22),
+    0 0 90px 24px rgba(var(--accent-rgb), 0.1);
+}
+
+.cinema__screen-inner {
+  position: absolute;
+  inset: 0;
+}
+
+.cinema--powered .cinema__screen-inner {
+  animation: cinema-crt-on 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes cinema-crt-on {
+  0% {
+    transform: scaleY(0.004) scaleX(0.5);
+    filter: brightness(5);
+  }
+  35% {
+    transform: scaleY(0.012) scaleX(1);
+    filter: brightness(8);
+  }
+  100% {
+    transform: none;
+    filter: none;
+  }
+}
+
+.cinema__glass {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    /* room reflection on the curved glass */
+    linear-gradient(112deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03) 32%, transparent 55%),
+    /* CRT edge falloff */
+    radial-gradient(ellipse at center, transparent 56%, rgba(0, 0, 0, 0.5) 100%),
+    /* scanlines */
+    repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, 0.16) 2px 3px);
+}
+
+/* Monitor chassis is the photo / the CSS bezel; only the screen is live */
+.cinema__screen .monitor {
+  width: 100%;
+  height: 100%;
+}
+
+.cinema__screen .monitor__bezel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.cinema__screen .monitor__screen {
+  flex: 1;
+  height: auto;
+  font-size: clamp(16px, calc(var(--screen-w) * 0.027), 26px);
+  border: 0;
+  box-shadow: none;
+}
+
+.cinema__screen .monitor__brand,
+.cinema__screen .monitor__stand,
+.cinema__screen .monitor__base,
+.cinema__screen .main-menu__tip {
+  display: none;
+}
+
+/* ---- hotspots over objects in the photo ---- */
+
+.cinema__hotspot {
+  position: absolute;
+  z-index: 3;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.cinema__hotspot:focus-visible {
+  outline: 2px dashed var(--green);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+/* ---- prompts ---- */
+
+.cinema__hint {
+  position: fixed;
+  left: 50%;
+  bottom: 7%;
+  z-index: 7;
+  transform: translateX(-50%);
+  padding: 4px 14px;
+  font-size: 15px;
+  letter-spacing: 0.28em;
+  color: var(--green-mid);
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--green-dim);
+  pointer-events: none;
+  animation: blink 1.8s infinite step-end;
+}
+
+.cinema__standup {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  z-index: 7;
+  transform: translateX(-50%);
+  padding: 3px 14px;
+  font-size: 14px;
+  letter-spacing: 0.22em;
+  color: var(--green-mid);
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--green-dim);
+  cursor: pointer;
+}
+
+.cinema__standup:hover {
+  color: var(--bg);
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.cinema__standup-key {
+  margin-left: 10px;
+  padding: 0 5px;
+  font-size: 12px;
+  border: 1px solid currentColor;
+  opacity: 0.7;
+}
+
+/* ---- film look ---- */
+
+.cinema__vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 60% 45%, transparent 45%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+.cinema__grain {
+  position: fixed;
+  inset: -64px;
+  z-index: 6;
+  pointer-events: none;
+  background: url("/cinema/grain.png") repeat;
+  opacity: 0.07;
+  will-change: transform;
+  animation: cinema-grain 0.5s steps(5) infinite;
+}
+
+@keyframes cinema-grain {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-22px, 14px); }
+  40% { transform: translate(18px, -26px); }
+  60% { transform: translate(-30px, -8px); }
+  80% { transform: translate(12px, 30px); }
+  100% { transform: translate(0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinema__stage {
+    transition: none;
+  }
+  .cinema--powered .cinema__screen-inner,
+  .cinema__hint,
+  .cinema__grain {
+    animation: none;
+  }
+}
+
+/* The global CRT scanline overlay is a v1 device; the photo has its own grain */
+body:has(.cinema) .crt-overlay,
+body:has(.cinema) .crt-flicker {
+  display: none;
+}

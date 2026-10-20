@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { VT323 } from "next/font/google";
+import DevSwitch from "@/components/ui/DevSwitch";
 import "./globals.css";
 
 const vt323 = VT323({
@@ -25,6 +26,7 @@ export default function RootLayout({
         {children}
         <div className="crt-overlay" aria-hidden="true" />
         <div className="crt-flicker" aria-hidden="true" />
+        {process.env.NODE_ENV === "development" && <DevSwitch />}
       </body>
     </html>
   );
