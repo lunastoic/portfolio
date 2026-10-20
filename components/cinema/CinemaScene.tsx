@@ -1,36 +1,20 @@
 "use client";
 
 import Image from "next/image";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import manifest from "../../public/cinema/manifest.json";
-import { quadMatrix3d, type Pt, type Quad } from "./homography";
-import CinemaScreen from "./CinemaScreen";
+import LofiOS, { type LofiPopup } from "./LofiOS";
 import "./cinema.css";
 
 type Pose = "standing" | "sitting" | "seated" | "rising";
+type LayoutKey = "desktop" | "mobile";
 
-/** Sit-down move: duration, when the CRT lights up on the way in, how much of the viewport the seated screen covers. */
-const SIT_MS = 1100;
-const POWER_ON_AT = 0.55;
-const SEAT_FRACTION = 0.75;
-const SCREEN_ASPECT = 4 / 3;
+const SIT_MS = 1000;
+/** Seated, the screen fills this much of the viewport (phones get nearly all of it). */
+const SEAT_FRACTION: Record<LayoutKey, number> = { desktop: 0.75, mobile: 0.96 };
+/** Progress at which the live OS takes over from the painted screen. */
+const SCREEN_ON_AT = 0.9;
 const HINT_DELAY_MS = 2200;
-
-interface Stage {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-  scale: number;
-}
 
 interface Rect {
   x: number;
@@ -39,50 +23,55 @@ interface Rect {
   h: number;
 }
 
-/**
- * Cover-fit the photo to the viewport, keeping the focal point (the
- * monitor) as centered as the crop allows. The stage is the photo's
- * rendered rect; hotspots position inside it in image percentages.
- */
-function fitStage(vw: number, vh: number): Stage {
-  const { width: W, height: H } = manifest.size;
-  const [fx, fy] = manifest.focalPoint;
+interface Stage extends Rect {
+  scale: number;
+}
+
+/** Portrait or narrow viewports use the phone composition. */
+const pickLayout = (vw: number, vh: number): LayoutKey =>
+  vw > 0 && (vw < 900 || vh > vw * 1.15) ? "mobile" : "desktop";
+
+/** Standing: cover-fit the art, keeping the monitor as centered as the crop allows. */
+function restStage(layout: LayoutKey, vw: number, vh: number): Stage {
+  const { width: W, height: H } = manifest[layout].size;
+  const [fx, fy] = manifest[layout].focalPoint;
   const scale = Math.max(vw / W, vh / H);
-  const width = W * scale;
-  const height = H * scale;
-  const left = Math.min(0, Math.max(vw - width, vw / 2 - (fx / 100) * width));
-  const top = Math.min(0, Math.max(vh - height, vh / 2 - (fy / 100) * height));
-  return { left, top, width, height, scale };
+  const w = W * scale;
+  const h = H * scale;
+  const x = Math.min(0, Math.max(vw - w, vw / 2 - (fx / 100) * w));
+  const y = Math.min(0, Math.max(vh - h, vh / 2 - (fy / 100) * h));
+  return { x, y, w, h, scale };
 }
 
-/** Head-on screen when seated: 4:3, inside 75% of the viewport, centered. */
-function fitSeated(vw: number, vh: number): Rect {
-  const w = Math.min(vw * SEAT_FRACTION, vh * SEAT_FRACTION * SCREEN_ASPECT);
-  const h = w / SCREEN_ASPECT;
-  return { x: (vw - w) / 2, y: (vh - h) / 2, w, h };
+/** Seated: scale and place the art so its screen sits head-on, centered, at SEAT_FRACTION of the viewport. */
+function seatedStage(layout: LayoutKey, vw: number, vh: number): Stage {
+  const { width: W, height: H } = manifest[layout].size;
+  const [sx0, sy0, sx1, sy1] = manifest[layout].screenPx;
+  const sw = sx1 - sx0;
+  const sh = sy1 - sy0;
+  const f = SEAT_FRACTION[layout];
+  const targetW = Math.min(vw * f, vh * f * (sw / sh));
+  const scale = targetW / sw;
+  const targetH = sh * scale;
+  const x = (vw - targetW) / 2 - sx0 * scale;
+  const y = (vh - targetH) / 2 - sy0 * scale;
+  return { x, y, w: W * scale, h: H * scale, scale };
 }
 
-/** The CRT glass in viewport pixels, from the manifest's image-pixel corners. */
-function restQuad(stage: Stage): Quad {
-  const q = manifest.screen.quadPx;
-  const m = ([x, y]: number[]): Pt => [stage.left + x * stage.scale, stage.top + y * stage.scale];
-  return { tl: m(q.tl), tr: m(q.tr), br: m(q.br), bl: m(q.bl) };
-}
-
-const rectQuad = (r: Rect): Quad => ({
-  tl: [r.x, r.y],
-  tr: [r.x + r.w, r.y],
-  br: [r.x + r.w, r.y + r.h],
-  bl: [r.x, r.y + r.h],
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const lerpStage = (a: Stage, b: Stage, t: number): Stage => ({
+  x: lerp(a.x, b.x, t),
+  y: lerp(a.y, b.y, t),
+  w: lerp(a.w, b.w, t),
+  h: lerp(a.h, b.h, t),
+  scale: lerp(a.scale, b.scale, t),
 });
 
-const lerpPt = (a: Pt, b: Pt, t: number): Pt => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-const lerpQuad = (a: Quad, b: Quad, t: number): Quad => ({
-  tl: lerpPt(a.tl, b.tl, t),
-  tr: lerpPt(a.tr, b.tr, t),
-  br: lerpPt(a.br, b.br, t),
-  bl: lerpPt(a.bl, b.bl, t),
-});
+/** Where the art's screen is on the page for a given stage rect. */
+function screenRect(layout: LayoutKey, s: Stage): Rect {
+  const [x0, y0, x1, y1] = manifest[layout].screenPx;
+  return { x: s.x + x0 * s.scale, y: s.y + y0 * s.scale, w: (x1 - x0) * s.scale, h: (y1 - y0) * s.scale };
+}
 
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
@@ -96,30 +85,26 @@ const pctBox = (r: { left: number; top: number; width: number; height: number })
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
- * v2 — the cinematic desk. You arrive standing in the room with the CRT
- * dark. Clicking the monitor sits you down: the room zooms and blurs, the
- * glass straightens into a head-on screen covering 75% of the viewport,
- * and the CRT powers on into LUNA OS. ESC, [ STAND UP ] or clicking the
- * room stands you back up and the screen goes dark again.
+ * v2 — the lo-fi pixel desk. You arrive standing in the room; the painted
+ * monitor shows LUNA_OS. Clicking it (or the mug) sits you down: the art
+ * scales up around the screen until the screen sits head-on at 75% of the
+ * viewport, and the live OS takes over the glass. ESC, [ STAND UP ] or
+ * clicking the room stands you back up. Phones get the portrait art.
  */
 export default function CinemaScene() {
-  const [stage, setStage] = useState<Stage | null>(null);
   const [vp, setVp] = useState({ w: 0, h: 0 });
-  const [lampOn, setLampOn] = useState(true);
   const [pose, setPose] = useState<Pose>("standing");
   const [progress, setProgress] = useState(0); // 0 = standing, 1 = seated (already eased)
-  const [powered, setPowered] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [hint, setHint] = useState(false);
-  const screenRef = useRef<HTMLDivElement>(null);
+  const [pendingPopup, setPendingPopup] = useState<LofiPopup>(null);
   const progressRef = useRef(0);
   const rafRef = useRef(0);
   const fallbackRef = useRef(0);
+  const backdropRef = useRef<HTMLImageElement>(null);
 
   useLayoutEffect(() => {
-    const update = () => {
-      setVp({ w: window.innerWidth, h: window.innerHeight });
-      setStage(fitStage(window.innerWidth, window.innerHeight));
-    };
+    const update = () => setVp({ w: window.innerWidth, h: window.innerHeight });
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
@@ -137,6 +122,21 @@ export default function CinemaScene() {
     },
     []
   );
+
+  // Reveal the art once its image is in: the load event, or the image was
+  // already complete (cached / loaded before hydration), or a short timeout
+  // so a slow network never leaves the room black.
+  const artImage = manifest[pickLayout(vp.w, vp.h)].image;
+  useEffect(() => {
+    setLoaded(false);
+    const img = backdropRef.current;
+    if (img?.complete && img.naturalWidth > 0) {
+      setLoaded(true);
+      return;
+    }
+    const t = setTimeout(() => setLoaded(true), 4000);
+    return () => clearTimeout(t);
+  }, [artImage]);
 
   /** Ease progress from where it is to `to`; duration scales with the distance left. */
   const animateTo = useCallback((to: 0 | 1, onDone: () => void) => {
@@ -171,28 +171,24 @@ export default function CinemaScene() {
     fallbackRef.current = window.setTimeout(finish, duration + 250);
   }, []);
 
-  const sitDown = useCallback(() => {
-    if (pose !== "standing") return;
-    setPose("sitting");
-    animateTo(1, () => setPose("seated"));
-  }, [pose, animateTo]);
+  const sitDown = useCallback(
+    (popup: LofiPopup = null) => {
+      if (pose !== "standing") return;
+      setPendingPopup(popup);
+      setPose("sitting");
+      animateTo(1, () => setPose("seated"));
+    },
+    [pose, animateTo]
+  );
 
   const standUp = useCallback(() => {
     if (pose !== "seated") return;
-    setPowered(false);
     setPose("rising");
     animateTo(0, () => setPose("standing"));
   }, [pose, animateTo]);
 
-  // The CRT lights up partway into the sit-down.
-  useEffect(() => {
-    if ((pose === "sitting" || pose === "seated") && progress >= POWER_ON_AT && !powered) {
-      setPowered(true);
-    }
-  }, [pose, progress, powered]);
-
-  // ESC stands up once nothing is open on the screen (CinemaScreen closes
-  // its popup/window on the same keypress first; it is still in the DOM here).
+  // ESC stands up once nothing is open on the screen (LofiOS closes its
+  // popup/window on the same keypress first; it is still in the DOM here).
   useEffect(() => {
     if (pose !== "seated") return;
     const onKey = (e: KeyboardEvent) => {
@@ -206,47 +202,26 @@ export default function CinemaScene() {
 
   /* ---------------- geometry ---------------- */
 
-  const seated = useMemo(() => (vp.w ? fitSeated(vp.w, vp.h) : null), [vp]);
-  const quad = stage && seated ? lerpQuad(restQuad(stage), rectQuad(seated), progress) : null;
-  const matrix = quad && seated ? quadMatrix3d(seated.w, seated.h, quad) : undefined;
+  const layout = pickLayout(vp.w, vp.h);
+  const art = manifest[layout];
+  const ready = vp.w > 0;
+  const stage = ready ? lerpStage(restStage(layout, vp.w, vp.h), seatedStage(layout, vp.w, vp.h), progress) : null;
+  const screen = stage ? screenRect(layout, stage) : null;
+  const screenOn = pose === "seated" || (pose === "sitting" && progress >= SCREEN_ON_AT);
 
-  // The room zooms toward the glass and recenters on it while you sit down.
-  const stageStyle = useMemo((): CSSProperties | undefined => {
-    if (!stage || !seated) return undefined;
-    const q = manifest.screen.quadPx;
-    const cx = ((q.tl[0] + q.tr[0] + q.br[0] + q.bl[0]) / 4) * stage.scale;
-    const cy = ((q.tl[1] + q.tr[1] + q.br[1] + q.bl[1]) / 4) * stage.scale;
-    const restW = (Math.max(q.tr[0], q.br[0]) - Math.min(q.tl[0], q.bl[0])) * stage.scale;
-    const k = seated.w / restW;
-    const dx = vp.w / 2 - (stage.left + cx);
-    const dy = vp.h / 2 - (stage.top + cy);
-    return {
-      left: stage.left,
-      top: stage.top,
-      width: stage.width,
-      height: stage.height,
-      transformOrigin: `${cx}px ${cy}px`,
-      "--stage-zoom": `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${k.toFixed(3)})`,
-    } as CSSProperties;
-  }, [stage, seated, vp]);
-
-  const bezelStyle = useMemo((): CSSProperties | undefined => {
-    if (!seated) return undefined;
-    const pad = seated.w * 0.05;
-    return { left: seated.x - pad, top: seated.y - pad, width: seated.w + 2 * pad, height: seated.h + 2 * pad };
-  }, [seated]);
-
-  const zoomed = pose === "sitting" || pose === "seated";
-  const classes = ["cinema", `cinema--${pose}`, stage ? "cinema--ready" : "", powered ? "cinema--powered" : ""]
-    .filter(Boolean)
-    .join(" ");
+  const classes = ["cinema", `cinema--${pose}`, ready && loaded ? "cinema--ready" : ""].filter(Boolean).join(" ");
 
   return (
-    <div className={classes} data-lamp={lampOn ? "on" : "off"} data-zoomed={zoomed ? "true" : "false"}>
+    <div className={classes} data-layout={layout}>
       {/* Clicking the room stands you up; ESC and [ STAND UP ] cover keyboard users */}
-      <div className="cinema__stage" style={stageStyle} onClick={pose === "seated" ? standUp : undefined}>
+      <div
+        className="cinema__stage"
+        style={stage ? { left: stage.x, top: stage.y, width: stage.w, height: stage.h } : undefined}
+        onClick={pose === "seated" ? standUp : undefined}
+      >
         <Image
-          src="/cinema/room-screen-blank.webp"
+          key={art.image}
+          src={`/cinema/${art.image}`}
           alt=""
           fill
           priority
@@ -254,58 +229,53 @@ export default function CinemaScene() {
           sizes="100vw"
           draggable={false}
           className="cinema__backdrop"
-        />
-        <Image
-          src="/cinema/room-lamp-off-screen-blank.webp"
-          alt=""
-          fill
-          unoptimized
-          sizes="100vw"
-          draggable={false}
-          className="cinema__backdrop cinema__backdrop--lamp-off"
+          ref={backdropRef}
+          onLoad={() => setLoaded(true)}
+          onError={() => setLoaded(true)}
         />
 
         {pose === "standing" && (
           <>
             <button
               type="button"
-              className="cinema__hotspot cinema__hotspot--monitor"
-              style={pctBox(manifest.hotspotsPct.monitor)}
-              onClick={sitDown}
+              className="cinema__hotspot"
+              style={pctBox(art.hotspotsPct.monitor)}
+              onClick={() => sitDown()}
               aria-label="Sit down at the computer"
             />
             <button
               type="button"
               className="cinema__hotspot"
-              style={pctBox(manifest.hotspotsPct.lamp)}
-              onClick={() => setLampOn((v) => !v)}
-              aria-label={lampOn ? "Turn the desk lamp off" : "Turn the desk lamp on"}
+              style={pctBox(art.hotspotsPct.mug)}
+              onClick={() => sitDown("coffee")}
+              aria-label="Grab the coffee and sit down"
             />
           </>
         )}
       </div>
 
-      {/* Head-on CRT chassis, fades in as you settle into the chair */}
-      <div className="cinema__bezel" style={bezelStyle} aria-hidden="true">
-        <span className="cinema__bezel-brand">▪ LUNATRON 4000</span>
-        <span className="cinema__bezel-led" />
-      </div>
-
-      {/* The glass: angled in the photo, straight when seated */}
-      {seated && (
+      {/* The live screen rides the painted one; it only lights up seated */}
+      {screen && (
         <div
-          ref={screenRef}
           className="cinema__screen"
-          style={{ width: seated.w, height: seated.h, transform: matrix, "--screen-w": `${seated.w}px` } as CSSProperties}
+          style={{ left: screen.x, top: screen.y, width: screen.w, height: screen.h, "--screen-w": `${screen.w}px` } as CSSProperties}
         >
-          <div className="cinema__screen-inner">{powered && <CinemaScreen screenRef={screenRef} />}</div>
-          <div className="cinema__glass" aria-hidden="true" />
+          {screenOn && <LofiOS initialPopup={pendingPopup} />}
+        </div>
+      )}
+
+      {!loaded && (
+        <div className="cinema__loading" aria-live="polite">
+          <Image src="/cinema/mug.png" alt="" width={146} height={142} unoptimized draggable={false} />
+          <span>
+            BREWING<span className="cursor-blink" aria-hidden="true" />
+          </span>
         </div>
       )}
 
       {hint && pose === "standing" && (
         <p className="cinema__hint" aria-hidden="true">
-          ▸ CLICK THE SCREEN TO SIT DOWN
+          ▸ {layout === "mobile" ? "TAP" : "CLICK"} THE SCREEN TO SIT DOWN
         </p>
       )}
       {pose === "seated" && (
@@ -313,9 +283,6 @@ export default function CinemaScene() {
           [ STAND UP ] <span className="cinema__standup-key">ESC</span>
         </button>
       )}
-
-      <div className="cinema__vignette" aria-hidden="true" />
-      <div className="cinema__grain" aria-hidden="true" />
     </div>
   );
 }

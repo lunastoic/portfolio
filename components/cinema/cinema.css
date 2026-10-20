@@ -1,36 +1,30 @@
 /* ==========================================================================
-   v2 — cinematic desk scene (photo backdrop + live CRT)
-   Nothing here touches v1; the Monitor overrides are scoped to .cinema__screen.
+   v2 — lo-fi pixel desk (painted backdrop + live LUNA_OS on the glass)
+   Nothing here touches v1; the window overrides are scoped to .lofi.
    ========================================================================== */
 
 .cinema {
-  --sit-ease: cubic-bezier(0.65, 0, 0.35, 1); /* matches the JS ease for the glass */
-  --sit-ms: 1100ms;
+  /* screen palette sampled from the art */
+  --lofi-bg: #081e14;
+  --lofi-text: #83df7f;
+  --lofi-hi: #80e67b;
+  --lofi-hi-text: #002900;
   position: fixed;
   inset: 0;
   overflow: hidden;
-  background: #000;
-  opacity: 0;
-  transition: opacity 0.6s ease;
+  background: #1b1a22;
 }
 
-.cinema--ready {
-  opacity: 1;
-}
-
-/* ---- the photo: cover-fitted by JS; zooms toward the glass when you sit ---- */
+/* ---- the art: JS animates this rect between standing and seated ---- */
 
 .cinema__stage {
   position: absolute;
-  will-change: transform;
-  transition:
-    transform var(--sit-ms) var(--sit-ease),
-    filter var(--sit-ms) var(--sit-ease);
+  opacity: 0;
+  transition: opacity 0.5s ease;
 }
 
-.cinema[data-zoomed="true"] .cinema__stage {
-  transform: var(--stage-zoom);
-  filter: blur(7px) brightness(0.5) saturate(0.85);
+.cinema--ready .cinema__stage {
+  opacity: 1;
 }
 
 .cinema--seated .cinema__stage {
@@ -38,165 +32,13 @@
 }
 
 .cinema__backdrop {
-  object-fit: fill; /* the stage already has the photo's aspect ratio */
+  object-fit: fill; /* the stage already has the art's aspect ratio */
+  image-rendering: pixelated;
   user-select: none;
   pointer-events: none;
 }
 
-.cinema__backdrop--lamp-off {
-  opacity: 0;
-  transition: opacity 0.35s ease;
-}
-
-.cinema[data-lamp="off"] .cinema__backdrop--lamp-off {
-  opacity: 1;
-}
-
-/* ---- head-on CRT chassis (only when seated) ---- */
-
-.cinema__bezel {
-  position: absolute;
-  z-index: 1;
-  opacity: 0;
-  pointer-events: none;
-  border-radius: 3.2% / 4.2%;
-  background: linear-gradient(170deg, #24272b, #0e1011 60%, #090a0b);
-  box-shadow:
-    inset 0 0 0 2px rgba(255, 255, 255, 0.04),
-    inset 0 -14px 30px rgba(0, 0, 0, 0.6),
-    0 30px 80px rgba(0, 0, 0, 0.7);
-  transition: opacity 0.3s ease;
-}
-
-.cinema--sitting .cinema__bezel,
-.cinema--seated .cinema__bezel {
-  opacity: 1;
-  transition-delay: 450ms;
-}
-
-.cinema__bezel-brand {
-  position: absolute;
-  left: 50%;
-  bottom: 1.4%;
-  transform: translateX(-50%);
-  font-size: 12px;
-  letter-spacing: 0.35em;
-  color: rgba(255, 255, 255, 0.26);
-}
-
-.cinema__bezel-led {
-  position: absolute;
-  right: 3%;
-  bottom: 1.9%;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #2a2f2a;
-  transition: background 0.2s, box-shadow 0.2s;
-}
-
-.cinema--powered .cinema__bezel-led {
-  background: var(--green);
-  box-shadow: 0 0 8px var(--green);
-}
-
-/* ---- the glass: projected onto the photo's CRT, straight when seated ---- */
-
-.cinema__screen {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 2;
-  transform-origin: 0 0;
-  overflow: hidden;
-  pointer-events: none; /* dark and inert until you sit down */
-  border-radius: calc(var(--screen-w) * 0.02);
-  background: #050806;
-  transition: background 0.3s, box-shadow 0.4s;
-}
-
-.cinema--seated .cinema__screen {
-  pointer-events: auto;
-}
-
-.cinema--powered .cinema__screen {
-  background: var(--bg-screen);
-  /* phosphor bleed onto the bezel; follows the section theme */
-  box-shadow:
-    0 0 28px 6px rgba(var(--accent-rgb), 0.22),
-    0 0 90px 24px rgba(var(--accent-rgb), 0.1);
-}
-
-.cinema__screen-inner {
-  position: absolute;
-  inset: 0;
-}
-
-.cinema--powered .cinema__screen-inner {
-  animation: cinema-crt-on 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-
-@keyframes cinema-crt-on {
-  0% {
-    transform: scaleY(0.004) scaleX(0.5);
-    filter: brightness(5);
-  }
-  35% {
-    transform: scaleY(0.012) scaleX(1);
-    filter: brightness(8);
-  }
-  100% {
-    transform: none;
-    filter: none;
-  }
-}
-
-.cinema__glass {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  background:
-    /* room reflection on the curved glass */
-    linear-gradient(112deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03) 32%, transparent 55%),
-    /* CRT edge falloff */
-    radial-gradient(ellipse at center, transparent 56%, rgba(0, 0, 0, 0.5) 100%),
-    /* scanlines */
-    repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, 0.16) 2px 3px);
-}
-
-/* Monitor chassis is the photo / the CSS bezel; only the screen is live */
-.cinema__screen .monitor {
-  width: 100%;
-  height: 100%;
-}
-
-.cinema__screen .monitor__bezel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  box-shadow: none;
-}
-
-.cinema__screen .monitor__screen {
-  flex: 1;
-  height: auto;
-  font-size: clamp(16px, calc(var(--screen-w) * 0.027), 26px);
-  border: 0;
-  box-shadow: none;
-}
-
-.cinema__screen .monitor__brand,
-.cinema__screen .monitor__stand,
-.cinema__screen .monitor__base,
-.cinema__screen .main-menu__tip {
-  display: none;
-}
-
-/* ---- hotspots over objects in the photo ---- */
+/* ---- hotspots over objects in the art (standing only) ---- */
 
 .cinema__hotspot {
   position: absolute;
@@ -208,9 +50,52 @@
 }
 
 .cinema__hotspot:focus-visible {
-  outline: 2px dashed var(--green);
-  outline-offset: -2px;
+  outline: 3px dashed var(--lofi-hi);
+  outline-offset: -3px;
   box-shadow: none;
+}
+
+/* ---- the live screen, laid over the painted one ---- */
+
+.cinema__screen {
+  position: absolute;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  border-radius: calc(var(--screen-w) * 0.015);
+  background: var(--lofi-bg);
+  transition: opacity 0.22s ease;
+}
+
+.cinema--seated .cinema__screen,
+.cinema--sitting .cinema__screen:has(.lofi) {
+  opacity: 1;
+}
+
+.cinema--seated .cinema__screen {
+  pointer-events: auto;
+}
+
+/* ---- loading splash ---- */
+
+.cinema__loading {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-size: 20px;
+  letter-spacing: 0.3em;
+  color: var(--lofi-text);
+  background: #1b1a22;
+}
+
+.cinema__loading img {
+  image-rendering: pixelated;
 }
 
 /* ---- prompts ---- */
@@ -218,15 +103,17 @@
 .cinema__hint {
   position: fixed;
   left: 50%;
-  bottom: 7%;
+  bottom: 6%;
   z-index: 7;
   transform: translateX(-50%);
-  padding: 4px 14px;
-  font-size: 15px;
-  letter-spacing: 0.28em;
-  color: var(--green-mid);
-  background: rgba(0, 0, 0, 0.55);
-  border: 1px solid var(--green-dim);
+  padding: 5px 14px;
+  font-size: 16px;
+  letter-spacing: 0.22em;
+  white-space: nowrap;
+  color: var(--lofi-hi-text);
+  background: var(--lofi-hi);
+  border: 2px solid #0b2a12;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45);
   pointer-events: none;
   animation: blink 1.8s infinite step-end;
 }
@@ -237,19 +124,19 @@
   bottom: 12px;
   z-index: 7;
   transform: translateX(-50%);
-  padding: 3px 14px;
-  font-size: 14px;
-  letter-spacing: 0.22em;
-  color: var(--green-mid);
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid var(--green-dim);
+  padding: 4px 14px;
+  font-size: 15px;
+  letter-spacing: 0.2em;
+  color: var(--lofi-text);
+  background: rgba(8, 30, 20, 0.85);
+  border: 2px solid var(--lofi-text);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45);
   cursor: pointer;
 }
 
 .cinema__standup:hover {
-  color: var(--bg);
-  background: var(--green);
-  border-color: var(--green);
+  color: var(--lofi-hi-text);
+  background: var(--lofi-hi);
 }
 
 .cinema__standup-key {
@@ -257,52 +144,167 @@
   padding: 0 5px;
   font-size: 12px;
   border: 1px solid currentColor;
-  opacity: 0.7;
-}
-
-/* ---- film look ---- */
-
-.cinema__vignette {
-  position: fixed;
-  inset: 0;
-  z-index: 5;
-  pointer-events: none;
-  background: radial-gradient(ellipse at 60% 45%, transparent 45%, rgba(0, 0, 0, 0.55) 100%);
-}
-
-.cinema__grain {
-  position: fixed;
-  inset: -64px;
-  z-index: 6;
-  pointer-events: none;
-  background: url("/cinema/grain.png") repeat;
-  opacity: 0.07;
-  will-change: transform;
-  animation: cinema-grain 0.5s steps(5) infinite;
-}
-
-@keyframes cinema-grain {
-  0% { transform: translate(0, 0); }
-  20% { transform: translate(-22px, 14px); }
-  40% { transform: translate(18px, -26px); }
-  60% { transform: translate(-30px, -8px); }
-  80% { transform: translate(12px, 30px); }
-  100% { transform: translate(0, 0); }
+  opacity: 0.75;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cinema__stage {
-    transition: none;
-  }
-  .cinema--powered .cinema__screen-inner,
-  .cinema__hint,
-  .cinema__grain {
+  .cinema__hint {
     animation: none;
   }
 }
 
-/* The global CRT scanline overlay is a v1 device; the photo has its own grain */
+/* The global CRT scanline overlay is a v1 device */
 body:has(.cinema) .crt-overlay,
 body:has(.cinema) .crt-flicker {
   display: none;
+}
+
+/* ==========================================================================
+   LUNA_OS, lo-fi edition — everything scales with the screen width
+   ========================================================================== */
+
+.lofi {
+  /* re-tint v1's window chrome to the art's palette */
+  --green: var(--lofi-text);
+  --green-bright: #c8ffb6;
+  --green-mid: #6fcf6c;
+  --green-dim: #2f6b3a;
+  --green-faint: #163a22;
+  --bg-screen: var(--lofi-bg);
+  --bg: #04120a;
+  --accent-rgb: 131, 223, 127;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 3.5% 4.5% 3%;
+  font-family: var(--font-lofi), var(--font-term), monospace;
+  font-weight: 500;
+  font-size: calc(var(--screen-w) * 0.036);
+  line-height: 1.2;
+  color: var(--lofi-text);
+  animation: lofi-in 0.25s steps(3);
+}
+
+.cinema[data-layout="mobile"] .lofi {
+  font-size: calc(var(--screen-w) * 0.05);
+}
+
+/* ASCII art and code-ish blocks stay on the monospace terminal face */
+.lofi pre,
+.lofi .cursor-blink {
+  font-family: var(--font-term);
+}
+
+@keyframes lofi-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.lofi__bar,
+.lofi__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1em;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.lofi__rule {
+  height: 0.09em;
+  min-height: 2px;
+  margin: 0.45em 0;
+  background: repeating-linear-gradient(to right, var(--lofi-text) 0 0.5em, transparent 0.5em 0.85em);
+}
+
+.lofi__name {
+  margin-top: 0.1em;
+  font-size: 2em;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+  color: #b9f7a4;
+}
+
+.lofi__title {
+  margin-top: 0.15em;
+  font-size: 1.05em;
+  letter-spacing: 0.06em;
+}
+
+.lofi__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: 4%;
+  margin: 0.4em 0;
+}
+
+.lofi__art {
+  width: 40%;
+  height: auto;
+  image-rendering: pixelated;
+  flex: none;
+}
+
+.lofi__body nav {
+  flex: 1;
+  min-width: 0;
+}
+
+.lofi__menu {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2em;
+}
+
+.lofi__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  width: 100%;
+  padding: 0.16em 0.6em 0.16em 0.35em;
+  font-size: 1.2em;
+  letter-spacing: 0.03em;
+  text-align: left;
+  color: inherit;
+  border-radius: 0.15em;
+}
+
+.lofi__item--active {
+  color: var(--lofi-hi-text);
+  background: var(--lofi-hi);
+}
+
+.lofi__cursor {
+  display: inline-block;
+  width: 0.7em;
+  flex: none;
+}
+
+.lofi__icon {
+  width: 1.4em;
+  height: 1.2em;
+  flex: none;
+}
+
+.lofi__window {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  margin: 0.45em 0;
+  font-size: 0.72em;
+  font-weight: 400;
+}
+
+.lofi__prompt {
+  letter-spacing: 0.04em;
+}
+
+/* the coffee popup floats over the whole glass */
+.lofi .retro-window--popup {
+  font-size: 0.8em;
+  inset: 12% 10% auto;
 }

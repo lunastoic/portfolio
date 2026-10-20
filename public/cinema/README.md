@@ -1,18 +1,16 @@
-# Cinematic desk scene (v2) artwork
+# Lo-fi desk scene (v2) artwork
 
-Assets for the photoreal "v2" room. Nothing here is used by v1.
+Assets for the pixel-art "v2" room. Nothing here is used by v1.
 
 | File | What it is |
 |---|---|
-| `room-source.webp` | The reference render, 1436x804. Placeholder: for production we need a version at 2500px or wider that we hold the rights to, ideally regenerated from the same prompt. |
-| `room-screen-blank.webp` | Same image with the CRT glass filled dark so the live LUNA OS UI can be laid over it without baked-in text showing at the edges. |
-| `room-lamp-off.webp` | Approximate lamp-off state: whole room dimmed, screen glow and wall map kept. A real lamp-off render should replace this. |
-| `room-lamp-off-screen-blank.webp` | Lamp-off with the glass blanked, for the live-UI build. |
-| `grain.png` | 256x256 tileable film grain, meant to be overlaid at low opacity. |
-| `manifest.json` | Screen quad corners (px and % of image), focal point for cropping, and hotspot boxes for monitor, lamp, mug, keyboard, boards, shelf, and map, all as percentages so they track the image under `object-fit: cover`. |
+| `desk.webp` | Desktop composition, 1672x941, 256-colour quantised and saved lossless so pixels stay crisp when scaled. |
+| `desk-mobile.webp` | Portrait composition for phones, 810x1510, cropped out of the phone mockup below its status bar. |
+| `screen-art.png` | The moon-and-mountains illustration from the painted screen, background keyed out, used by the live menu. |
+| `mug.png` | The pixel mug icon with its background keyed out, shown while the art loads. |
+| `manifest.json` | Per layout: image size, the painted screen's rect (px and %), the focal point for cropping, and hotspot boxes as percentages. Plus the screen palette sampled from the art. |
 
-Still needed for later phases: separate wall / monitor / foreground layers
-with transparency (for parallax and cables crossing in front of the screen),
-and a phone-shaped crop or alternate composition.
+The painted screen stays visible while you stand; the live LUNA_OS only
+takes over once you sit down, and it is styled to match the painting.
 
 Regenerate everything with `scripts/cinema-assets.py` (see its header).
