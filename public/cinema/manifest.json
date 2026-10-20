@@ -1,15 +1,15 @@
 {
   "colors": {
-    "screenBg": "#081e14",
-    "text": "#83df7f",
-    "highlight": "#80e67b",
-    "highlightText": "#002900",
-    "bezel": "#483429"
+    "screenBg": "#011e10",
+    "text": "#56e474",
+    "highlight": "#5cf17e",
+    "highlightText": "#032311",
+    "bezel": "#392519"
   },
   "screenArt": {
     "file": "screen-art.png",
-    "width": 198,
-    "height": 164
+    "width": 160,
+    "height": 132
   },
   "desktop": {
     "image": "desk.webp",
@@ -18,218 +18,238 @@
       "height": 941
     },
     "screenPx": [
-      560,
-      220,
-      1098,
-      612
+      585,
+      377,
+      1022,
+      693
     ],
     "screenPct": {
-      "left": 33.49,
-      "top": 23.38,
-      "width": 32.18,
-      "height": 41.66
+      "left": 34.99,
+      "top": 40.06,
+      "width": 26.14,
+      "height": 33.58
     },
     "focalPoint": [
-      49.58,
-      44.21
+      48.06,
+      56.85
     ],
     "hotspotsPct": {
       "monitor": {
-        "left": 30.2,
-        "top": 18.07,
-        "width": 38.58,
-        "height": 61.11
+        "left": 32.78,
+        "top": 35.92,
+        "width": 30.86,
+        "height": 45.91
       },
       "lamp": {
-        "left": 7.78,
-        "top": 22.32,
-        "width": 15.25,
-        "height": 35.07
+        "left": 7.18,
+        "top": 26.57,
+        "width": 16.75,
+        "height": 28.69
       },
       "plant": {
-        "left": 83.43,
-        "top": 40.38,
-        "width": 16.57,
-        "height": 44.63
+        "left": 73.86,
+        "top": 53.67,
+        "width": 15.85,
+        "height": 29.76
+      },
+      "headphones": {
+        "left": 0.9,
+        "top": 29.22,
+        "width": 5.98,
+        "height": 13.82
+      },
+      "camera": {
+        "left": 1.2,
+        "top": 6.91,
+        "width": 5.68,
+        "height": 7.44
+      },
+      "tower": {
+        "left": 88.52,
+        "top": 47.29,
+        "width": 11.48,
+        "height": 33.48
+      },
+      "sign": {
+        "left": 65.49,
+        "top": 38.79,
+        "width": 7.18,
+        "height": 23.91
       },
       "books": {
+        "left": 0.0,
+        "top": 64.29,
+        "width": 17.34,
+        "height": 18.6
+      },
+      "notebook": {
         "left": 2.39,
-        "top": 63.23,
-        "width": 15.07,
-        "height": 20.72
-      },
-      "pencup": {
-        "left": 75.96,
-        "top": 63.76,
-        "width": 5.98,
-        "height": 15.41
-      },
-      "sticky": {
-        "left": 68.78,
-        "top": 65.89,
-        "width": 5.98,
-        "height": 14.35
+        "top": 83.95,
+        "width": 21.53,
+        "height": 9.56
       }
     },
     "spritesPct": {
       "mug": {
-        "left": 17.05,
+        "left": 20.93,
         "top": 58.98,
-        "width": 12.08,
+        "width": 10.77,
         "height": 26.04
       },
       "note1": {
-        "left": 21.05,
-        "top": 19.13,
-        "width": 3.71,
-        "height": 7.86
-      },
-      "note2": {
-        "left": 23.68,
-        "top": 26.35,
-        "width": 4.67,
-        "height": 10.2
-      },
-      "note3": {
-        "left": 21.41,
-        "top": 39.11,
-        "width": 4.43,
-        "height": 8.93
+        "left": 24.28,
+        "top": 39.32,
+        "width": 6.46,
+        "height": 12.75
       }
     },
     "spriteFiles": {
       "mug": "sprite-mug.png",
-      "note1": "sprite-note1.png",
-      "note2": "sprite-note2.png",
-      "note3": "sprite-note3.png"
+      "note1": "sprite-note1.png"
     },
     "decksPct": [
       {
-        "left": 46.17,
-        "top": 1.49,
-        "width": 17.94,
-        "height": 7.01
+        "left": 29.61,
+        "top": 2.13,
+        "width": 36.9,
+        "height": 17.0
       },
       {
-        "left": 46.17,
-        "top": 10.2,
-        "width": 17.94,
-        "height": 7.01
+        "left": 29.61,
+        "top": 19.66,
+        "width": 36.9,
+        "height": 15.83
       }
     ],
     "antPct": {
       "from": [
-        87.92,
-        74.39
+        78.35,
+        82.68
       ],
       "to": [
-        70.57,
-        80.77
+        64.59,
+        85.02
       ]
     }
   },
   "mobile": {
-    "image": "desk-mobile.webp",
+    "image": "desk.webp",
     "size": {
-      "width": 745,
-      "height": 1510
+      "width": 1672,
+      "height": 941
     },
     "screenPx": [
-      139,
-      530,
-      656,
-      962
+      585,
+      377,
+      1022,
+      693
     ],
     "screenPct": {
-      "left": 18.66,
-      "top": 35.1,
-      "width": 69.4,
-      "height": 28.61
+      "left": 34.99,
+      "top": 40.06,
+      "width": 26.14,
+      "height": 33.58
     },
     "focalPoint": [
-      53.36,
-      49.4
+      48.06,
+      56.85
     ],
     "hotspotsPct": {
       "monitor": {
-        "left": 12.75,
-        "top": 32.12,
-        "width": 80.54,
-        "height": 35.43
+        "left": 32.78,
+        "top": 35.92,
+        "width": 30.86,
+        "height": 45.91
       },
       "lamp": {
-        "left": 0.0,
-        "top": 19.21,
-        "width": 26.85,
-        "height": 13.91
+        "left": 7.18,
+        "top": 26.57,
+        "width": 16.75,
+        "height": 28.69
       },
       "plant": {
-        "left": 92.62,
-        "top": 31.79,
-        "width": 7.38,
-        "height": 18.54
+        "left": 73.86,
+        "top": 53.67,
+        "width": 15.85,
+        "height": 29.76
       },
-      "sticky": {
-        "left": 80.0,
-        "top": 63.58,
-        "width": 11.81,
-        "height": 8.28
+      "headphones": {
+        "left": 0.9,
+        "top": 29.22,
+        "width": 5.98,
+        "height": 13.82
+      },
+      "camera": {
+        "left": 1.2,
+        "top": 6.91,
+        "width": 5.68,
+        "height": 7.44
+      },
+      "tower": {
+        "left": 88.52,
+        "top": 47.29,
+        "width": 11.48,
+        "height": 33.48
+      },
+      "sign": {
+        "left": 65.49,
+        "top": 38.79,
+        "width": 7.18,
+        "height": 23.91
+      },
+      "books": {
+        "left": 0.0,
+        "top": 64.29,
+        "width": 17.34,
+        "height": 18.6
+      },
+      "notebook": {
+        "left": 2.39,
+        "top": 83.95,
+        "width": 21.53,
+        "height": 9.56
       }
     },
     "spritesPct": {
       "mug": {
-        "left": 2.68,
-        "top": 62.91,
-        "width": 22.82,
-        "height": 15.89
+        "left": 20.93,
+        "top": 58.98,
+        "width": 10.77,
+        "height": 26.04
       },
       "note1": {
-        "left": 38.12,
-        "top": 18.01,
-        "width": 9.66,
-        "height": 5.17
-      },
-      "note2": {
-        "left": 49.13,
-        "top": 20.13,
-        "width": 11.01,
-        "height": 5.83
-      },
-      "note3": {
-        "left": 41.88,
-        "top": 24.24,
-        "width": 11.28,
-        "height": 5.7
+        "left": 24.28,
+        "top": 39.32,
+        "width": 6.46,
+        "height": 12.75
       }
     },
     "spriteFiles": {
-      "mug": "m-sprite-mug.png",
-      "note1": "m-sprite-note1.png",
-      "note2": "m-sprite-note2.png",
-      "note3": "m-sprite-note3.png"
+      "mug": "sprite-mug.png",
+      "note1": "sprite-note1.png"
     },
     "decksPct": [
       {
-        "left": 66.04,
-        "top": 3.71,
-        "width": 31.68,
-        "height": 3.44
+        "left": 29.61,
+        "top": 2.13,
+        "width": 36.9,
+        "height": 17.0
       },
       {
-        "left": 66.04,
-        "top": 8.21,
-        "width": 31.68,
-        "height": 3.44
+        "left": 29.61,
+        "top": 19.66,
+        "width": 36.9,
+        "height": 15.83
       }
     ],
     "antPct": {
       "from": [
-        96.11,
-        49.14
+        78.35,
+        82.68
       ],
       "to": [
-        80.54,
-        65.23
+        64.59,
+        85.02
       ]
     }
   }

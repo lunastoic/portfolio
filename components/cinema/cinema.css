@@ -5,10 +5,10 @@
 
 .cinema {
   /* screen palette sampled from the art */
-  --lofi-bg: #081e14;
-  --lofi-text: #83df7f;
-  --lofi-hi: #80e67b;
-  --lofi-hi-text: #002900;
+  --lofi-bg: #011e10;
+  --lofi-text: #56e474;
+  --lofi-hi: #5cf17e;
+  --lofi-hi-text: #032311;
   position: fixed;
   inset: 0;
   overflow: hidden;
@@ -54,7 +54,7 @@
   opacity: 0;
 }
 
-.cinema--standing .cinema__stage {
+.cinema__hotspot--monitor {
   cursor: pointer;
 }
 
@@ -75,8 +75,10 @@
   pointer-events: none;
 }
 
-.cinema--standing .cinema__sprite {
-  cursor: pointer;
+/* seated, the props are just part of the picture: clicks fall through to the stage */
+.cinema:not(.cinema--standing) .cinema__sprite {
+  pointer-events: none;
+  cursor: default;
 }
 
 .cinema__sprite:focus-visible {

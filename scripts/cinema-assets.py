@@ -1,21 +1,22 @@
 """
 Builds the artwork for the v2 lo-fi pixel desk scene.
 
-Inputs: the desktop art (16:9), the phone art (a portrait render inside an
-iPhone mockup, which gets cropped out), and the pixel mug icon.
+Inputs: the painting (16:9; phones show a portrait crop of the same one) and
+the pixel mug icon.
 
-For each layout it cuts the interactive props out of the painting as
-transparent sprites (mug with steam, the three wall notes), fills the
-painting behind them, paints the window out as plain wall, hangs two
-skateboard decks there, and writes manifest.json with the painted screen's
-rect, sprite boxes and hotspot boxes (percent of each image) plus the
-screen palette. Also: screen-art.png (the on-screen illustration, keyed),
-mug.png (the loading icon), sprite-ant.png (drawn here).
+It cuts the interactive props out of the painting as transparent sprites
+(mug with steam, the wall note), fills the painting behind them, and writes
+manifest.json with the painted screen's rect, the decks' boxes (the seated
+crop starts below them), sprite boxes and hotspot boxes (percent of the
+image) plus the screen palette. Also: screen-art.png (the on-screen
+illustration, keyed), mug.png (the loading icon), sprite-ant.png (drawn here).
+The window-removal and deck-drawing steps stay available for art that needs
+them (spec keys "window" / "deck_at"); the current painting has neither.
 
 Coordinates below are set by eye on a 50px grid; re-measure if the art changes.
 
     python3 -m venv .venv && .venv/bin/pip install pillow numpy
-    .venv/bin/python scripts/cinema-assets.py <desk.webp> <phone.webp> <mug.png> [review.png]
+    .venv/bin/python scripts/cinema-assets.py <desk.png> <mug.png> [review.png]
 """
 import json, sys
 from collections import deque
@@ -23,8 +24,8 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
 OUT = "public/cinema"
-desk_src, phone_src, mug_src = sys.argv[1:4]
-review_path = sys.argv[4] if len(sys.argv) > 4 else None
+desk_src, mug_src = sys.argv[1:3]
+review_path = sys.argv[3] if len(sys.argv) > 3 else None
 rng = np.random.default_rng(3)
 OUTLINE = (43, 29, 5)
 
@@ -200,8 +201,11 @@ def compose(P, spec, prefix):
         P.sprite(box, nm).save(f"{OUT}/{prefix}sprite-{k}.png", optimize=True)
         P.fill_rows(box, dilate(nm, 3))
         sprites[k] = box
-    # ---- window → wall ----
-    win = spec["window"]
+    # ---- window → wall (only for art that has one) ----
+    win = spec.get("window")
+    if not win:
+        P_decks = [list(b) for b in spec.get("deck_boxes", [])]
+        return sprites, P_decks
     rows = np.concatenate([P.A[y0:y1, x0:x1].mean(1) for (x0, y0, x1, y1) in spec["wall_strips"]])
     rows = smooth_rows(rows, 31)
     ww, wh = win[2] - win[0], win[3] - win[1]
@@ -251,67 +255,35 @@ def compose(P, spec, prefix):
 
 
 # --------------------------------------------------------------------------
-# desktop
+# the painting
 # --------------------------------------------------------------------------
 desk = Painting(Image.open(desk_src)); W, H = desk.W, desk.H
-d_screen = [560, 220, 1098, 612]
-screen_bg = desk.median((600, 420, 800, 530))
-colors = {"screenBg": hexc(screen_bg), "text": hexc(desk.median((595, 285, 945, 315), bright=True)),
-          "highlight": hexc(desk.median((900, 376, 1060, 396))),
-          "highlightText": hexc(desk.median((880, 376, 985, 396), bright=False)),
-          "bezel": hexc(desk.median((520, 640, 600, 660)))}
-art_box = (574, 364, 772, 528)
+d_screen = [585, 377, 1022, 693]
+screen_bg = desk.median((840, 640, 1000, 688))
+colors = {"screenBg": hexc(screen_bg), "text": hexc(desk.median((620, 435, 900, 458), bright=True)),
+          "highlight": hexc(desk.median((830, 505, 990, 522))),
+          "highlightText": hexc(desk.median((800, 503, 1000, 525), bright=False)),
+          "bezel": hexc(desk.median((560, 700, 640, 725)))}
+art_box = (600, 496, 760, 628)
 art = key_out(desk.im.crop(art_box), screen_bg, tol=40); art.save(f"{OUT}/screen-art.png", optimize=True)
 
-DESK_SPEC = {
-    "mug": {"box": (285, 555, 487, 800), "seeds": [(380, 700), (455, 690), (320, 628), (440, 630), (380, 640), (360, 624)],
-            "wall_sample": (490, 560, 540, 690), "steam_zone": (365, 555, 432, 622), "steam_lum": 100},
-    "notes": {"note1": ((352, 180, 414, 254), [(362, 194), (404, 242)]),
-              "note2": ((396, 248, 474, 344), [(410, 262), (462, 330)]),
-              "note3": ((358, 368, 432, 452), [(368, 392), (420, 440)])},
-    "window": (846, 0, 1504, 614),
-    "wall_strips": [(756, 0, 848, 172), (482, 172, 504, 614)],
-    "keep_boxes": [(505, 172, 1152, 745)],          # the monitor overlaps the window
-    "plant_from": (1392, 376),                       # the big plant overlaps it too
-    "deck_size": (150, 33), "deck_at": [(772, 14), (772, 96)],
+SPEC = {
+    "mug": {"box": (350, 555, 530, 800), "seeds": [(420, 720), (505, 715), (400, 672), (470, 674), (430, 680)],
+            "wall_sample": (520, 560, 545, 615), "steam_zone": (410, 560, 480, 660), "steam_lum": 100},
+    "notes": {"note1": ((406, 370, 514, 490), [(430, 395), (490, 465)])},
+    # painted decks above the monitor (brackets included): the seated crop starts below them
+    "deck_boxes": [(495, 20, 1112, 180), (495, 185, 1112, 334)],
 }
-d_sprites, d_decks = compose(desk, DESK_SPEC, "")
+d_sprites, d_decks = compose(desk, SPEC, "")
 save_pixel(desk.image(), f"{OUT}/desk.webp")
 d_hot = {
-  "monitor": [505, 170, 1150, 745], "lamp": [130, 210, 385, 540], "plant": [1395, 380, 1672, 800],
-  "books": [40, 595, 292, 790], "pencup": [1270, 600, 1370, 745], "sticky": [1150, 620, 1250, 755],
+  "monitor": [548, 338, 1064, 770], "lamp": [120, 250, 400, 520], "plant": [1235, 505, 1500, 785],
+  "headphones": [15, 275, 115, 405], "camera": [20, 65, 115, 135], "tower": [1480, 445, 1672, 760],
+  "sign": [1095, 365, 1215, 590], "books": [0, 605, 290, 780], "notebook": [40, 790, 400, 880],
 }
-d_ant = {"from": [1470, 700], "to": [1180, 760]}     # out of the pot, along the desk, under the sticky
+d_ant = {"from": [1310, 778], "to": [1080, 800]}
 
-# --------------------------------------------------------------------------
-# phone: cropped out of the mockup (below its status bar, inside its bezel), then the same treatment
-# --------------------------------------------------------------------------
-phone = Image.open(phone_src).convert("RGB")
-crop = (66, 130, 811, 1640)
-mob = Painting(phone.crop(crop)); MW, MH = mob.W, mob.H
-ox, oy = crop[0], crop[1]
-m_screen = [205 - ox, 660 - oy, 722 - ox, 1092 - oy]
-MOBILE_SPEC = {
-    "mug": {"box": (20, 950, 190, 1190), "seeds": [(100, 1100), (165, 1090), (60, 1035), (150, 1038), (100, 1045)],
-            "wall_sample": (195, 1030, 215, 1060), "steam_zone": (70, 950, 120, 1025), "steam_lum": 100},
-    "notes": {"note1": ((284, 272, 356, 350), [(300, 295), (340, 335)]),
-              "note2": ((366, 304, 448, 392), [(382, 322), (430, 375)]),
-              "note3": ((312, 366, 396, 452), [(330, 392), (378, 435)])},
-    "window": (486, 0, 745, 472),
-    "wall_strips": [(455, 0, 485, 472)],
-    "keep_boxes": [],
-    "plant_from": None,
-    "deck_size": (118, 26), "deck_at": [(492, 56), (492, 124)],
-}
-m_sprites, m_decks = compose(mob, MOBILE_SPEC, "m-")
-save_pixel(mob.image(), f"{OUT}/desk-mobile.webp")
-m_hot = {"monitor": [95, 485, 695, 1020], "lamp": [0, 290, 200, 500], "plant": [690, 480, 745, 760],
-         "sticky": [596, 960, 684, 1085]}
-m_ant = {"from": [716, 742], "to": [600, 985]}
-
-# --------------------------------------------------------------------------
 # small extras
-# --------------------------------------------------------------------------
 mug_icon = Image.open(mug_src).convert("RGB")
 key_out(mug_icon, np.median(np.asarray(mug_icon.crop((0, 0, 40, 40))).reshape(-1, 3), 0), tol=30).save(f"{OUT}/mug.png", optimize=True)
 ant = Image.new("RGBA", (14, 8), (0, 0, 0, 0)); d = ImageDraw.Draw(ant)
@@ -319,30 +291,24 @@ for cx in (2, 6, 11): d.ellipse([cx - 2, 2, cx + 2, 6], fill=(28, 18, 8))
 for lx in (3, 6, 9): d.line([lx, 6, lx - 1, 7], fill=(28, 18, 8)); d.line([lx, 2, lx + 1, 1], fill=(28, 18, 8))
 ant.resize((28, 16), Image.NEAREST).save(f"{OUT}/sprite-ant.png")
 
+layout = {"image": "desk.webp", "size": {"width": W, "height": H},
+          "screenPx": d_screen, "screenPct": pct(d_screen, W, H),
+          "focalPoint": [round(100 * (d_screen[0] + d_screen[2]) / 2 / W, 2), round(100 * (d_screen[1] + d_screen[3]) / 2 / H, 2)],
+          "hotspotsPct": {k: pct(v, W, H) for k, v in d_hot.items()},
+          "spritesPct": {k: pct(v, W, H) for k, v in d_sprites.items()},
+          "spriteFiles": {k: f"sprite-{k}.png" for k in d_sprites},
+          "decksPct": [pct(v, W, H) for v in d_decks],
+          "antPct": {"from": [round(100 * d_ant["from"][0] / W, 2), round(100 * d_ant["from"][1] / H, 2)],
+                     "to": [round(100 * d_ant["to"][0] / W, 2), round(100 * d_ant["to"][1] / H, 2)]}}
+
 manifest = {
   "colors": colors,
   "screenArt": {"file": "screen-art.png", "width": art.width, "height": art.height},
-  "desktop": {"image": "desk.webp", "size": {"width": W, "height": H},
-              "screenPx": d_screen, "screenPct": pct(d_screen, W, H),
-              "focalPoint": [round(100 * (d_screen[0] + d_screen[2]) / 2 / W, 2), round(100 * (d_screen[1] + d_screen[3]) / 2 / H, 2)],
-              "hotspotsPct": {k: pct(v, W, H) for k, v in d_hot.items()},
-              "spritesPct": {k: pct(v, W, H) for k, v in d_sprites.items()},
-              "spriteFiles": {k: f"sprite-{k}.png" for k in d_sprites},
-              "decksPct": [pct(v, W, H) for v in d_decks],
-              "antPct": {"from": [round(100 * d_ant["from"][0] / W, 2), round(100 * d_ant["from"][1] / H, 2)],
-                         "to": [round(100 * d_ant["to"][0] / W, 2), round(100 * d_ant["to"][1] / H, 2)]}},
-  "mobile":  {"image": "desk-mobile.webp", "size": {"width": MW, "height": MH},
-              "screenPx": m_screen, "screenPct": pct(m_screen, MW, MH),
-              "focalPoint": [round(100 * (m_screen[0] + m_screen[2]) / 2 / MW, 2), round(100 * (m_screen[1] + m_screen[3]) / 2 / MH, 2)],
-              "hotspotsPct": {k: pct(v, MW, MH) for k, v in m_hot.items()},
-              "spritesPct": {k: pct(v, MW, MH) for k, v in m_sprites.items()},
-              "spriteFiles": {k: f"m-sprite-{k}.png" for k in m_sprites},
-              "decksPct": [pct(v, MW, MH) for v in m_decks],
-              "antPct": {"from": [round(100 * m_ant["from"][0] / MW, 2), round(100 * m_ant["from"][1] / MH, 2)],
-                         "to": [round(100 * m_ant["to"][0] / MW, 2), round(100 * m_ant["to"][1] / MH, 2)]}},
+  "desktop": layout,
+  "mobile": layout,   # phones cover-fit a portrait crop of the same painting
 }
 json.dump(manifest, open(f"{OUT}/manifest.json", "w"), indent=2)
-print("desk", W, H, "sprites", {k: v for k, v in d_sprites.items()}, "mobile", MW, MH)
+print("desk", W, H, "sprites", {k: v for k, v in d_sprites.items()}, "decks", d_decks)
 
 if review_path:
     sheet = Image.new("RGB", (W, H + 300), (120, 40, 140)); sheet.paste(desk.image(), (0, 0))
@@ -351,7 +317,3 @@ if review_path:
         sp = Image.open(f"{OUT}/sprite-{k}.png"); sheet.paste(sp, (x, H + 10), sp); x += sp.width + 20
     big = ant.resize((112, 64), Image.NEAREST); sheet.paste(big, (x, H + 10), big)
     sheet.save(review_path)
-    msheet = Image.new("RGB", (MW + 220, MH), (120, 40, 140)); msheet.paste(mob.image(), (0, 0)); y = 10
-    for k in m_sprites:
-        sp = Image.open(f"{OUT}/m-sprite-{k}.png"); msheet.paste(sp, (MW + 10, y), sp); y += sp.height + 16
-    msheet.save(review_path.replace(".png", "-mobile.png"))

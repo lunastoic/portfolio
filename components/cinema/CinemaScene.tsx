@@ -121,9 +121,9 @@ type Egg = "mug" | "note1" | "note2" | "note3" | "lamp" | "plant";
  * v2 — the lo-fi pixel desk. You arrive standing back, the whole painted room
  * filling the window. Clicking the desk sits you down: the view zooms in on
  * the monitor (the decks above it slide out of frame) and the live LUNA_OS
- * takes over the glass. Seated,
- * the mug, lamp, plant and wall notes are little easter eggs. ESC,
- * [ STAND UP ] or clicking the room stands you back up.
+ * takes over the glass. Standing, the mug, lamp, plant and wall note are
+ * little easter eggs. Seated, ESC, [ STAND UP ] or a click anywhere outside
+ * the screen stands you back up.
  */
 export default function CinemaScene() {
   const [vp, setVp] = useState({ w: 0, h: 0 });
@@ -239,18 +239,16 @@ export default function CinemaScene() {
     return () => window.removeEventListener("keydown", onKey);
   }, [pose, standUp]);
 
+  // The props are easter eggs while standing; seated, everything outside
+  // the screen stands you up instead (clicks fall through to the stage).
   const poke = useCallback(
     (egg: Egg) => (e: React.MouseEvent) => {
+      if (pose !== "standing") return;
       e.stopPropagation();
-      if (pose === "standing") {
-        sitDown(egg === "mug" ? "coffee" : null);
-        return;
-      }
-      if (pose !== "seated") return;
       setEggs((v) => ({ ...v, [egg]: v[egg] + 1 }));
       if (egg === "plant") setAntRun((n) => n + 1);
     },
-    [pose, sitDown]
+    [pose]
   );
 
   /* ---------------- geometry ---------------- */
@@ -276,12 +274,12 @@ export default function CinemaScene() {
 
   return (
     <div className={classes} data-layout={layout}>
-      {/* Standing, any click on the desk sits you down; seated, the room (not the props) stands you up.
-          ESC and [ STAND UP ] cover keyboard users. */}
+      {/* Standing, the monitor sits you down (the props are easter eggs); seated, anything
+          outside the live screen stands you up. ESC and [ STAND UP ] cover keyboard users. */}
       <div
         className="cinema__stage"
         style={stage ? { left: stage.x, top: stage.y, width: stage.w, height: stage.h } : undefined}
-        onClick={pose === "seated" ? standUp : pose === "standing" ? () => sitDown() : undefined}
+        onClick={pose === "seated" ? standUp : undefined}
       >
         <Image
           key={art.image}
@@ -306,29 +304,41 @@ export default function CinemaScene() {
             className={`cinema__sprite cinema__sprite--${k} ${eggs[k] ? "is-poked" : ""}`}
             style={pctBox(sprites[k])}
             onClick={poke(k)}
+            tabIndex={pose === "standing" ? 0 : -1}
             aria-label={k === "mug" ? "Nudge the coffee mug" : "Flick the sticky note"}
           >
             <Image src={`/cinema/${art.spriteFiles?.[k]}`} alt="" fill unoptimized draggable={false} />
           </button>
         ))}
 
-        {art.hotspotsPct.lamp && (
-          <button
-            type="button"
-            className="cinema__hotspot"
-            style={pctBox(art.hotspotsPct.lamp)}
-            onClick={poke("lamp")}
-            aria-label="Tap the desk lamp"
-          />
-        )}
-        {art.hotspotsPct.plant && (
-          <button
-            type="button"
-            className="cinema__hotspot"
-            style={pctBox(art.hotspotsPct.plant)}
-            onClick={poke("plant")}
-            aria-label="Rustle the plant"
-          />
+        {pose === "standing" && (
+          <>
+            <button
+              type="button"
+              className="cinema__hotspot cinema__hotspot--monitor"
+              style={pctBox(art.hotspotsPct.monitor)}
+              onClick={() => sitDown()}
+              aria-label="Sit down at the computer"
+            />
+            {art.hotspotsPct.lamp && (
+              <button
+                type="button"
+                className="cinema__hotspot"
+                style={pctBox(art.hotspotsPct.lamp)}
+                onClick={poke("lamp")}
+                aria-label="Tap the desk lamp"
+              />
+            )}
+            {art.hotspotsPct.plant && (
+              <button
+                type="button"
+                className="cinema__hotspot"
+                style={pctBox(art.hotspotsPct.plant)}
+                onClick={poke("plant")}
+                aria-label="Rustle the plant"
+              />
+            )}
+          </>
         )}
 
         {antRun > 0 && art.antPct && (
@@ -362,7 +372,7 @@ export default function CinemaScene() {
 
       {hint && pose === "standing" && (
         <p className="cinema__hint" aria-hidden="true">
-          ▸ {layout === "mobile" ? "TAP" : "CLICK"} THE DESK TO SIT DOWN
+          ▸ {layout === "mobile" ? "TAP" : "CLICK"} THE SCREEN TO SIT DOWN
         </p>
       )}
       {pose === "seated" && (
