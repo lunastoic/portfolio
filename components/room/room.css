@@ -69,9 +69,12 @@
 }
 
 .identity-panel__name {
-  /* vh-capped so the plaques never reach the monitor on short viewports */
-  font-size: clamp(28px, min(2.4vw, 4.6vh), 40px);
-  letter-spacing: 0.22em;
+  /* vh-capped so the plaques never reach the monitor on short viewports;
+     the tight line-height keeps the bigger glyphs from adding plaque height */
+  font-size: clamp(24px, min(2.6vw, 5.4vh), 44px);
+  line-height: 1.05;
+  /* Wide tracking stretches the name across the plaque without adding height */
+  letter-spacing: 0.42em;
   color: var(--green-bright);
 }
 
@@ -739,7 +742,9 @@
 
 @media (min-width: 900px) {
   .scene {
-    min-height: max(100svh, 700px);
+    /* Below this the monitor (min 300px screen) would ride up into the
+       wall plaques, so short windows scroll a little instead. */
+    min-height: max(100svh, 780px);
   }
 
   .desk-area {
@@ -861,6 +866,7 @@
 
   .identity-panel__name {
     font-size: 26px;
+    letter-spacing: 0.22em;
   }
 
   /* Shelf decor doesn't fit the mobile frame — hide, keep the essentials */
