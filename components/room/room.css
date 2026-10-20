@@ -7,6 +7,8 @@
   position: relative;
   /* Wall plaque width — the wall gear is anchored just outside it */
   --identity-w: clamp(420px, 48vw, 760px);
+  /* The name plaque runs wider than the degree plaque under it */
+  --identity-name-w: clamp(420px, 56vw, 880px);
   min-height: 100svh;
   max-width: 1600px;
   margin: 0 auto;
@@ -66,6 +68,11 @@
     inset 0 0 0 3px var(--bg),
     inset 0 0 0 5px var(--green-dim),
     4px 4px 0 rgba(var(--accent-rgb), 0.15);
+}
+
+.identity-panel--name {
+  width: var(--identity-name-w);
+  align-self: center; /* wider than the column: overflows evenly both sides */
 }
 
 .identity-panel__name {
@@ -168,12 +175,12 @@
 }
 
 .wall-gear--music {
-  right: calc(50% + var(--identity-w) / 2 + 24px);
+  right: calc(50% + var(--identity-name-w) / 2 + 24px);
   top: 9%;
 }
 
 .wall-gear--media {
-  left: calc(50% + var(--identity-w) / 2 + 24px);
+  left: calc(50% + var(--identity-name-w) / 2 + 24px);
   top: 8%;
   display: flex;
   flex-direction: column;
@@ -839,6 +846,26 @@
   }
 }
 
+/* Narrow desktops: the wider name plaque would push the wall gear into
+   the shelves, so both plaques share the regular width there. */
+@media (min-width: 900px) and (max-width: 1279px) {
+  .scene {
+    --identity-name-w: var(--identity-w);
+  }
+}
+
+/* Up to common laptop widths the poster hangs just left of the right
+   shelf instead of beside the plaque, slightly compacted, so it never
+   runs into the robot/globe row. */
+@media (min-width: 900px) and (max-width: 1365px) {
+  .wall-gear--media {
+    left: auto;
+    right: calc(3% + 118px);
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+}
+
 /* ==========================================================================
    MOBILE layout (< 900px) — same desk, reframed vertically
    ========================================================================== */
@@ -862,6 +889,11 @@
     position: static;
     transform: none;
     width: 100%;
+  }
+
+  .identity-panel--name {
+    width: auto;
+    align-self: stretch;
   }
 
   .identity-panel__name {
