@@ -53,6 +53,7 @@ interface Manifest {
   notes: string[];
   lamp: { off: { file: string; boxPct: PctBox }; shade: string; hitPct: PctBox };
   pens: { files: string[]; boxPct: PctBox; originPct: number[][]; hitPct: PctBox };
+  leaves: { stems: string; files: string[]; originPct: number[][] };
   antPct: { from: number[]; to: number[] };
   colors: { coffee: { dark: string; mid: string; hi: string } };
 }
@@ -191,7 +192,8 @@ interface World {
     opacity: number;
   };
   pens: Spring[];
-  leafRot: Spring;
+  /** One per leaf, back to front: each flutters on its own stem. */
+  leaves: Spring[];
   spill: Spill | null;
   last: number;
   raf: number;
@@ -201,7 +203,8 @@ const createWorld = (): World => ({
   mug: { phase: "home", t: 0, k: 0, nudge: new Spring(420, 9) },
   note: { phase: "idle", t: 0, x: 0, y: 0, vy: 0, rot: 0, tilt: 0, side: 1, opacity: 1 },
   pens: [new Spring(170, 4.2), new Spring(150, 3.6), new Spring(190, 4.6)],
-  leafRot: new Spring(55, 2.6),
+  // a spread of stiffnesses, so the leaves never flutter in step
+  leaves: art.leaves.files.map((_, i) => new Spring(48 + ((i * 37) % 41), 2.1 + (i % 3) * 0.35)),
   spill: null,
   last: 0,
   raf: 0,
@@ -337,7 +340,7 @@ function NoteFace({ index }: { index: number }) {
  * desk is alive: push the mug and it slides back, upright, leaving a little spilt coffee behind, peel the
  * sticky note and it drifts down to the desk with the next one waiting behind it,
  * tap the pencil cup and the pens rattle, click the lamp to switch it off and on,
- * nudge the plant and an ant walks out. Seated, ESC, [ STAND UP ] or a click
+ * brush the plant and its leaves rustle while an ant walks out. Seated, ESC, [ STAND UP ] or a click
  * anywhere outside the screen stands you back up.
  */
 export default function CinemaScene() {
@@ -361,6 +364,7 @@ export default function CinemaScene() {
   const elsRef = useRef<Partial<Record<PropKey, HTMLElement | null>>>({});
   const fallerRef = useRef<HTMLDivElement | null>(null);
   const penRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const leafRefs = useRef<(HTMLDivElement | null)[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scaleRef = useRef(1);
 
@@ -542,7 +546,7 @@ export default function CinemaScene() {
         }
       }
 
-      const springs = [...w.pens, w.leafRot, m.nudge];
+      const springs = [...w.pens, ...w.leaves, m.nudge];
       for (const sp of springs) sp.step(dt);
 
       const el = elsRef.current;
@@ -553,8 +557,8 @@ export default function CinemaScene() {
       set(el.mug, mugMove);
       set(el.steam, mugMove);
       w.pens.forEach((sp, i) => set(penRefs.current[i], `rotate(${sp.x.toFixed(2)}deg)`));
-      // the pot stays put; the leaves sway on their stems
-      set(el["plant-leaves"], `rotate(${w.leafRot.x.toFixed(2)}deg)`);
+      // the pot and stems stay put; each leaf flutters about where it meets its stem
+      w.leaves.forEach((sp, i) => set(leafRefs.current[i], `rotate(${sp.x.toFixed(2)}deg)`));
 
       const idle =
         m.phase !== "pushing" &&
@@ -619,7 +623,8 @@ export default function CinemaScene() {
         }
         case "plant-pot":
         case "plant-leaves":
-          w.leafRot.kick(Math.random() < 0.5 ? -85 : 85);
+          // a gentle rustle: every leaf gets its own small push, this way or that
+          w.leaves.forEach((sp) => sp.kick((Math.random() < 0.5 ? -1 : 1) * (18 + Math.random() * 26)));
           setAntKey((k) => k + 1);
           break;
         default:
@@ -872,7 +877,25 @@ export default function CinemaScene() {
                 tabIndex={standingTab}
                 aria-label={SPRITE_LABEL[k]}
               >
-                {img}
+                {k === "plant-leaves" ? (
+                  <>
+                    <Image src={art.leaves.stems} alt="" fill unoptimized draggable={false} />
+                    {art.leaves.files.map((file, i) => (
+                      <div
+                        key={file}
+                        ref={(node) => {
+                          leafRefs.current[i] = node;
+                        }}
+                        className="cinema__leaf"
+                        style={{ transformOrigin: `${art.leaves.originPct[i][0]}% ${art.leaves.originPct[i][1]}%` }}
+                      >
+                        <Image src={file} alt="" fill unoptimized draggable={false} />
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  img
+                )}
               </button>
             );
           })}

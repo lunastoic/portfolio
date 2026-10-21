@@ -99,6 +99,18 @@
   z-index: 5;
 }
 
+/* one leaf of the plant, filling the plant's box; the loop rocks it about its stem */
+.cinema__leaf {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.cinema__leaf img {
+  image-rendering: pixelated;
+}
+
 /* the words on the decks, the poster and the book spines, in the room's typeface */
 .cinema__wall-text {
   position: absolute;

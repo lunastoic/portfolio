@@ -300,18 +300,29 @@ function plant(fol, potName, face, layers = false) {
     [26, 44, -140, 15, 6, 5, 0.95], [46, 44, -40, 15, 6, 5, 0.95], [21, 51, 160, 16, 6, 5, 0.95],
     [51, 51, 20, 16, 6, 5, 0.95], [34, 42, -100, 13, 5.5, 5.2, 1], [39, 43, -75, 13, 5.5, 5.2, 1]
   ];
+  // with layers, each leaf is also drawn alone (and the stems on their own), so the site can
+  // flutter every leaf on its own stem
+  const stems = layers ? new Cv(W, H) : null, single = [];
   spec.forEach(([bx, by, ang, len, w, z, dim], i) => {
     const a = ang * Math.PI / 180, t = [bx + Math.cos(a) * len, by + Math.sin(a) * len];
     const s0 = [cx + (bx - cx) * 0.12, yt - 1], c0 = [s0[0] + (bx - s0[0]) * 0.15, by + (yt - 1 - by) * 0.15];
     for (let k = 0; k <= 1; k += 0.02) {
       const x = (1 - k) ** 2 * s0[0] + 2 * (1 - k) * k * c0[0] + k * k * bx, y = (1 - k) ** 2 * s0[1] + 2 * (1 - k) * k * c0[1] + k * k * by;
-      lv.put(x, y, { ramp: lr, v: 0.3 * dim + 0.05, z: z - 0.01, part: 'stem' + i });
+      const cell = { ramp: lr, v: 0.3 * dim + 0.05, z: z - 0.01, part: 'stem' + i };
+      lv.put(x, y, cell);
+      if (stems) stems.put(x, y, cell);
     }
-    leaf(lv, lr, { b: [bx, by], t, w, bend: (i % 2 ? 1 : -1) * 0.06, droop: by > 45 ? 0.1 : 0, z, dim, part: 'leaf' + i, varieg: fol === 'sunlit' });
+    const opts = { b: [bx, by], t, w, bend: (i % 2 ? 1 : -1) * 0.06, droop: by > 45 ? 0.1 : 0, z, dim, part: 'leaf' + i, varieg: fol === 'sunlit' };
+    leaf(lv, lr, opts);
+    if (layers) { const one = new Cv(W, H); leaf(one, lr, opts); single.push({ cv: one, pivot: [bx, by] }); }
   });
   const name = `plant-${fol}-${potName}${face ? '-cat' : ''}`;
-  if (layers) { render(cv, name + '-pot'); render(lv, name + '-leaves'); }
-  else render(cv, name);
+  if (layers) {
+    render(cv, name + '-pot'); render(lv, name + '-leaves'); render(stems, name + '-stems');
+    single.forEach(({ cv: one }, i) => render(one, `${name}-leaf-${i}`));
+    // where each leaf joins its stem, in sprite px: the point it flutters about
+    fs.writeFileSync(path.join(OUT, name + '-leaves.json'), JSON.stringify({ W, H, pivots: single.map(l => l.pivot) }) + '\n');
+  } else render(cv, name);
 }
 
 // ---------- BOOKS ----------

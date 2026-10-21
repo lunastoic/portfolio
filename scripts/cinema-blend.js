@@ -329,6 +329,10 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   };
   await refine('props/plant-forest-terracotta-pot.png', 'prop-plant-pot.png', { warm: [1, 0.86, 0.7], shadow: 0.34 });
   await refine('props/plant-forest-terracotta-leaves.png', 'prop-plant-leaves.png', { warm: [1.02, 0.86, 0.62], shadow: 0.34, sat: 0.78 });
+  // every leaf on its own (same canvas, so the light falls on each just as on the whole), and the stems
+  const LEAVES = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/props/plant-forest-terracotta-leaves.json'), 'utf8'));
+  await refine('props/plant-forest-terracotta-stems.png', 'prop-plant-stems.png', { warm: [1.02, 0.86, 0.62], shadow: 0.34, sat: 0.78 });
+  for (let i = 0; i < LEAVES.pivots.length; i++) await refine(`props/plant-forest-terracotta-leaf-${i}.png`, `prop-leaf-${i}.png`, { warm: [1.02, 0.86, 0.62], shadow: 0.34, sat: 0.78 });
   await refine('props/mug-forest.png', 'prop-mug.png', { warm: [1, 0.92, 0.8], shadow: 0.2, sat: 0.9 });
   for (let n = 1; n <= 7; n++) await refine(`props/sticky-${n}.png`, `prop-sticky-${n}.png`, { warm: [1, 0.93, 0.82], shadow: 0.16, sat: 0.92 });
 
@@ -339,6 +343,12 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   m.props.mug.file = '/cinema/prop-mug.png';
   m.props['plant-pot'].file = '/cinema/prop-plant-pot.png';
   m.props['plant-leaves'].file = '/cinema/prop-plant-leaves.png';
+  // the leaves one by one, back to front, each with the point where it meets its stem (percent of the box)
+  m.leaves = {
+    stems: '/cinema/prop-plant-stems.png',
+    files: LEAVES.pivots.map((_, i) => `/cinema/prop-leaf-${i}.png`),
+    originPct: LEAVES.pivots.map(([x, y]) => [+((x + 0.5) / LEAVES.W * 100).toFixed(2), +((y + 0.5) / LEAVES.H * 100).toFixed(2)]),
+  };
   m.props.note.file = '/cinema/prop-sticky-1.png';
   m.notes = Array.from({ length: 7 }, (_, i) => `/cinema/prop-sticky-${i + 1}.png`);
   m.lamp = {
