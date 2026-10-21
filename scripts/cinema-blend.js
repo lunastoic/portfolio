@@ -217,10 +217,10 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   {
     // both decks hang higher than the painting has them (same size), so there's a gap between the bottom
     // one's brackets and the monitor; `was` is where the painting had them, filled back to wall. The second
-    // deck is repainted a muted parchment, so the school's burgundy and gold both read on it
+    // deck is repainted a dusty rose, so the school's burgundy and gold both read on it
     const DECKS = [
       { box: [492, 7, 1114, 157], was: [492, 25, 1114, 175] },
-      { box: [494, 167, 1114, 319], was: [494, 189, 1114, 341], repaint: [150, 133, 106] },
+      { box: [494, 167, 1114, 319], was: [494, 189, 1114, 341], repaint: [150, 110, 104] },
     ];
     const MONITOR_TOP = 340;
     DECK_BOXES.push(...DECKS.map(d => d.box));
@@ -366,6 +366,40 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   const quant = await sharp(img, { raw: { width: W, height: H, channels: 3 } }).png({ palette: true, colours: 256, dither: 0 }).toBuffer();
   await sharp(quant).webp({ lossless: true, effort: 6 }).toFile(path.join(CIN, 'desk.webp.tmp'));
   fs.renameSync(path.join(CIN, 'desk.webp.tmp'), path.join(CIN, 'desk.webp'));
+
+  // ---- the room past the painting's edges, for wide windows: plain wall down to the desk, the desk
+  //      top, its front edge; sampled from clean stretches of each, graded darker away from the painting,
+  //      and blended out of the painting's own edge over the first few dozen pixels ----
+  {
+    const SW = 900, SEAM = 36, DESK = 772, FRONT = 890;
+    const avg = (x0, x1, y0, y1) => { const a = [0, 0, 0]; let n = 0; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = (y * W + x) * 3; a[0] += img[i]; a[1] += img[i + 1]; a[2] += img[i + 2]; n++; } return a.map(v => v / n); };
+    const ss = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
+    // the wall's fall-off from ceiling to desk, from a clean column right of the poster
+    const wallAt = (y) => avg(1300, 1340, Math.min(y, 600), Math.min(y, 600) + 2).map(v => v * (y > 600 ? 1 - 0.18 * ss((y - 600) / 172) : 1));
+    for (const side of ['left', 'right']) {
+      const out = Buffer.alloc(SW * H * 3);
+      // left of the lamp the wall is lit warmer than on the right
+      const lift = side === 'left' ? avg(262, 330, 20, 110).map((v, c) => v / avg(1300, 1340, 20, 110)[c]) : [1, 1, 1];
+      const deskSrc = side === 'left' ? [2, 20] : [1460, 1480];
+      const edgeX = side === 'left' ? 0 : W - 1;
+      for (let y = 0; y < H; y++) {
+        let base;
+        if (y < DESK) base = wallAt(y).map((v, c) => v * lift[c]);
+        else if (y < FRONT) base = avg(deskSrc[0], deskSrc[1], y, y);
+        else base = avg(side === 'left' ? 2 : W - 21, side === 'left' ? 20 : W - 3, y, y);
+        // the painting's edge, softened up and down
+        const edge = avg(edgeX, edgeX, Math.max(0, y - 6), Math.min(H - 1, y + 6));
+        for (let k = 0; k < SW; k++) {
+          // k counts out from the painting
+          const t = ss(k / SEAM), dim = 1 - 0.5 * ss((k - SEAM) / (SW - SEAM));
+          const g = ((Math.imul((y * SW + k) * 3 + (side === 'left' ? 1 : 7), 2654435761) >>> 24) / 255 - 0.5) * 5;
+          const x = side === 'left' ? SW - 1 - k : k, o = (y * SW + x) * 3;
+          for (let c = 0; c < 3; c++) out[o + c] = Math.max(0, Math.min(255, Math.round((edge[c] * (1 - t) + base[c] * t) * dim + g)));
+        }
+      }
+      await sharp(out, { raw: { width: SW, height: H, channels: 3 } }).png({ palette: true, colours: 96, dither: 0.6 }).toFile(path.join(CIN, `side-${side}.png`));
+    }
+  }
 
   // ---- the lamp with its bulb out: the head crop, bright warm pixels pulled down ----
   const HB = [204, 250, 408, 462], hw = HB[2] - HB[0] + 1, hh = HB[3] - HB[1] + 1;

@@ -264,15 +264,23 @@ const mugOrigin = () => {
 const pickLayout = (vw: number, vh: number): LayoutKey =>
   vw > 0 && (vw < 900 || vh > vw * 1.15) ? "mobile" : "desktop";
 
-/** Standing back from the desk: the whole painting cover-fits the viewport, monitor as centered as the crop allows. */
+/** Art px of plain wall and desk painted on past each side of the painting (public/cinema/side-*.png). */
+const SIDE_PX = 900;
+
+/**
+ * Standing back from the desk: the painting's full height always fits, so both decks and the
+ * keyboard are in view. A window narrower than the painting crops its sides (monitor as centered as
+ * the crop allows); a wider one sees the plain wall and desk painted on either side of it.
+ */
 function standingStage(vw: number, vh: number): Stage {
   const { width: W, height: H } = art.size;
-  const [fx, fy] = art.focalPoint;
-  const scale = Math.max(vw / W, vh / H);
+  const [fx] = art.focalPoint;
+  const scale = Math.max(vh / H, vw / (W + 2 * SIDE_PX));
   const w = W * scale;
   const h = H * scale;
-  const x = Math.min(0, Math.max(vw - w, vw / 2 - (fx / 100) * w));
-  const y = Math.min(0, Math.max(vh - h, vh / 2 - (fy / 100) * h));
+  const side = SIDE_PX * scale;
+  const x = Math.min(side, Math.max(vw - w - side, vw / 2 - (fx / 100) * w));
+  const y = Math.min(0, Math.max(vh - h, (vh - h) / 2));
   return { x, y, w, h, scale };
 }
 
@@ -770,6 +778,9 @@ export default function CinemaScene() {
     scaleRef.current = stageScale;
   }, [stageScale]);
   const screen = stage ? screenRect(stage) : null;
+  // the live screen is laid out at its seated size and only scaled as you sit and stand, so the text
+  // never reflows or jumps between font sizes on the way
+  const seatScreen = ready ? screenRect(seatedStage(layout, vp.w, vp.h)) : null;
 
   const antStyle = (): CSSProperties | undefined => {
     if (!stage) return undefined;
@@ -827,6 +838,10 @@ export default function CinemaScene() {
             onLoad={() => setLoadedImage(art.image)}
             onError={() => setLoadedImage(art.image)}
           />
+
+          {/* Plain wall and desk past the painting's edges, for wide windows */}
+          <div className="cinema__side cinema__side--left" aria-hidden="true" />
+          <div className="cinema__side cinema__side--right" aria-hidden="true" />
 
           {/* The words on the decks and the book spines */}
           {WALL_TEXT.map((t) => (
@@ -1062,16 +1077,17 @@ export default function CinemaScene() {
         </div>
 
         {/* The live screen rides the painted one: on all the time, only usable seated */}
-        {screen && (
+        {screen && seatScreen && (
           <div
             className="cinema__screen"
             style={
               {
-                left: screen.x,
-                top: screen.y,
-                width: screen.w,
-                height: screen.h,
-                "--screen-w": `${screen.w}px`,
+                left: 0,
+                top: 0,
+                width: seatScreen.w,
+                height: seatScreen.h,
+                transform: `translate(${screen.x}px, ${screen.y}px) scale(${screen.w / seatScreen.w})`,
+                "--screen-w": `${seatScreen.w}px`,
               } as CSSProperties
             }
           >

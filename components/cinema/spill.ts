@@ -76,6 +76,8 @@ export class Spill {
   /** The pool left where the mug's base stood once it's pushed away: seen from above, growing to full size. */
   private pool: { cx: number; cy: number; rx: number; ry: number; rxTo: number; ryTo: number; k: number; wobble: number[] } | null = null;
   private rivulets: Rivulet[] = [];
+  /** The left puddle's uneven edge, fixed for this spill. */
+  private leftWobble = Array.from({ length: 5 }, () => Math.random() * Math.PI * 2);
   /** The puddle the rivulets feed: its size when they first reach the desk, and each one's share after. */
   private feed: { cx: number; rx: number; ry: number } | null = null;
   private mug: MugPose = { dx: 0, dy: 0, scale: 1, ox: 0, oy: 0 };
@@ -160,7 +162,7 @@ export class Spill {
       // an uneven edge: a few lobes round the rim, fixed for this puddle; it sits just in front of
       // the base wherever the mug stands now
       const wobble = Array.from({ length: 5 }, () => this.rng() * Math.PI * 2);
-      const [cx, cy] = this.onMug(f.cx, this.g.landY + 3);
+      const [cx, cy] = this.onMug(f.cx, this.g.landY + 7); // just past the front of its base
       this.pool = { cx, cy, rx: f.rx * 0.5, ry: f.ry * 0.6, rxTo: f.rx, ryTo: f.ry, k: 0, wobble };
     }
     this.quietFor = 0;
@@ -290,50 +292,48 @@ export class Spill {
     }
   }
 
+  /** A puddle seen from above: a lobed oval, dark at its rim, a wet sheen across its far side. */
+  private lobed(ctx: CanvasRenderingContext2D, cx: number, cy: number, RX: number, RY: number, wobble: number[]) {
+    if (RX < 1) return;
+    const { dark, mid, hi } = this.colors;
+    for (let y = Math.floor(cy - RY - 2); y <= Math.ceil(cy + RY + 2); y++) {
+      for (let x = Math.floor(cx - RX - 3); x <= Math.ceil(cx + RX + 3); x++) {
+        const dx = (x + 0.5 - cx) / RX;
+        const dy = (y + 0.5 - cy) / Math.max(RY, 0.8);
+        const a = Math.atan2(dy, dx);
+        const edge = 1 + 0.12 * Math.sin(2 * a + wobble[0]) + 0.08 * Math.sin(3 * a + wobble[1]) + 0.05 * Math.sin(5 * a + wobble[2]);
+        const r = Math.hypot(dx, dy) / edge;
+        if (r > 1) continue;
+        ctx.fillStyle = r > 0.78 ? dark : mid;
+        if (r < 0.7 && dy < -0.1 && dx > -0.6 && dx < 0.35 && (x + y) % 2 === 0) ctx.fillStyle = hi;
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+  }
+
   draw(ctx: CanvasRenderingContext2D) {
     const { width, height, landY } = this.g;
     ctx.clearRect(0, 0, width, height);
     if (!this.active) return;
     const { dark, mid, hi } = this.colors;
 
-    // the pool where the mug stood: a flat, slightly lobed ellipse on the desk, dark at its rim,
-    // a lighter sheen across its far side
+    // the puddle in front, where the runs down the mug reach the desk
     if (this.pool) {
       const { cx, cy, rx, ry, k, wobble } = this.pool;
-      const ease = 1 - Math.pow(1 - k, 3), RX = rx * ease, RY = ry * ease;
-      if (RX >= 1) {
-        for (let y = Math.floor(cy - RY - 2); y <= Math.ceil(cy + RY + 2); y++) {
-          for (let x = Math.floor(cx - RX - 3); x <= Math.ceil(cx + RX + 3); x++) {
-            const dx = (x + 0.5 - cx) / RX, dy = (y + 0.5 - cy) / Math.max(RY, 0.8);
-            const a = Math.atan2(dy, dx);
-            const edge = 1 + 0.12 * Math.sin(2 * a + wobble[0]) + 0.08 * Math.sin(3 * a + wobble[1]) + 0.05 * Math.sin(5 * a + wobble[2]);
-            const r = Math.hypot(dx, dy) / edge;
-            if (r > 1) continue;
-            ctx.fillStyle = r > 0.8 ? dark : mid;
-            if (r < 0.62 && dy < -0.25 && dx > -0.55 && dx < 0.25 && (x + y) % 2 === 0) ctx.fillStyle = hi;
-            ctx.fillRect(x, y, 1, 1);
-          }
-        }
-      }
+      const ease = 1 - Math.pow(1 - k, 3);
+      // its back edge stays at the base line, so it spreads forward onto the desk, never up the mug
+      this.lobed(ctx, cx, cy + ry * ease, rx * ease, ry * ease, wobble);
     }
 
-    // puddle: a shallow bulge above the desk line and a perspective spread below it,
-    // dark body with a lit rim on top
+    // the puddle on the left where the drops land, seen from above lying flat on the desk: as much
+    // coffee as has landed, gathered round where it fell
+    let vol = 0;
+    let mx = 0;
     for (let i = 0; i < width; i++) {
-      const t = this.depth[i];
-      if (t < 0.25) continue;
-      const top = Math.round(landY - Math.min(t, 3.5));
-      const bottom = Math.round(landY + 1 + t * 0.8);
-      const mid1 = Math.round(landY + t * 0.3);
-      ctx.fillStyle = mid;
-      ctx.fillRect(i, top, 1, Math.max(1, mid1 - top));
-      ctx.fillStyle = dark;
-      ctx.fillRect(i, mid1, 1, Math.max(1, bottom - mid1));
-      if (t > 1 && i % 3 !== 1) {
-        ctx.fillStyle = hi;
-        ctx.fillRect(i, top, 1, 1);
-      }
+      vol += this.depth[i];
+      mx += this.depth[i] * i;
     }
+    if (vol > 0.5) this.lobed(ctx, mx / vol, landY + 2, 3 + Math.sqrt(vol) * 3, 1.2 + Math.sqrt(vol) * 0.9, this.leftWobble);
 
     // the runs down the mug's front: a thin trail (fuller at the lip, wavering a little) and a bead
     // at its head; they ride the mug when it's bumped again
