@@ -116,8 +116,10 @@ const NOTE_TEXTS = [
  * centre, or its left middle with align "left"), size the font size, rotate follows the
  * book spines' slant.
  */
+/** A run of a line in its own colour (the school's two colours share a line). */
+type WallRun = { text: string; color: string };
 interface WallText {
-  lines: string[];
+  lines: (string | WallRun[])[];
   x: number;
   y: number;
   size: number;
@@ -128,12 +130,19 @@ interface WallText {
   weight?: number;
   leading?: number;
 }
+const CSU_BURGUNDY = "#7e012d";
+const DH_GOLD = "#fcbe11";
 const WALL_TEXT: WallText[] = [
   { lines: ["CHRISTOPHER LUNA"], x: 803, y: 86, size: 40, color: "#f6bb5c", weight: 700, track: 0.06 },
   { lines: ["LUNA_CHRISTOPHER98@HOTMAIL.COM"], x: 803, y: 120, size: 15, color: "#e9b468", weight: 500, track: 0.06 },
   { lines: ["ANAHEIM, CA 92806  ·  (714) 800-3264"], x: 803, y: 140, size: 11.5, color: "#e9b468", weight: 500, track: 0.08 },
-  { lines: ["CALIFORNIA STATE UNIVERSITY, DOMINGUEZ HILLS"], x: 803, y: 248, size: 18, color: "#eb9a4c", weight: 700, track: 0.07 },
-  { lines: ["FIRST GEN  ·  BACHELOR OF SCIENCE  ·  COMPUTER SCIENCE"], x: 803, y: 280, size: 12.5, color: "#e9b468", weight: 500, track: 0.1 },
+  // the school in its colours, CSU burgundy and DH gold, on the sage deck
+  {
+    lines: [[{ text: "CALIFORNIA STATE UNIVERSITY, ", color: CSU_BURGUNDY }, { text: "DOMINGUEZ HILLS", color: DH_GOLD }]],
+    x: 803, y: 240, size: 18, color: CSU_BURGUNDY, weight: 700, track: 0.07,
+  },
+  { lines: ["BACHELOR OF SCIENCE  ·  COMPUTER SCIENCE"], x: 803, y: 270, size: 13, color: CSU_BURGUNDY, weight: 600, track: 0.1 },
+  { lines: ["FIRST GEN"], x: 803, y: 292, size: 12, color: CSU_BURGUNDY, weight: 600, track: 0.24 },
   { lines: ["ALGORITHMS"], x: 66, y: 637, size: 15, color: "#e7a256", align: "left", rotate: -2.2, track: 0.14, weight: 600 },
   { lines: ["TYPESCRIPT"], x: 68, y: 677, size: 15, color: "#e7a256", align: "left", rotate: -2.7, track: 0.14, weight: 600 },
   { lines: ["SYSTEM DESIGN"], x: 70, y: 719, size: 15.5, color: "#e7a256", align: "left", rotate: -4.8, track: 0.14, weight: 600 },
@@ -815,11 +824,23 @@ export default function CinemaScene() {
             onError={() => setLoadedImage(art.image)}
           />
 
-          {/* The words on the decks, the poster and the book spines */}
+          {/* The words on the decks and the book spines */}
           {WALL_TEXT.map((t) => (
-            <p key={t.lines.join(" ")} className="cinema__wall-text" style={wallTextStyle(t)}>
+            <p
+              key={t.lines.map((l) => (typeof l === "string" ? l : l.map((r) => r.text).join(""))).join(" ")}
+              className="cinema__wall-text"
+              style={wallTextStyle(t)}
+            >
               {t.lines.map((line, i) => (
-                <span key={i}>{line}</span>
+                <span key={i}>
+                  {typeof line === "string"
+                    ? line
+                    : line.map((r) => (
+                        <span key={r.text} className={r.color === DH_GOLD ? "cinema__wall-gold" : undefined} style={{ color: r.color }}>
+                          {r.text}
+                        </span>
+                      ))}
+                </span>
               ))}
             </p>
           ))}

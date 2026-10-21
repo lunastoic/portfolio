@@ -24,7 +24,7 @@ const formatClock = () =>
   new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).toUpperCase();
 
 /**
- * LUNA_OS as drawn in the lo-fi art: header bar with a live clock, name,
+ * LUNA_OS as drawn in the lo-fi art: header bar with my name and a live clock, title,
  * the moon-and-mountains illustration beside a numbered menu, and the
  * prompt. Opening an item swaps the body for the
  * same .EXE windows v1 uses. Arrow keys, Enter and 1–4 drive the menu.
@@ -83,14 +83,13 @@ export default function LofiOS({
   return (
     <div className="lofi">
       <div className="lofi__bar" aria-hidden="true">
-        <span>LUNA_OS v1.0</span>
+        <span>CHRISTOPHER LUNA</span>
         <span>{clock}</span>
       </div>
       <div className="lofi__rule" aria-hidden="true" />
 
       {activeApp === null ? (
         <>
-          <p className="lofi__name">CHRISTOPHER LUNA</p>
           <p className="lofi__title">SOFTWARE ENGINEER</p>
           <div className="lofi__body">
             <Image

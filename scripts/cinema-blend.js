@@ -214,7 +214,8 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   // deck is redrawn from its outline's box as a clean stadium: dark outline, a thin wood edge lit along
   // the top and shaded under, the flat face, a soft shadow on the wall; it rests on two steel brackets
   {
-    const DECKS = [{ box: [492, 25, 1114, 175] }, { box: [494, 189, 1114, 341] }];
+    // the second deck is repainted sage, so the school's burgundy and gold read on it
+    const DECKS = [{ box: [492, 25, 1114, 175] }, { box: [494, 189, 1114, 341], repaint: [134, 160, 112] }];
     const src = Buffer.from(img);
     for (const d of DECKS) {
       const [x0, y0, x1, y1] = d.box, cy = (y0 + y1) / 2, R = (y1 - y0) / 2;
@@ -226,7 +227,7 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
         const i = (y * W + x) * 3, k = (src[i] << 16) | (src[i + 1] << 8) | src[i + 2]; count.set(k, (count.get(k) || 0) + 1);
       }
       const k = [...count].sort((a, b) => b[1] - a[1])[0][0];
-      d.face = [k >> 16, (k >> 8) & 255, k & 255];
+      d.face = d.repaint ?? [k >> 16, (k >> 8) & 255, k & 255];
     }
     const RX0 = 470, RY0 = 10, RX1 = 1140, RY1 = 350;
     // 1. the wall behind each deck and wherever its old rim and drips reached, rebuilt across from the

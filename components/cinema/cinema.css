@@ -112,6 +112,16 @@
 }
 
 /* the words on the decks, the poster and the book spines, in the room's typeface */
+/* gold on the sage deck: a thin dark edge so it holds its shape */
+.cinema__wall-gold {
+  text-shadow:
+    0.04em 0 0 #3a2208,
+    -0.04em 0 0 #3a2208,
+    0 0.04em 0 #3a2208,
+    0 -0.04em 0 #3a2208,
+    0 0.08em 0 rgba(20, 8, 2, 0.45);
+}
+
 .cinema__wall-text {
   position: absolute;
   z-index: 2;
