@@ -10,6 +10,7 @@ import {
   type CSSProperties,
 } from "react";
 import manifestJson from "../../public/cinema/manifest.json";
+import LavaLamp from "./LavaLamp";
 import LofiOS, { type LofiPopup } from "./LofiOS";
 import { Spring, clamp01, easeOutCubic } from "./physics";
 import { Spill } from "./spill";
@@ -51,7 +52,14 @@ interface Manifest {
   decksPct: PctBox[];
   props: Partial<Record<PropKey, Prop>>;
   notes: string[];
-  lamp: { off: { file: string; boxPct: PctBox }; shade: string; hitPct: PctBox };
+  lamp: {
+    off: { file: string; boxPct: PctBox };
+    /** The shade's right edge, over the sticky notes on the wall behind it. */
+    front: { file: string; boxPct: PctBox };
+    shade: string;
+    hitPct: PctBox;
+  };
+  lava: { boxPct: PctBox };
   pens: { files: string[]; boxPct: PctBox; originPct: number[][]; hitPct: PctBox };
   leaves: { stems: string; files: string[]; originPct: number[][] };
   antPct: { from: number[]; to: number[] };
@@ -75,7 +83,11 @@ const PUSH_STEP = 4.5; // art px up the desk (away from you) per bump
 const PUSH_MAX = 3; // bumps before it won't go further
 const PUSH_SHRINK = 0.003; // per art px further away, a hair smaller
 const LEAK_DROPS = 10;
-const LEAK_POOL = [52, 9]; // art px: the puddle's half-width and half-depth where it stood
+const LEAK_POOL = [34, 6]; // art px: the front puddle's half-width and half-depth, small
+/** Coffee over the front lip: where it runs down the mug's face, canvas px (body is x 110–228). */
+const DRIP_LIP = 82;
+const DRIP_BASE = 243;
+const DRIP_X = [118, 216];
 
 /** The sticky note: peel off the wall, drift down like paper, land flat on the desk, fade. */
 const PEEL_S = 0.24;
@@ -99,7 +111,7 @@ const NOTE_TEXTS = [
 ];
 
 /**
- * The words painted round the room, set in real type over the places the painting's own
+ * The words round the room (the decks and the book spines), set in real type over the places the painting's own
  * lettering was cleared (scripts/cinema-blend.js). Art px: x, y is the text's anchor (its
  * centre, or its left middle with align "left"), size the font size, rotate follows the
  * book spines' slant.
@@ -118,13 +130,9 @@ interface WallText {
 }
 const WALL_TEXT: WallText[] = [
   { lines: ["CHRISTOPHER LUNA"], x: 803, y: 86, size: 40, color: "#f6bb5c", weight: 700, track: 0.06 },
-  { lines: ["ANAHEIM, CA 92806  ·  (714) 800-3264"], x: 803, y: 119, size: 11.5, color: "#e9b468", weight: 500, track: 0.08 },
-  { lines: ["LUNA_CHRISTOPHER98@HOTMAIL.COM"], x: 803, y: 138, size: 13.5, color: "#e9b468", weight: 500, track: 0.06 },
+  { lines: ["LUNA_CHRISTOPHER98@HOTMAIL.COM"], x: 803, y: 120, size: 15, color: "#e9b468", weight: 500, track: 0.06 },
+  { lines: ["ANAHEIM, CA 92806  ·  (714) 800-3264"], x: 803, y: 140, size: 11.5, color: "#e9b468", weight: 500, track: 0.08 },
   { lines: ["SOFTWARE ENGINEER"], x: 814, y: 235, size: 25, color: "#eb9a4c", weight: 600, track: 0.3 },
-  {
-    lines: ["MAKE IT", "WORK.", "MAKE IT", "RIGHT.", "MAKE IT", "FAST."],
-    x: 1116, y: 460, size: 17.5, color: "#e8862e", align: "left", weight: 600, track: 0.04, leading: 1.32,
-  },
   { lines: ["ALGORITHMS"], x: 66, y: 637, size: 15, color: "#e7a256", align: "left", rotate: -2.2, track: 0.14, weight: 600 },
   { lines: ["TYPESCRIPT"], x: 68, y: 677, size: 15, color: "#e7a256", align: "left", rotate: -2.7, track: 0.14, weight: 600 },
   { lines: ["SYSTEM DESIGN"], x: 70, y: 719, size: 15.5, color: "#e7a256", align: "left", rotate: -4.8, track: 0.14, weight: 600 },
@@ -224,6 +232,19 @@ const createWorld = (): World => ({
 });
 
 const worldOf = (ref: { current: World | null }) => (ref.current ??= createWorld());
+
+/** The point the mug and its steam scale about (middle of its base), in the spill canvas's px. */
+const mugOrigin = () => {
+  const mug = art.props.mug;
+  const sp = mug?.spill;
+  if (!mug || !sp) return { ox: 0, oy: 0 };
+  const W = art.size.width, H = art.size.height;
+  const [x0, y0, x1, y1] = mug.boxPx;
+  return {
+    ox: (x0 + x1) / 2 - (sp.boxPct.left / 100) * W,
+    oy: y0 + ((y1 - y0) * mug.originPct[1]) / 100 - (sp.boxPct.top / 100) * H,
+  };
+};
 
 /** Portrait or narrow viewports use the phone framing of the same painting. */
 const pickLayout = (vw: number, vh: number): LayoutKey =>
@@ -350,9 +371,9 @@ function NoteFace({ index }: { index: number }) {
  * v2 — the lo-fi pixel desk. You arrive standing back, the whole painted room
  * filling the window. Clicking the monitor sits you down in one smooth move toward the screen,
  * and the LUNA_OS on the glass wakes up to your keys. Standing, the desk is alive: push the mug
- * and it bumps back a little, upright, leaving spilt coffee behind; peel the sticky notes, as fast
- * as you like, and they drift down and pile up behind the mug; tap the pencil cup and the pens
- * rattle; click the lamp to switch it off and on;
+ * and it bumps back a little, upright, coffee running down its front; peel the sticky notes, as fast
+ * as you like, and they drift down and pile up behind the mug; tap the cat pencil cup and the pens
+ * rattle; click the desk lamp or the lava lamp to switch it off and on;
  * brush the plant and its leaves rustle while an ant walks out. Seated, ESC, [ STAND UP ] or a click
  * anywhere outside the screen stands you back up.
  */
@@ -370,6 +391,7 @@ export default function CinemaScene() {
   const [fallen, setFallen] = useState<number[]>([]);
   const [lampOn, setLampOn] = useState(true);
   const [lampSwitches, setLampSwitches] = useState(0);
+  const [lavaOn, setLavaOn] = useState(true);
   const [visits, setVisits] = useState(0); // each stand-up hands back a fresh screen at the menu
   const progressRef = useRef(0);
   const rafRef = useRef(0);
@@ -508,6 +530,8 @@ export default function CinemaScene() {
       }
       m.nudge.step(dt);
       if (w.spill) {
+        // the runs down its front ride the mug: same move, same scale about the middle of its base
+        w.spill.setMug({ dx: m.nudge.x, dy: -m.pos, scale: 1 - PUSH_SHRINK * m.pos, ...mugOrigin() });
         w.spill.step(dt, 0);
         const ctx = canvasRef.current?.getContext("2d");
         if (ctx) w.spill.draw(ctx);
@@ -630,11 +654,14 @@ export default function CinemaScene() {
           w.mug.from = w.mug.pos;
           w.mug.bumps += 1;
           w.mug.to = PUSH_STEP * w.mug.bumps;
-          // each shove slops a little coffee over the rim; the puddle where the base stood grows
-          // (the body is 120 art px across from mugLeft); it stays on the desk
+          // each shove slops a little coffee: drops off the back of the rim to the left, and a run or
+          // two over the front lip, down the mug's face, into a small puddle at its base; it all stays
           if (w.spill && geom) {
             w.spill.slosh(0, LEAK_DROPS);
-            w.spill.leak(geom.mugLeft + 60, LEAK_POOL[0], LEAK_POOL[1]);
+            const [x0, x1] = DRIP_X;
+            const a = x0 + Math.random() * (x1 - x0 - 30);
+            const runs = Math.random() < 0.55 ? [a, a + 16 + Math.random() * (x1 - a - 16)] : [a + Math.random() * 20];
+            w.spill.drip(runs, DRIP_LIP, DRIP_BASE, { cx: geom.mugLeft + 60, rx: LEAK_POOL[0], ry: LEAK_POOL[1] });
           }
           break;
         }
@@ -698,6 +725,15 @@ export default function CinemaScene() {
       e.stopPropagation();
       setLampOn((on) => !on);
       setLampSwitches((n) => n + 1);
+    },
+    [pose],
+  );
+
+  const switchLava = useCallback(
+    (e: React.MouseEvent) => {
+      if (pose !== "standing") return;
+      e.stopPropagation();
+      setLavaOn((on) => !on);
     },
     [pose],
   );
@@ -787,16 +823,6 @@ export default function CinemaScene() {
             </p>
           ))}
 
-          {/* The lamp's head with the bulb out, over the painted one */}
-          <div
-            key={`head-${lampSwitches}`}
-            className={`cinema__lamp-off${lampOn ? "" : " is-off"}${lampSwitches ? " is-switching" : ""}`}
-            style={pctBox(art.lamp.off.boxPct)}
-            aria-hidden="true"
-          >
-            <Image src={art.lamp.off.file} alt="" fill unoptimized draggable={false} />
-          </div>
-
           {/* The sticky notes on the wall: the one you can peel, and the next one under it */}
           {note && (
             <>
@@ -836,7 +862,24 @@ export default function CinemaScene() {
             </>
           )}
 
-          {/* The pens in the cat pencil cup, cut from the painting, each rocking on its own */}
+          {/* The lamp's head is in front of the notes on the wall: the shade's edge over them, and
+              the head with the bulb out over that */}
+          <div className="cinema__lamp-front" style={pctBox(art.lamp.front.boxPct)} aria-hidden="true">
+            <Image src={art.lamp.front.file} alt="" fill unoptimized draggable={false} />
+          </div>
+          <div
+            key={`head-${lampSwitches}`}
+            className={`cinema__lamp-off${lampOn ? "" : " is-off"}${lampSwitches ? " is-switching" : ""}`}
+            style={pctBox(art.lamp.off.boxPct)}
+            aria-hidden="true"
+          >
+            <Image src={art.lamp.off.file} alt="" fill unoptimized draggable={false} />
+          </div>
+
+          {/* The lava lamp by the PC: click it off and on */}
+          <LavaLamp on={lavaOn} boxPct={art.lava.boxPct} onToggle={switchLava} tabIndex={standingTab} />
+
+          {/* The pens in the cat pencil cup under the lamp, each rocking on its own */}
           {art.pens.files.map((file, i) => (
             <div
               key={file}

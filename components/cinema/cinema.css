@@ -203,8 +203,39 @@
   opacity: 0;
 }
 
+/* the lamp's head is in front of the sticky notes (z 4) */
 .cinema__lamp-off {
+  z-index: 5;
+}
+
+.cinema__lamp-front {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.cinema__lamp-front img {
+  image-rendering: pixelated;
+}
+
+/* ---- the lava lamp: a live pixel canvas, and the pink light it throws round it ---- */
+
+.cinema__lava canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.cinema__lava-glow {
+  position: absolute;
   z-index: 3;
+  pointer-events: none;
+  opacity: 1;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(ellipse 34% 40% at 50% 38%, rgba(255, 72, 168, 0.34), rgba(255, 72, 168, 0.1) 60%, transparent 100%),
+    radial-gradient(ellipse 30% 7% at 50% 90%, rgba(255, 140, 120, 0.3), transparent 100%);
 }
 
 .cinema__lamp-off img {

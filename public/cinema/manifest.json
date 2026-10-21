@@ -203,6 +203,15 @@
         "height": 22.635
       }
     },
+    "front": {
+      "file": "/cinema/lamp-front.png",
+      "boxPct": {
+        "left": 22.488,
+        "top": 35.069,
+        "width": 2.213,
+        "height": 8.183
+      }
+    },
     "shade": "/cinema/lamp-shade.png",
     "hitPct": {
       "left": 12.321,
@@ -218,10 +227,10 @@
       "/cinema/sprite-pen-3.png"
     ],
     "boxPct": {
-      "left": 67.225,
-      "top": 63.018,
-      "width": 5.323,
-      "height": 7.226
+      "left": 18.146,
+      "top": 66.351,
+      "width": 3.833,
+      "height": 5.203
     },
     "originPct": [
       [
@@ -238,10 +247,10 @@
       ]
     ],
     "hitPct": {
-      "left": 66.148,
-      "top": 62.699,
-      "width": 6.699,
-      "height": 19.129
+      "left": 17.165,
+      "top": 66.206,
+      "width": 4.246,
+      "height": 14.24
     }
   },
   "leaves": {
@@ -330,5 +339,13 @@
         51.79
       ]
     ]
+  },
+  "lava": {
+    "boxPct": {
+      "left": 66.388,
+      "top": 60.149,
+      "width": 6.22,
+      "height": 22.104
+    }
   }
 }

@@ -1,0 +1,273 @@
+"use client";
+
+import { useEffect, useRef, type CSSProperties } from "react";
+
+/**
+ * The lava lamp on the desk, drawn live on a small pixel canvas (2 art px a pixel, like the other
+ * props) and scaled up crisp. The wax is a handful of blobs that warm at the heater in the base,
+ * rise, cool at the top and sink again, drawn as metaballs so they stretch, merge and pinch apart.
+ * Switched off, the glow fades and the wax cools and slowly sinks into a lump at the bottom; switched
+ * on, the glow comes back and, once the heater has warmed the wax, the blobs lift off again.
+ */
+
+const GW = 52;
+const GH = 104;
+const CX = 26;
+
+// the shape, in canvas px: a cone cap, the tapered glass, a collar, the flared base
+const CAP = [3, 22];
+const GLASS = [23, 67];
+const BASE = [68, 99];
+const ss = (t: number) => {
+  const u = Math.max(0, Math.min(1, t));
+  return u * u * (3 - 2 * u);
+};
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+/** The glass's half width on row y: narrow at the top, widest two thirds down, in a little at the foot. */
+const glassR = (y: number) => {
+  const t = (y - GLASS[0]) / (GLASS[1] - GLASS[0]);
+  return t < 0.7 ? lerp(6.5, 11.5, ss(t / 0.7)) : lerp(11.5, 9, ss((t - 0.7) / 0.3));
+};
+/** The whole silhouette's half width on row y (0 where there's nothing). */
+const outerR = (y: number) => {
+  if (y < CAP[0] - 1) return 0;
+  if (y < CAP[0]) return 1.8;
+  if (y <= CAP[1]) return lerp(2.6, 7.2, (y - CAP[0]) / (CAP[1] - CAP[0]));
+  if (y <= GLASS[1]) return glassR(y);
+  if (y < BASE[0] + 2) return 9.8;
+  if (y <= BASE[1]) return lerp(9.8, 17.2, (y - BASE[0] - 2) / (BASE[1] - BASE[0] - 2));
+  return 0;
+};
+
+const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+// five tones each, dark to light, the metal lit warm like the rest of the room
+const METAL = ["#211719", "#47372f", "#75604c", "#a88a68", "#d9b98a"].map(hex);
+const LIQ = ["#2c0a24", "#5e1248", "#952472", "#c84498", "#ee86c6"].map(hex);
+const WAX = ["#6a220e", "#b24a14", "#ea8326", "#ffbc48", "#ffe9a0"].map(hex);
+const OUTLINE = hex("#170c10");
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
+/** A tone from a ramp for value v (0–1), dithered between neighbours like the painted props. */
+const tone = (ramp: number[][], v: number, x: number, y: number) => {
+  const f = Math.max(0, Math.min(1, v)) * (ramp.length - 1);
+  const i = Math.min(ramp.length - 1, Math.floor(f) + (f - Math.floor(f) > BAYER[(y & 3) * 4 + (x & 3)] ? 1 : 0));
+  return ramp[i];
+};
+// light from the upper left, toward the viewer
+const L = (() => {
+  const v = [-0.55, -0.35, 0.76];
+  const n = Math.hypot(...v);
+  return v.map((c) => c / n);
+})();
+
+interface Blob {
+  x: number;
+  y: number;
+  r: number;
+  vy: number;
+  /** 0 cold, 1 hot: hot wax is lighter than the liquid and rises. */
+  heat: number;
+  phase: number;
+}
+
+const TOP = GLASS[0] + 1;
+const BOTTOM = GLASS[1] - 1;
+
+const startBlobs = (): Blob[] =>
+  [
+    [0, 30, 3.0, 0.2],
+    [1.5, 39, 2.1, 0.35],
+    [-1, 47, 2.6, 0.62],
+    [1, 56, 3.3, 0.75],
+    [-1.5, 62, 2.8, 0.92],
+    [0.5, 64, 3.8, 0.85],
+  ].map(([x, y, r, heat], i) => ({ x: CX + x, y, r, vy: 0, heat, phase: i * 1.7 }));
+
+export default function LavaLamp({
+  on,
+  boxPct,
+  onToggle,
+  tabIndex,
+}: {
+  on: boolean;
+  boxPct: { left: number; top: number; width: number; height: number };
+  onToggle: (e: React.MouseEvent) => void;
+  tabIndex: number;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const glowRef = useRef<HTMLDivElement>(null);
+  const sim = useRef({ blobs: startBlobs(), heater: 1, glow: 1, t: 0, last: 0, raf: 0, on: true });
+
+  useEffect(() => {
+    const st = sim.current;
+    st.on = on;
+    const ctx = canvasRef.current?.getContext("2d");
+    if (!ctx) return;
+    const img = ctx.createImageData(GW, GH);
+    const px = img.data;
+
+    const frame = (now: number) => {
+      const dt = st.last ? Math.min(0.05, (now - st.last) / 1000) : 1 / 60;
+      st.last = now;
+      st.t += dt;
+
+      // the glow follows the switch quickly; the heater (and so the wax) takes its time
+      st.glow = st.on ? Math.min(1, st.glow + dt * 1.4) : Math.max(0, st.glow - dt * 0.8);
+      st.heater = st.on ? Math.min(1, st.heater + dt * 0.15) : Math.max(0, st.heater - dt * 0.12);
+
+      // the wax: each blob takes the heat of where it is (hot by the base, cool at the top), floats
+      // while it's hot and sinks once it cools; cold wax is thick, so it sinks slowly
+      let still = true;
+      for (const b of st.blobs) {
+        const u = (b.y - TOP) / (BOTTOM - TOP);
+        const env = st.heater * (1.25 * u * u) - 0.1;
+        b.heat += (env - b.heat) * (0.8 / b.r) * dt;
+        const lift = -(b.heat - 0.5) * 16;
+        const drag = 1.7 + 3 * (1 - st.heater);
+        b.vy += (lift - drag * b.vy) * dt;
+        b.y += b.vy * dt;
+        const lo = TOP + b.r * 0.8;
+        const hi = BOTTOM - b.r * 0.35;
+        if (b.y < lo) {
+          b.y = lo;
+          b.vy = Math.max(0, b.vy);
+        }
+        if (b.y > hi) {
+          b.y = hi;
+          b.vy = Math.min(0, b.vy);
+        }
+        // a slow drift across, more while it's moving, kept inside the glass
+        const room = Math.max(0, glassR(b.y) - b.r - 1);
+        const want = CX + Math.sin(st.t * 0.23 + b.phase) * room * 0.6 * Math.min(1, Math.abs(b.vy) / 2 + st.heater * 0.3);
+        b.x += (want - b.x) * Math.min(1, dt * 0.8);
+        if (Math.abs(b.vy) > 0.03 || b.y < hi - 0.05) still = false;
+      }
+
+      // draw
+      const g = st.glow;
+      const field = (x: number, y: number) => {
+        // the wax that's always lying in the bottom of the glass, and every blob, stretched as it moves
+        const pdx = (x - CX) / 2.4;
+        const pdy = y - (BOTTOM + 2.5);
+        let f = 16 / (pdx * pdx + pdy * pdy + 0.01);
+        for (const b of st.blobs) {
+          const e = 1 / (1 + Math.min(0.7, Math.abs(b.vy) * 0.06));
+          const dx = x - b.x;
+          const dy = (y - b.y) * e;
+          f += (b.r * b.r) / (dx * dx + dy * dy + 0.01);
+        }
+        return f;
+      };
+      px.fill(0);
+      const put = (x: number, y: number, c: number[]) => {
+        const o = (y * GW + x) * 4;
+        px[o] = c[0];
+        px[o + 1] = c[1];
+        px[o + 2] = c[2];
+        px[o + 3] = 255;
+      };
+      for (let y = 0; y < GH; y++) {
+        const R = outerR(y);
+        if (!R) continue;
+        const slope = (outerR(y + 1) - outerR(y - 1)) / 2;
+        for (let x = Math.floor(CX - R); x <= Math.ceil(CX + R); x++) {
+          const nx = (x + 0.5 - CX) / R;
+          if (Math.abs(nx) > 1) continue;
+          const nz = Math.sqrt(1 - nx * nx);
+          const n = [nx, -slope * 0.6, nz];
+          const nl = Math.hypot(n[0], n[1], n[2]);
+          const diff = Math.max(0, (n[0] * L[0] + n[1] * L[1] + n[2] * L[2]) / nl);
+          if (y > GLASS[1] || y < GLASS[0]) {
+            // the metal cap and base: warm-lit, a bright streak, dark bands at the joins and the foot
+            let v = 0.12 + 0.66 * diff + Math.pow(diff, 18) * 0.4;
+            if (y === GLASS[1] + 1 || y === GLASS[1] + 2 || y === BASE[1] || y === CAP[1]) v -= 0.3;
+            // the glass lights the top of the base and the foot of the cap
+            if (y > GLASS[1] && y < GLASS[1] + 8) v += 0.12 * g * (1 - (y - GLASS[1]) / 8);
+            put(x, y, tone(METAL, v, x, y));
+            continue;
+          }
+          const u = (y - GLASS[0]) / (GLASS[1] - GLASS[0]);
+          const shine = nx > -0.68 && nx < -0.44 && y > GLASS[0] + 2 && y < GLASS[1] - 2 && (y % 7 !== 0);
+          const f = field(x + 0.5, y + 0.5);
+          if (f > 1) {
+            // wax: brightest in a blob's thick middle, lit from below by the heater
+            const core = Math.min(1, (f - 1) / 2.2);
+            const lit = 0.42 + 0.3 * core + 0.18 * nz + 0.08 * u;
+            const dark = 0.14 + 0.16 * core + 0.1 * nz;
+            put(x, y, tone(WAX, lerp(dark, lit, g) + (shine ? 0.25 : 0), x, y));
+          } else {
+            // the liquid: glowing, deepest at the edges of the glass, a sheen near its left side
+            const lit = 0.3 + 0.36 * nz + 0.16 * u + 0.12 * f;
+            const dark = 0.05 + 0.2 * nz;
+            put(x, y, shine ? tone(LIQ, lerp(0.55, 1, g), x, y) : tone(LIQ, lerp(dark, lit, g), x, y));
+          }
+        }
+      }
+      // a one-pixel dark outline round the whole lamp, the way the painted props are drawn
+      for (let y = 0; y < GH; y++) {
+        for (let x = 0; x < GW; x++) {
+          if (px[(y * GW + x) * 4 + 3]) continue;
+          const filled = (X: number, Y: number) => X >= 0 && Y >= 0 && X < GW && Y < GH && px[(Y * GW + X) * 4 + 3] === 255;
+          if (filled(x - 1, y) || filled(x + 1, y) || filled(x, y - 1) || filled(x, y + 1)) {
+            const o = (y * GW + x) * 4;
+            px[o] = OUTLINE[0];
+            px[o + 1] = OUTLINE[1];
+            px[o + 2] = OUTLINE[2];
+            px[o + 3] = 254;
+          }
+        }
+      }
+      // its shadow on the desk
+      for (let y = BASE[1] + 2; y <= BASE[1] + 4; y++) {
+        for (let x = CX - 20; x <= CX + 22; x++) {
+          const e = ((x + 0.5 - CX - 1.5) / 20) ** 2 + ((y - BASE[1] - 2.5) / 2) ** 2;
+          const o = (y * GW + x) * 4;
+          if (e <= 1 && !px[o + 3]) px[o + 3] = 90;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+      if (glowRef.current) glowRef.current.style.opacity = (g * (0.85 + 0.15 * Math.sin(st.t * 0.9))).toFixed(3);
+
+      // switched off, the wax all sunk and the glow gone: nothing more to draw until it's switched on
+      if (!st.on && g === 0 && st.heater === 0 && still) {
+        st.raf = 0;
+        st.last = 0;
+        return;
+      }
+      st.raf = requestAnimationFrame(frame);
+    };
+
+    cancelAnimationFrame(st.raf);
+    st.last = 0;
+    st.raf = requestAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(st.raf);
+      st.raf = 0;
+    };
+  }, [on]);
+
+  const { left, top, width, height } = boxPct;
+  const box: CSSProperties = { left: `${left}%`, top: `${top}%`, width: `${width}%`, height: `${height}%` };
+  // the light it throws on the wall, the ledge and the desk round it
+  const glow: CSSProperties = {
+    left: `${left - width * 1.6}%`,
+    top: `${top - height * 0.25}%`,
+    width: `${width * 4.2}%`,
+    height: `${height * 1.42}%`,
+  };
+
+  return (
+    <>
+      <div ref={glowRef} className="cinema__lava-glow" style={glow} aria-hidden="true" />
+      <button
+        type="button"
+        className="cinema__sprite cinema__lava"
+        style={box}
+        onClick={onToggle}
+        tabIndex={tabIndex}
+        aria-label={on ? "Switch the lava lamp off" : "Switch the lava lamp on"}
+      >
+        <canvas ref={canvasRef} width={GW} height={GH} />
+      </button>
+    </>
+  );
+}

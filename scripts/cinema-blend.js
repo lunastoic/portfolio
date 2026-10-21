@@ -6,7 +6,9 @@
 //   so the head is painted in place again and nothing outlines it
 // - rebuilds the warm-lit wall, the PC tower's edge and the desk behind the pixel plant
 //   (rows filled across for the wall and desk, columns filled down for the tower edge)
-// - cuts the three pens out of the painted pencil cup and fills the wall behind them
+// - cuts the three pens out of the cat pencil cup and fills the wall behind them, then moves the cup
+//   under the lamp in place of the plain pencil cup there (its spot by the PC is the lava lamp's now)
+// - swaps the lettered poster for the night-mountain pixel poster
 // - writes the lamp head with its bulb out, and the shadow the lamp leaves when it's off
 const fs = require('fs'), path = require('path'), sharp = require('sharp');
 
@@ -169,6 +171,41 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   }
   fill(img, dilate(pen, 1), [PEN[0] - 8, PEN[1] - 2, PEN[2] + 8, PEN[3]], 'row', 9);
 
+  // ---- the cat cup moves under the lamp, behind the mug, where the plain pencil cup stood ----
+  // its pens go with it: they're cut on the cup's own canvas, so they're placed by the same move
+  const CUP = [1104, 655, 1224, 776];
+  const cupMask = enclosed(img, CUP, 22);
+  const cw = CUP[2] - CUP[0] + 1, ch = CUP[3] - CUP[1] + 1, cupBuf = Buffer.alloc(cw * ch * 4);
+  for (let y = CUP[1]; y <= CUP[3]; y++) for (let x = CUP[0]; x <= CUP[2]; x++) {
+    const i = y * W + x; if (!cupMask[i]) continue;
+    const o = ((y - CUP[1]) * cw + (x - CUP[0])) * 4;
+    cupBuf[o] = img[i * 3]; cupBuf[o + 1] = img[i * 3 + 1]; cupBuf[o + 2] = img[i * 3 + 2]; cupBuf[o + 3] = 255;
+  }
+  // where it stood: the ledge, the wall and the desk run straight across, so each row fills from either side
+  const cupGone = dilate(cupMask, 2);
+  for (let y = 758; y <= 784; y++) for (let x = 1100; x <= 1228; x++) if (lum(img, y * W + x) < 40) cupGone[y * W + x] = 1; // its shadow
+  fill(img, cupGone, [CUP[0] - 10, CUP[1] - 4, CUP[2] + 10, 786], 'row', 29);
+  // the plain cup's pens stand up against the crate behind it: cut them out and fill the crate across
+  const OLD = [294, 612, 370, 690];
+  fill(img, dilate(enclosed(img, OLD, 18), 1), [OLD[0] - 6, OLD[1], OLD[2] + 4, OLD[3]], 'row', 31);
+  // the cat cup, a size down to sit among the books and the mug, set where the plain cup's base was
+  const CUP_S = 0.72, CUP_AT = [289, 757]; // its bottom-left corner
+  const sw2 = Math.round(cw * CUP_S), sh2 = Math.round(ch * CUP_S);
+  const small = await sharp(cupBuf, { raw: { width: cw, height: ch, channels: 4 } }).resize(sw2, sh2, { kernel: 'lanczos3' }).raw().toBuffer();
+  const cupX = CUP_AT[0], cupY = CUP_AT[1] - sh2;
+  for (let y = 0; y < sh2; y++) for (let x = 0; x < sw2; x++) {
+    const o = (y * sw2 + x) * 4, a = small[o + 3] / 255; if (!a) continue;
+    const i = ((cupY + y) * W + cupX + x) * 3;
+    for (let c = 0; c < 3; c++) img[i + c] = Math.round(img[i + c] * (1 - a) + small[o + c] * a);
+  }
+  // a soft shadow on the desk to its left, under the lamp
+  for (let y = cupY + sh2 - 6; y <= cupY + sh2 + 1; y++) for (let x = cupX - 10; x < cupX + 4; x++) {
+    const i = (y * W + x) * 3, k = 1 - 0.35 * Math.max(0, 1 - Math.abs(y - (cupY + sh2 - 2)) / 5) * Math.max(0, 1 - (cupX + 4 - x) / 16);
+    if (small[((Math.min(sh2 - 1, Math.max(0, y - cupY))) * sw2 + Math.max(0, x - cupX)) * 4 + 3] > 128 && x >= cupX) continue;
+    for (let c = 0; c < 3; c++) img[i + c] = Math.round(img[i + c] * k);
+  }
+  const movePen = ([x, y]) => [cupX + (x - CUP[0]) * CUP_S, cupY + (y - CUP[1]) * CUP_S];
+
   // ---- lettering: the painting's own words go; the scene sets real type in their place ----
   // decks: each lettering box is filled down its columns from the face just above and below it
   const block = (boxes) => { const m = new Uint8Array(W * H); for (const [x0, y0, x1, y1] of boxes) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) m[y * W + x] = 1; return m; };
@@ -255,22 +292,36 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
     }
   }
 
-  // poster, book spines, the shelf's spines
-  const POSTER = [[1107, 375, 1210, 532]], BOOKS = [[60, 618, 128, 652], [62, 660, 140, 692], [64, 698, 216, 740], [64, 736, 236, 780]];
-  const SHELF = [[1586, 168, 1606, 290], [1628, 190, 1652, 286]];
-  // the poster's panel is flat and dark between bright frame lines (x 1100, 1212): each row of the
-  // text area takes the colour of that row's own left margin, which never had letters
+  // ---- the poster: the lettered one comes down (the wall fills across from either side) and the
+  //      night-mountain pixel poster goes up in its place, graded into the room's warm light ----
   {
-    const [px0, py0, px1, py1] = POSTER[0];
-    for (let y = py0; y <= py1; y++) {
-      const ref = [0, 0, 0];
-      for (let x = 1102; x <= 1106; x++) for (let c = 0; c < 3; c++) ref[c] += img[(y * W + x) * 3 + c] / 5;
-      for (let x = px0; x <= px1; x++) {
-        const i = y * W + x, g = ((Math.imul(i, 2654435761) >>> 24) / 255 - 0.5) * 4;
-        for (let c = 0; c < 3; c++) img[i * 3 + c] = Math.max(0, Math.min(255, Math.round(ref[c] + g)));
-      }
+    const OLD_POSTER = [1086, 355, 1230, 600];
+    fill(img, block([OLD_POSTER]), [OLD_POSTER[0] - 6, OLD_POSTER[1], OLD_POSTER[2] + 6, OLD_POSTER[3]], 'row', 37);
+    // under it, down the ledge to the desk, the frame and the cup kept the untoned painting: fill those rows
+    // right across, so no edge shows where the toned wall meets it (the lava lamp stands in front)
+    fill(img, block([[1092, 582, 1240, 748]]), [1086, 582, 1246, 748], 'row', 41);
+    const [px, py, pw, ph] = [1086, 368, 144, 206];
+    // drawn big and brought down smooth, so its pixels sit at the painting's softness
+    const src = await sharp(path.join(ROOT, 'public/props/poster.png')).ensureAlpha().resize(60 * 12, 86 * 12, { kernel: 'nearest' }).toBuffer();
+    const p = await sharp(src).resize(pw, ph, { kernel: 'lanczos3' }).raw().toBuffer();
+    // its shadow on the wall, down and right
+    for (let y = py + 4; y < py + ph + 5; y++) for (let x = px + 3; x < px + pw + 4; x++) {
+      const i = (y * W + x) * 3; for (let c = 0; c < 3; c++) img[i + c] = Math.round(img[i + c] * 0.6);
+    }
+    for (let y = 0; y < ph; y++) for (let x = 0; x < pw; x++) {
+      const o = (y * pw + x) * 4, a = p[o + 3] / 255; if (!a) continue;
+      let r = p[o], g = p[o + 1], b = p[o + 2];
+      const gray = 0.299 * r + 0.587 * g + 0.114 * b, sat = 0.8;
+      r = gray + (r - gray) * sat; g = gray + (g - gray) * sat; b = gray + (b - gray) * sat;
+      const fall = 0.78 - 0.22 * Math.min(1, Math.max(0, 0.4 * (x / pw) + 0.7 * (y / ph) - 0.2));
+      const i = ((py + y) * W + px + x) * 3, col = [r * 1.0 * fall, g * 0.86 * fall, b * 0.74 * fall];
+      for (let c = 0; c < 3; c++) img[i + c] = Math.round(img[i + c] * (1 - a) + Math.min(255, col[c]) * a);
     }
   }
+
+  // book spines, the shelf's spines
+  const BOOKS = [[60, 618, 128, 652], [62, 660, 140, 692], [64, 698, 216, 740], [64, 736, 236, 780]];
+  const SHELF = [[1586, 168, 1606, 290], [1628, 190, 1652, 286]];
   // the spines are shaded across and lit warm; a letter is well above its row's spine colour
   const bookMask = new Uint8Array(W * H);
   for (const [x0, y0, x1, y1] of BOOKS) for (let y = y0; y <= y1; y++) {
@@ -303,6 +354,21 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
     off[o + 3] = Math.round(255 * Math.min(1, 0.4 + k));
   }
   await savePng(off, hw, hh, 4, path.join(CIN, 'lamp-off.png'));
+
+  // ---- the shade's right edge, cut out to sit over the sticky notes (they're on the wall behind it) ----
+  // per row: up to the shade's dark outline, or on the rows under it, to the end of the lit rim
+  const FRONT = [376, 330, 412, 406], fw = FRONT[2] - FRONT[0] + 1, fh = FRONT[3] - FRONT[1] + 1;
+  const front = Buffer.alloc(fw * fh * 4);
+  for (let y = FRONT[1]; y <= FRONT[3]; y++) {
+    let end = -1;
+    for (let x = FRONT[0]; x <= FRONT[2]; x++) if (lum(img, y * W + x) < 45) end = x;
+    if (end < 0) for (let x = FRONT[0]; x <= FRONT[2] && lum(img, y * W + x) >= 110; x++) end = x;
+    for (let x = FRONT[0]; x <= end; x++) {
+      const i = y * W + x, o = ((y - FRONT[1]) * fw + (x - FRONT[0])) * 4;
+      front[o] = img[i * 3]; front[o + 1] = img[i * 3 + 1]; front[o + 2] = img[i * 3 + 2]; front[o + 3] = 255;
+    }
+  }
+  await savePng(front, fw, fh, 4, path.join(CIN, 'lamp-front.png'));
 
   // ---- the shade the room falls into with the lamp off (quarter res, scaled up smooth) ----
   const q = 4, sw = W / q | 0, sh = Math.ceil(H / q), shade = Buffer.alloc(sw * sh * 4);
@@ -371,15 +437,19 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   m.notes = Array.from({ length: 7 }, (_, i) => `/cinema/prop-sticky-${i + 1}.png`);
   m.lamp = {
     off: { file: '/cinema/lamp-off.png', boxPct: pct([HB[0], HB[1], HB[2] + 1, HB[3] + 1]) },
+    front: { file: '/cinema/lamp-front.png', boxPct: pct([FRONT[0], FRONT[1], FRONT[2] + 1, FRONT[3] + 1]) },
     shade: '/cinema/lamp-shade.png',
     hitPct: pct([206, 252, 386, 456]),
   };
+  // the pens ride the cat cup to its new spot under the lamp (the hit box stops short of the mug)
   m.pens = {
     files: [1, 2, 3].map(k => `/cinema/sprite-pen-${k}.png`),
-    boxPct: pct([PEN[0], PEN[1], PEN[2] + 1, PEN[3] + 1]),
+    boxPct: pct([...movePen([PEN[0], PEN[1]]), ...movePen([PEN[2] + 1, PEN[3] + 1])]),
     originPct: AX.map(([xb]) => [+((xb - PEN[0]) / (PEN[2] - PEN[0] + 1) * 100).toFixed(2), 100]),
-    hitPct: pct([1106, 590, 1218, 770]),
+    hitPct: pct([cupX - 2, cupY - 46, 358, cupY + sh2]),
   };
+  // the lava lamp stands where the cat cup was, on the desk in front of the ledge
+  m.lava = { boxPct: pct([1110, 566, 1214, 774]) };
   fs.writeFileSync(mf, JSON.stringify(m, null, 2) + '\n');
 
   if (REVIEW) {

@@ -26,6 +26,27 @@ export interface SpillColors {
   hi: string;
 }
 
+/** Coffee running down the front of the mug from the lip: its head creeps down, leaving a trail. */
+interface Rivulet {
+  x: number;
+  /** Where it started (the lip) and where its head is now; mug coords, before the mug moved. */
+  top: number;
+  y: number;
+  base: number;
+  age: number;
+  phase: number;
+  done: boolean;
+}
+
+/** Where the mug is now: moved by (dx, dy) and scaled about (ox, oy), canvas coords. */
+interface MugPose {
+  dx: number;
+  dy: number;
+  scale: number;
+  ox: number;
+  oy: number;
+}
+
 interface Drop {
   x: number;
   y: number;
@@ -53,7 +74,11 @@ export class Spill {
   /** The puddle's right-hand wall: the mug's left side while it stands there, none once it's moved. */
   private wallX: number;
   /** The pool left where the mug's base stood once it's pushed away: seen from above, growing to full size. */
-  private pool: { cx: number; rx: number; ry: number; rxTo: number; ryTo: number; k: number; wobble: number[] } | null = null;
+  private pool: { cx: number; cy: number; rx: number; ry: number; rxTo: number; ryTo: number; k: number; wobble: number[] } | null = null;
+  private rivulets: Rivulet[] = [];
+  /** The puddle the rivulets feed: its size when they first reach the desk, and each one's share after. */
+  private feed: { cx: number; rx: number; ry: number } | null = null;
+  private mug: MugPose = { dx: 0, dy: 0, scale: 1, ox: 0, oy: 0 };
 
   constructor(
     private g: SpillGeometry,
@@ -76,7 +101,7 @@ export class Spill {
 
   /** Anything still falling, pouring, spreading or soaking: the loop keeps drawing while this holds. */
   get moving() {
-    return this.active && (this.pouring || this.drops.length > 0 || this.soaking || this.quietFor < SPREAD_S || (this.pool !== null && (this.pool.k < 1 || this.pool.rx !== this.pool.rxTo || this.pool.ry !== this.pool.ryTo)));
+    return this.active && (this.pouring || this.drops.length > 0 || this.soaking || this.quietFor < SPREAD_S || this.rivulets.some((r) => !r.done) || (this.pool !== null && (this.pool.k < 1 || this.pool.rx !== this.pool.rxTo || this.pool.ry !== this.pool.ryTo)));
   }
 
   /** Where the rim corner is for a given mug tilt (CSS rotate, degrees). */
@@ -97,23 +122,47 @@ export class Spill {
     }
   }
 
+  /** The mug moves (it's bumped back): coffee running down its front goes with it. */
+  setMug(pose: MugPose) {
+    this.mug = pose;
+  }
+
+  /** A point on the mug, wherever the mug is now. */
+  private onMug(x: number, y: number): [number, number] {
+    const { dx, dy, scale, ox, oy } = this.mug;
+    return [ox + (x - ox) * scale + dx, oy + (y - oy) * scale + dy];
+  }
+
   /**
-   * The mug has been pushed off this spot: coffee that ran down its side is left in a puddle
-   * where its base stood (centred on cx, about `spread` px either side), free to spread both ways.
+   * The mug has been bumped: coffee slops over the front of the lip at each x and runs down the
+   * mug's face (from lipY to baseY, mug coords). Where it reaches the desk it pools at the base,
+   * a puddle about rx by ry the first time, a little wider with every run after.
    */
-  leak(cx: number, rx: number, ry: number) {
+  drip(xs: number[], lipY: number, baseY: number, pool: { cx: number; rx: number; ry: number }) {
     this.wallX = this.g.width;
-    if (this.pool) {
-      // another bump: the same puddle spreads a little wider
-      this.pool.rxTo += rx * 0.22;
-      this.pool.ryTo += ry * 0.15;
-    } else {
-      // an uneven edge: a few lobes round the rim, fixed for this puddle
-      const wobble = Array.from({ length: 5 }, () => this.rng() * Math.PI * 2);
-      this.pool = { cx, rx, ry, rxTo: rx, ryTo: ry, k: 0, wobble };
+    this.feed = pool;
+    for (const x of xs) {
+      this.rivulets.push({ x, top: lipY, y: lipY, base: baseY, age: 0, phase: this.rng() * Math.PI * 2, done: false });
     }
     this.active = true;
     this.soaking = false;
+    this.quietFor = 0;
+  }
+
+  /** A run of coffee reached the desk: start the puddle there, or spread it a little. */
+  private feedPool() {
+    const f = this.feed;
+    if (!f) return;
+    if (this.pool) {
+      this.pool.rxTo += f.rx * 0.25;
+      this.pool.ryTo += f.ry * 0.15;
+    } else {
+      // an uneven edge: a few lobes round the rim, fixed for this puddle; it sits just in front of
+      // the base wherever the mug stands now
+      const wobble = Array.from({ length: 5 }, () => this.rng() * Math.PI * 2);
+      const [cx, cy] = this.onMug(f.cx, this.g.landY + 3);
+      this.pool = { cx, cy, rx: f.rx * 0.5, ry: f.ry * 0.6, rxTo: f.rx, ryTo: f.ry, k: 0, wobble };
+    }
     this.quietFor = 0;
   }
 
@@ -147,6 +196,19 @@ export class Spill {
       p.ry += (p.ryTo - p.ry) * f;
       if (Math.abs(p.rxTo - p.rx) < 0.05) p.rx = p.rxTo;
       if (Math.abs(p.ryTo - p.ry) < 0.05) p.ry = p.ryTo;
+    }
+
+    // the runs down the mug's face: quick off the lip, then creeping, beading as they go
+    for (const r of this.rivulets) {
+      if (r.done) continue;
+      r.age += dt;
+      const v = Math.max(16, 85 * Math.exp(-0.9 * r.age)) * (0.5 + 0.5 * Math.abs(Math.sin(r.age * 4.5 + r.phase)));
+      r.y += v * dt;
+      if (r.y >= r.base) {
+        r.y = r.base;
+        r.done = true;
+        this.feedPool();
+      }
     }
 
     if (this.pouring) {
@@ -212,7 +274,7 @@ export class Spill {
     for (let i = last + 1; i < width; i++) h[i] = 0;
 
     // once the pouring is over and the last drop has landed, the coffee soaks into the desk
-    if (!this.pouring && this.drops.length === 0) {
+    if (!this.pouring && this.drops.length === 0 && this.rivulets.every((r) => r.done)) {
       this.quietFor += dt;
       if (this.quietFor > SOAK_DELAY && !this.persist) this.soaking = true;
     }
@@ -237,8 +299,8 @@ export class Spill {
     // the pool where the mug stood: a flat, slightly lobed ellipse on the desk, dark at its rim,
     // a lighter sheen across its far side
     if (this.pool) {
-      const { cx, rx, ry, k, wobble } = this.pool;
-      const ease = 1 - Math.pow(1 - k, 3), RX = rx * ease, RY = ry * ease, cy = landY + 3;
+      const { cx, cy, rx, ry, k, wobble } = this.pool;
+      const ease = 1 - Math.pow(1 - k, 3), RX = rx * ease, RY = ry * ease;
       if (RX >= 1) {
         for (let y = Math.floor(cy - RY - 2); y <= Math.ceil(cy + RY + 2); y++) {
           for (let x = Math.floor(cx - RX - 3); x <= Math.ceil(cx + RX + 3); x++) {
@@ -270,6 +332,34 @@ export class Spill {
       if (t > 1 && i % 3 !== 1) {
         ctx.fillStyle = hi;
         ctx.fillRect(i, top, 1, 1);
+      }
+    }
+
+    // the runs down the mug's front: a thin trail (fuller at the lip, wavering a little) and a bead
+    // at its head; they ride the mug when it's bumped again
+    for (const r of this.rivulets) {
+      for (let y = Math.floor(r.top); y <= r.y; y++) {
+        const k = y - r.top, wave = Math.round(Math.sin(k * 0.3 + r.phase) * 0.8);
+        const [x, Y] = this.onMug(r.x + wave, y);
+        const X = Math.round(x), YY = Math.round(Y), wide = k < 4 ? 4 : 3;
+        ctx.fillStyle = dark;
+        ctx.fillRect(X, YY, wide, 1);
+        ctx.fillStyle = mid;
+        ctx.fillRect(X, YY, wide - 1, 1);
+        if (k % 9 === 3) {
+          ctx.fillStyle = hi;
+          ctx.fillRect(X, YY, 1, 1);
+        }
+      }
+      if (!r.done) {
+        const [x, y] = this.onMug(r.x + Math.round(Math.sin((r.y - r.top) * 0.3 + r.phase) * 0.8), r.y);
+        const X = Math.round(x), Y = Math.round(y);
+        ctx.fillStyle = dark;
+        ctx.fillRect(X - 1, Y, 4, 3);
+        ctx.fillStyle = mid;
+        ctx.fillRect(X, Y, 2, 2);
+        ctx.fillStyle = hi;
+        ctx.fillRect(X, Y, 1, 1);
       }
     }
 
