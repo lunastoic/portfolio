@@ -169,6 +169,38 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   }
   fill(img, dilate(pen, 1), [PEN[0] - 8, PEN[1] - 2, PEN[2] + 8, PEN[3]], 'row', 9);
 
+  // ---- lettering: the painting's own words go; the scene sets real type in their place ----
+  // decks: each lettering box is filled down its columns from the face just above and below it
+  const block = (boxes) => { const m = new Uint8Array(W * H); for (const [x0, y0, x1, y1] of boxes) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) m[y * W + x] = 1; return m; };
+  for (const [x0, y0, x1, y1] of [[596, 82, 998, 130], [634, 217, 994, 253]]) fill(img, block([[x0, y0, x1, y1]]), [x0, y0 - 4, x1, y1 + 4], 'col', 19);
+  // poster, book spines, the shelf's spines
+  const POSTER = [[1107, 375, 1210, 532]], BOOKS = [[60, 618, 128, 652], [62, 660, 140, 692], [64, 698, 216, 740], [64, 736, 236, 780]];
+  const SHELF = [[1586, 168, 1606, 290], [1628, 190, 1652, 286]];
+  // the poster's panel is flat and dark between bright frame lines (x 1100, 1212): each row of the
+  // text area takes the colour of that row's own left margin, which never had letters
+  {
+    const [px0, py0, px1, py1] = POSTER[0];
+    for (let y = py0; y <= py1; y++) {
+      const ref = [0, 0, 0];
+      for (let x = 1102; x <= 1106; x++) for (let c = 0; c < 3; c++) ref[c] += img[(y * W + x) * 3 + c] / 5;
+      for (let x = px0; x <= px1; x++) {
+        const i = y * W + x, g = ((Math.imul(i, 2654435761) >>> 24) / 255 - 0.5) * 4;
+        for (let c = 0; c < 3; c++) img[i * 3 + c] = Math.max(0, Math.min(255, Math.round(ref[c] + g)));
+      }
+    }
+  }
+  // the spines are shaded across and lit warm; a letter is well above its row's spine colour
+  const bookMask = new Uint8Array(W * H);
+  for (const [x0, y0, x1, y1] of BOOKS) for (let y = y0; y <= y1; y++) {
+    const ls = []; for (let x = x0; x <= x1; x++) ls.push(lum(img, y * W + x));
+    const med = ls.slice().sort((a, b) => a - b)[ls.length >> 1];
+    for (let x = x0; x <= x1; x++) if (lum(img, y * W + x) > med + 38 && img[(y * W + x) * 3] > 130) bookMask[y * W + x] = 1;
+  }
+  // grown by 3 so each letter's dark outline goes with it
+  fill(img, dilate(bookMask, 3), [56, 614, 242, 784], 'row', 13);
+  // the shelf's spines stand upright: fill their text columns top to bottom
+  fill(img, block(SHELF), [1580, 164, 1658, 294], 'col', 17);
+
   // 256 colours, saved lossless, like the rest of the painting's pipeline (about 410 KB)
   const quant = await sharp(img, { raw: { width: W, height: H, channels: 3 } }).png({ palette: true, colours: 256, dither: 0 }).toBuffer();
   await sharp(quant).webp({ lossless: true, effort: 6 }).toFile(path.join(CIN, 'desk.webp.tmp'));

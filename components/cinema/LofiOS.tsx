@@ -26,10 +26,17 @@ const formatClock = () =>
 /**
  * LUNA_OS as drawn in the lo-fi art: header bar with a live clock, name,
  * the moon-and-mountains illustration beside a numbered menu, and the
- * BUILD • TEST • REPEAT prompt. Opening an item swaps the body for the
+ * prompt. Opening an item swaps the body for the
  * same .EXE windows v1 uses. Arrow keys, Enter and 1–4 drive the menu.
  */
-export default function LofiOS({ initialPopup = null }: { initialPopup?: LofiPopup }) {
+export default function LofiOS({
+  initialPopup = null,
+  interactive = true,
+}: {
+  initialPopup?: LofiPopup;
+  /** Standing back, the screen just shows; keys and clicks only reach it once you sit down. */
+  interactive?: boolean;
+}) {
   const [selected, setSelected] = useState(0);
   const [activeApp, setActiveApp] = useState<AppId | null>(null);
   const [popup, setPopup] = useState<LofiPopup>(initialPopup);
@@ -45,6 +52,7 @@ export default function LofiOS({ initialPopup = null }: { initialPopup?: LofiPop
   const close = useCallback(() => setActiveApp(null), []);
 
   useEffect(() => {
+    if (!interactive) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (popup) setPopup(null);
@@ -68,7 +76,7 @@ export default function LofiOS({ initialPopup = null }: { initialPopup?: LofiPop
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [popup, activeApp, selected, close]);
+  }, [interactive, popup, activeApp, selected, close]);
 
   const { screenArt } = manifest;
 
@@ -94,13 +102,14 @@ export default function LofiOS({ initialPopup = null }: { initialPopup?: LofiPop
               draggable={false}
               className="lofi__art"
             />
-            <nav aria-label="Portfolio sections">
+            <nav aria-label="Portfolio sections" aria-hidden={!interactive || undefined}>
               <ul className="lofi__menu">
                 {ITEMS.map((item, i) => (
                   <li key={item.id}>
                     <button
                       type="button"
                       className={`lofi__item ${i === selected ? "lofi__item--active" : ""}`}
+                      tabIndex={interactive ? 0 : -1}
                       onMouseEnter={() => setSelected(i)}
                       onFocus={() => setSelected(i)}
                       onClick={() => setActiveApp(item.id)}
@@ -130,7 +139,7 @@ export default function LofiOS({ initialPopup = null }: { initialPopup?: LofiPop
 
       <div className="lofi__rule" aria-hidden="true" />
       <div className="lofi__footer" aria-hidden="true">
-        <span>BUILD • TEST • REPEAT</span>
+        <span>SYSTEM READY</span>
         <span className="lofi__prompt">
           C:\PORTFOLIO&gt;{activeApp ? `${activeApp.toUpperCase()}.EXE` : ""}
           <span className="cursor-blink" />

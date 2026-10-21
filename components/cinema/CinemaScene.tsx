@@ -65,8 +65,6 @@ const STAND_MS = 1500;
 const SEAT_FRACTION: Record<LayoutKey, number> = { desktop: 0.6, mobile: 0.55 };
 /** Seated, the crop starts at least this far (art px) below the decks, so they stay out of view. */
 const DECK_CLEARANCE = 6;
-/** Progress at which the live OS takes over from the painted screen. */
-const SCREEN_ON_AT = 0.9;
 const HINT_DELAY_MS = 2200;
 
 /** The mug's tap: a knock that rocks it onto its heel, sloshes a little over the rim, and lets it settle. */
@@ -84,16 +82,59 @@ const NOTE_LAND_Y = 412; // art px below the wall spot: the desk behind the mug
 const NOTE_REST_S = 1.4;
 const NOTE_FADE_S = 0.6;
 
-/** What each sticky note says, in the order they come off the wall; laid over the blank pixel notes. */
+/** What each sticky note says, in the order they come off the wall: a real to-do list. */
 const NOTE_TEXTS = [
-  ["KEEP", "BUILDING", ":)"],
-  ["SHIP", "IT"],
+  ["WRITE", "TESTS"],
+  ["FIX NAV", "ON MOBILE"],
   ["DRINK", "WATER"],
-  ["COMMIT", "OFTEN"],
-  ["TODO:", "SLEEP"],
-  ["HELLO", "WORLD"],
-  ["ONE", "MORE", "BUG"],
+  ["UPDATE", "RESUME"],
+  ["STANDUP", "10:00"],
+  ["PUSH", "TO MAIN"],
+  ["GYM", "6 PM"],
 ];
+
+/**
+ * The words painted round the room, set in real type over the places the painting's own
+ * lettering was cleared (scripts/cinema-blend.js). Art px: x, y is the text's anchor (its
+ * centre, or its left middle with align "left"), size the font size, rotate follows the
+ * book spines' slant.
+ */
+interface WallText {
+  lines: string[];
+  x: number;
+  y: number;
+  size: number;
+  color: string;
+  align?: "center" | "left";
+  rotate?: number;
+  track?: number;
+  weight?: number;
+  leading?: number;
+}
+const WALL_TEXT: WallText[] = [
+  { lines: ["CHRISTOPHER LUNA"], x: 796, y: 106, size: 40, color: "#f6bb5c", weight: 700, track: 0.06 },
+  { lines: ["SOFTWARE ENGINEER"], x: 814, y: 235, size: 25, color: "#eb9a4c", weight: 600, track: 0.3 },
+  {
+    lines: ["MAKE IT", "WORK.", "MAKE IT", "RIGHT.", "MAKE IT", "FAST."],
+    x: 1116, y: 460, size: 17.5, color: "#e8862e", align: "left", weight: 600, track: 0.04, leading: 1.32,
+  },
+  { lines: ["ALGORITHMS"], x: 66, y: 637, size: 15, color: "#e7a256", align: "left", rotate: -2.2, track: 0.14, weight: 600 },
+  { lines: ["TYPESCRIPT"], x: 68, y: 677, size: 15, color: "#e7a256", align: "left", rotate: -2.7, track: 0.14, weight: 600 },
+  { lines: ["SYSTEM DESIGN"], x: 70, y: 719, size: 15.5, color: "#e7a256", align: "left", rotate: -4.8, track: 0.14, weight: 600 },
+  { lines: ["NETWORKS"], x: 72, y: 760, size: 16, color: "#f6cf93", align: "left", rotate: -4.6, track: 0.16, weight: 600 },
+];
+const wallTextStyle = (t: WallText): CSSProperties => ({
+  left: `${(t.x / art.size.width) * 100}%`,
+  top: `${(t.y / art.size.height) * 100}%`,
+  fontSize: `${(t.size / art.size.width) * 100}cqw`,
+  color: t.color,
+  fontWeight: t.weight ?? 600,
+  letterSpacing: `${t.track ?? 0}em`,
+  lineHeight: t.leading ?? 1,
+  textAlign: t.align ?? "center",
+  transform: `translate(${t.align === "left" ? "0" : "-50%"}, -50%) rotate(${t.rotate ?? 0}deg)`,
+  transformOrigin: t.align === "left" ? "0 50%" : "50% 50%",
+});
 /** Sprite files are given as site paths; bare names are the cinema-assets.py cut-outs. */
 const spriteSrc = (file: string) => (file.startsWith("/") ? file : `/cinema/${file}`);
 
@@ -299,7 +340,7 @@ function NoteFace({ index }: { index: number }) {
 /**
  * v2 — the lo-fi pixel desk. You arrive standing back, the whole painted room
  * filling the window. Clicking the monitor sits you down: two steps up to the desk,
- * then down into the chair, and the live LUNA_OS takes over the glass. Standing, the
+ * then down into the chair, and the LUNA_OS on the glass wakes up to your keys. Standing, the
  * desk is alive: knock the mug and it rocks and sloshes a little coffee, peel the
  * sticky note and it drifts down to the desk with the next one waiting behind it,
  * tap the pencil cup and the pens rattle, click the lamp to switch it off and on,
@@ -319,6 +360,7 @@ export default function CinemaScene() {
   const [fallingNote, setFallingNote] = useState<number | null>(null);
   const [lampOn, setLampOn] = useState(true);
   const [lampSwitches, setLampSwitches] = useState(0);
+  const [visits, setVisits] = useState(0); // each stand-up hands back a fresh screen at the menu
   const progressRef = useRef(0);
   const rafRef = useRef(0);
   const fallbackRef = useRef(0);
@@ -412,7 +454,10 @@ export default function CinemaScene() {
   const standUp = useCallback(() => {
     if (pose !== "seated") return;
     setPose("rising");
-    animateTo(0, () => setPose("standing"));
+    animateTo(0, () => {
+      setPose("standing");
+      setVisits((v) => v + 1);
+    });
   }, [pose, animateTo]);
 
   // ESC stands up once nothing is open on the screen (LofiOS closes its
@@ -671,8 +716,6 @@ export default function CinemaScene() {
     scaleRef.current = stageScale;
   }, [stageScale]);
   const screen = stage ? screenRect(stage) : null;
-  const screenOn =
-    pose === "seated" || (pose === "sitting" && progress >= SCREEN_ON_AT);
 
   const antStyle = (): CSSProperties | undefined => {
     if (!stage) return undefined;
@@ -730,6 +773,15 @@ export default function CinemaScene() {
             onLoad={() => setLoadedImage(art.image)}
             onError={() => setLoadedImage(art.image)}
           />
+
+          {/* The words on the decks, the poster and the book spines */}
+          {WALL_TEXT.map((t) => (
+            <p key={t.lines.join(" ")} className="cinema__wall-text" style={wallTextStyle(t)}>
+              {t.lines.map((line, i) => (
+                <span key={i}>{line}</span>
+              ))}
+            </p>
+          ))}
 
           {/* The lamp's head with the bulb out, over the painted one */}
           <div
@@ -910,7 +962,7 @@ export default function CinemaScene() {
           <div className="cinema__dark" aria-hidden="true" />
         </div>
 
-        {/* The live screen rides the painted one; it only lights up seated */}
+        {/* The live screen rides the painted one: on all the time, only usable seated */}
         {screen && (
           <div
             className="cinema__screen"
@@ -924,7 +976,7 @@ export default function CinemaScene() {
               } as CSSProperties
             }
           >
-            {screenOn && <LofiOS initialPopup={pendingPopup} />}
+            <LofiOS key={visits} initialPopup={pendingPopup} interactive={pose === "seated"} />
           </div>
         )}
       </div>

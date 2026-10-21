@@ -33,6 +33,7 @@
 
 .cinema__stage {
   position: absolute;
+  container-type: inline-size; /* the wall text and notes size with the painting */
   opacity: 0;
   transition: opacity 0.5s ease;
 }
@@ -98,6 +99,21 @@
   z-index: 5;
 }
 
+/* the words on the decks, the poster and the book spines, in the room's typeface */
+.cinema__wall-text {
+  position: absolute;
+  z-index: 2;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-lofi), sans-serif;
+  white-space: nowrap;
+  text-transform: uppercase;
+  text-shadow: 0 0.07em 0 rgba(20, 8, 2, 0.55);
+  pointer-events: none;
+  user-select: none;
+}
+
 /* the sticky notes: the next one waits under the top one; a peeled one falls in front of both */
 .cinema__note-under {
   pointer-events: none;
@@ -135,9 +151,11 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-term);
-  font-size: 19.2cqw;
-  line-height: 1;
+  font-family: var(--font-lofi), var(--font-term), sans-serif;
+  font-size: 13.5cqw;
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: 0.02em;
   text-align: center;
   color: #2a1208;
   pointer-events: none;
@@ -271,8 +289,7 @@
   transition: opacity 0.22s ease;
 }
 
-.cinema--seated .cinema__screen,
-.cinema--sitting .cinema__screen:has(.lofi) {
+.cinema--ready .cinema__screen {
   opacity: 1;
 }
 
@@ -383,7 +400,7 @@ body:has(.cinema) .crt-flicker {
   padding: 3.5% 4.5% 3%;
   font-family: var(--font-lofi), var(--font-term), monospace;
   font-weight: 500;
-  font-size: calc(var(--screen-w) * 0.04);
+  font-size: calc(var(--screen-w) * 0.034); /* Oxanium runs wider than a pixel face */
   line-height: 1.2;
   color: var(--lofi-text);
   animation: lofi-in 0.25s steps(3);
@@ -392,7 +409,7 @@ body:has(.cinema) .crt-flicker {
 /* phones: the seated screen is only about 280px wide, so everything packs tighter, one line each */
 .cinema[data-layout="mobile"] .lofi {
   padding: 3% 4% 2.5%;
-  font-size: calc(var(--screen-w) * 0.046);
+  font-size: calc(var(--screen-w) * 0.04);
 }
 
 .cinema[data-layout="mobile"] .lofi__name {
@@ -468,6 +485,7 @@ body:has(.cinema) .crt-flicker {
 
 .lofi__title {
   margin-top: 0.15em;
+  white-space: nowrap;
   font-size: 1.05em;
   letter-spacing: 0.06em;
 }
@@ -509,6 +527,7 @@ body:has(.cinema) .crt-flicker {
   font-size: 1.2em;
   letter-spacing: 0.03em;
   text-align: left;
+  white-space: nowrap;
   color: inherit;
   border-radius: 0.15em;
 }

@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Pixelify_Sans } from "next/font/google";
+import { Oxanium } from "next/font/google";
 import CinemaScene from "@/components/cinema/CinemaScene";
 
-/** Chunky pixel face for the painted-style LUNA_OS; ASCII art keeps the monospace font. */
-const pixelify = Pixelify_Sans({
+/** A clean, squared, slightly futuristic face for every word in the room: the screen, the
+ *  notes, the decks, the poster and the book spines. ASCII art keeps the monospace font. */
+const oxanium = Oxanium({
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
   variable: "--font-lofi",
 });
 
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 /** v2 preview: the lo-fi pixel desk. Unlinked; reachable via the dev switch. */
 export default function V2Page() {
   return (
-    <main className={pixelify.variable}>
+    <main className={oxanium.variable}>
       <h1 className="sr-only">Christopher Luna — Software Engineer Portfolio</h1>
       <CinemaScene />
     </main>
