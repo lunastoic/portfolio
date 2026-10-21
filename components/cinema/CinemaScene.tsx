@@ -11,7 +11,7 @@ import {
 } from "react";
 import manifestJson from "../../public/cinema/manifest.json";
 import LofiOS, { type LofiPopup } from "./LofiOS";
-import { Spring, easeOutCubic } from "./physics";
+import { Spring, clamp01, easeOutCubic } from "./physics";
 import { Spill } from "./spill";
 import "./cinema.css";
 
@@ -68,11 +68,12 @@ const SEAT_FRACTION: Record<LayoutKey, number> = { desktop: 0.6, mobile: 0.55 };
 const DECK_CLEARANCE = 6;
 const HINT_DELAY_MS = 2200;
 
-/** The mug's tap: it slides back across the desk, upright, slopping a little coffee that stays
- *  on the desk where it stood. It stays pushed back until the page is reloaded. */
+/** The mug's tap: each click bumps it a little further back across the desk, upright, up to
+ *  three bumps, slopping a little more coffee each time. It all stays until the page is reloaded. */
 const PUSH_S = 0.35;
-const PUSH_BACK = 5; // art px up the desk (away from you): a small bump back
-const PUSH_SHRINK = 0.015; // further away, a hair smaller
+const PUSH_STEP = 4.5; // art px up the desk (away from you) per bump
+const PUSH_MAX = 3; // bumps before it won't go further
+const PUSH_SHRINK = 0.003; // per art px further away, a hair smaller
 const LEAK_DROPS = 10;
 const LEAK_POOL = [52, 9]; // art px: the puddle's half-width and half-depth where it stood
 
@@ -84,6 +85,7 @@ const NOTE_SWAY = 34; // art px
 const NOTE_SWAY_W = 5.2; // rad/s
 const NOTE_LAND_Y = 362; // art px below the wall spot: lying on the desk behind the mug
 const NOTE_SCATTER = [14, 10, 22]; // a landed note's spread: ± art px across, ± art px deep, ± degrees
+const NOTE_SETTLE = 80; // art px above its landing spot where it starts to lie down
 
 /** What each sticky note says, in the order they come off the wall: a real to-do list. */
 const NOTE_TEXTS = [
@@ -190,10 +192,13 @@ interface NoteFall {
 /** Everything that moves when a prop is tapped. Lives outside React state: the loop writes styles directly. */
 interface World {
   mug: {
-    phase: "home" | "pushing" | "back";
+    phase: "rest" | "pushing";
     t: number;
-    /** 0 at home, 1 pushed back. */
-    k: number;
+    /** How far back it is (art px), and where this bump started and will end. */
+    pos: number;
+    from: number;
+    to: number;
+    bumps: number;
     /** A little shiver when it's knocked again where it stands. */
     nudge: Spring;
   };
@@ -208,7 +213,7 @@ interface World {
 }
 
 const createWorld = (): World => ({
-  mug: { phase: "home", t: 0, k: 0, nudge: new Spring(420, 9) },
+  mug: { phase: "rest", t: 0, pos: 0, from: 0, to: 0, bumps: 0, nudge: new Spring(420, 9) },
   notes: [],
   pens: [new Spring(170, 4.2), new Spring(150, 3.6), new Spring(190, 4.6)],
   // a spread of stiffnesses, so the leaves never flutter in step
@@ -490,15 +495,15 @@ export default function CinemaScene() {
       w.last = now;
       const s = scaleRef.current;
 
-      // the mug: slides back across the desk, upright, and stays there
+      // the mug: each bump slides it back a little, upright, and it stays there
       const m = w.mug;
       if (m.phase === "pushing") {
         m.t += dt;
         // a shove: quick off the mark, dragging to a stop on the wood
-        m.k = easeOutCubic(m.t / PUSH_S);
+        m.pos = lerp(m.from, m.to, easeOutCubic(m.t / PUSH_S));
         if (m.t >= PUSH_S) {
-          m.k = 1;
-          m.phase = "back";
+          m.pos = m.to;
+          m.phase = "rest";
         }
       }
       m.nudge.step(dt);
@@ -530,8 +535,12 @@ export default function CinemaScene() {
           const grow = 1 - Math.exp(-2.4 * n.t);
           const ph = NOTE_SWAY_W * n.t;
           n.x = NOTE_SWAY * grow * Math.sin(ph) * n.side;
-          n.rot = 5 * n.side * (1 - grow) + 16 * grow * Math.cos(ph) * n.side;
-          n.tilt = 30 + 24 * grow * Math.sin(2 * ph + 0.6);
+          // over the last stretch it flattens out toward the desk, so its lower edge never swings
+          // down past the mug's base (it lands behind the mug, it shouldn't flash in front of it)
+          const near = easeOutCubic(clamp01((n.y - (n.landY - NOTE_SETTLE)) / NOTE_SETTLE));
+          n.x *= 1 - 0.6 * near;
+          n.rot = lerp(5 * n.side * (1 - grow) + 16 * grow * Math.cos(ph) * n.side, n.landRot, near);
+          n.tilt = lerp(30 + 24 * grow * Math.sin(2 * ph + 0.6), 78, near);
           if (n.y >= n.landY) {
             n.y = n.landY;
             n.phase = "land";
@@ -558,7 +567,7 @@ export default function CinemaScene() {
       const set = (node: HTMLElement | null | undefined, transform: string) => {
         if (node) node.style.transform = transform;
       };
-      const mugMove = `translate(${(m.nudge.x * s).toFixed(2)}px, ${(-PUSH_BACK * m.k * s).toFixed(1)}px) scale(${(1 - PUSH_SHRINK * m.k).toFixed(4)})`;
+      const mugMove = `translate(${(m.nudge.x * s).toFixed(2)}px, ${(-m.pos * s).toFixed(1)}px) scale(${(1 - PUSH_SHRINK * m.pos).toFixed(4)})`;
       set(el.mug, mugMove);
       set(el.steam, mugMove);
       w.pens.forEach((sp, i) => set(penRefs.current[i], `rotate(${sp.x.toFixed(2)}deg)`));
@@ -596,8 +605,8 @@ export default function CinemaScene() {
       switch (key) {
         case "mug": {
           if (w.mug.phase === "pushing") break;
-          if (w.mug.phase === "back") {
-            // already pushed back: it just shivers where it stands
+          if (w.mug.bumps >= PUSH_MAX) {
+            // as far back as it goes: it just shivers where it stands
             w.mug.nudge.kick(w.mug.nudge.v >= 0 ? -60 : 60);
             break;
           }
@@ -618,7 +627,10 @@ export default function CinemaScene() {
           }
           w.mug.phase = "pushing";
           w.mug.t = 0;
-          // the shove slops a little coffee over the rim and leaves a puddle where the base stood
+          w.mug.from = w.mug.pos;
+          w.mug.bumps += 1;
+          w.mug.to = PUSH_STEP * w.mug.bumps;
+          // each shove slops a little coffee over the rim; the puddle where the base stood grows
           // (the body is 120 art px across from mugLeft); it stays on the desk
           if (w.spill && geom) {
             w.spill.slosh(0, LEAK_DROPS);

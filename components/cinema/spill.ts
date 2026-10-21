@@ -53,7 +53,7 @@ export class Spill {
   /** The puddle's right-hand wall: the mug's left side while it stands there, none once it's moved. */
   private wallX: number;
   /** The pool left where the mug's base stood once it's pushed away: seen from above, growing to full size. */
-  private pool: { cx: number; rx: number; ry: number; k: number; wobble: number[] } | null = null;
+  private pool: { cx: number; rx: number; ry: number; rxTo: number; ryTo: number; k: number; wobble: number[] } | null = null;
 
   constructor(
     private g: SpillGeometry,
@@ -76,7 +76,7 @@ export class Spill {
 
   /** Anything still falling, pouring, spreading or soaking: the loop keeps drawing while this holds. */
   get moving() {
-    return this.active && (this.pouring || this.drops.length > 0 || this.soaking || this.quietFor < SPREAD_S || (this.pool !== null && this.pool.k < 1));
+    return this.active && (this.pouring || this.drops.length > 0 || this.soaking || this.quietFor < SPREAD_S || (this.pool !== null && (this.pool.k < 1 || this.pool.rx !== this.pool.rxTo || this.pool.ry !== this.pool.ryTo)));
   }
 
   /** Where the rim corner is for a given mug tilt (CSS rotate, degrees). */
@@ -103,9 +103,15 @@ export class Spill {
    */
   leak(cx: number, rx: number, ry: number) {
     this.wallX = this.g.width;
-    // an uneven edge: a few lobes round the rim, fixed for this puddle
-    const wobble = Array.from({ length: 5 }, () => this.rng() * Math.PI * 2);
-    this.pool = { cx, rx, ry, k: 0, wobble };
+    if (this.pool) {
+      // another bump: the same puddle spreads a little wider
+      this.pool.rxTo += rx * 0.22;
+      this.pool.ryTo += ry * 0.15;
+    } else {
+      // an uneven edge: a few lobes round the rim, fixed for this puddle
+      const wobble = Array.from({ length: 5 }, () => this.rng() * Math.PI * 2);
+      this.pool = { cx, rx, ry, rxTo: rx, ryTo: ry, k: 0, wobble };
+    }
     this.active = true;
     this.soaking = false;
     this.quietFor = 0;
@@ -133,7 +139,15 @@ export class Spill {
     const { landY, width } = this.g;
     const mugLeft = this.wallX;
     // the pool spreads out fast at first, then creeps to its edge
-    if (this.pool && this.pool.k < 1) this.pool.k = Math.min(1, this.pool.k + dt * 1.6 * (1.15 - this.pool.k));
+    if (this.pool) {
+      const p = this.pool;
+      if (p.k < 1) p.k = Math.min(1, p.k + dt * 1.6 * (1.15 - p.k));
+      const f = Math.min(1, dt * 3);
+      p.rx += (p.rxTo - p.rx) * f;
+      p.ry += (p.ryTo - p.ry) * f;
+      if (Math.abs(p.rxTo - p.rx) < 0.05) p.rx = p.rxTo;
+      if (Math.abs(p.ryTo - p.ry) < 0.05) p.ry = p.ryTo;
+    }
 
     if (this.pouring) {
       const [sx, sy] = this.rimAt(angleDeg);
