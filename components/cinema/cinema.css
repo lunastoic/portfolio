@@ -85,6 +85,36 @@
   z-index: 5;
 }
 
+/* the plant stands in the corner the lamp barely reaches */
+.cinema__sprite--plant-pot img,
+.cinema__sprite--plant-leaves img {
+  filter: brightness(0.88) saturate(0.9);
+}
+
+/* the sticky note's message, set in the terminal face and sized with the note */
+.cinema__sprite--note {
+  container-type: inline-size;
+}
+
+.cinema__note-text {
+  position: absolute;
+  left: 9.6%;
+  top: 16.7%;
+  width: 80.8%;
+  height: 64.8%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-term);
+  font-size: 19.2cqw;
+  line-height: 1;
+  text-align: center;
+  color: #2a1208;
+  pointer-events: none;
+  -webkit-font-smoothing: none;
+}
+
 /* seated, the props are just part of the picture: clicks fall through to the stage */
 .cinema:not(.cinema--standing) .cinema__sprite {
   pointer-events: none;

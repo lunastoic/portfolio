@@ -235,7 +235,8 @@ function stem(cv, ramp, a, b, z, part) {
     cv.put(x, y, { ramp, v: 0.32, z, part });
   }
 }
-function plant(fol, potName, face) {
+// `layers`: the pot and the leaves as two sprites (the site sways the leaves over a nudged pot)
+function plant(fol, potName, face, layers = false) {
   const W = 72, H = 84, cv = new Cv(W, H), lr = LEAF[fol], pr = POT[potName];
   const cx = 36, yt = 52, rxRim = 18, ryT = 4.5, rimH = 6, yb = 78, rxTop = 16, rxBot = 12.5;
   shadowEllipse(cv, cx + 4, yb + 2.5, 24, 3.6);
@@ -278,6 +279,7 @@ function plant(fol, potName, face) {
     for (const [x, y] of [[cx - 9, fy + 3], [cx - 8, fy + 3], [cx + 8, fy + 3], [cx + 9, fy + 3]]) { const c = cv.get(x, y); if (c) cv.c[y * W + x] = { ...c, ramp: PAPER.pink, fixed: 4, noOutline: true }; }
   }
   // leaves, back to front
+  const lv = layers ? new Cv(W, H) : cv;
   const spec = [
     [30, 22, -120, 18, 6.5, 3, 0.7], [42, 20, -60, 18, 6.5, 3, 0.7], [36, 14, -90, 16, 6, 3, 0.7],
     [22, 30, -150, 17, 6.5, 3, 0.7], [50, 28, -30, 17, 6.5, 3, 0.7],
@@ -291,11 +293,13 @@ function plant(fol, potName, face) {
     const s0 = [cx + (bx - cx) * 0.12, yt - 1], c0 = [s0[0] + (bx - s0[0]) * 0.15, by + (yt - 1 - by) * 0.15];
     for (let k = 0; k <= 1; k += 0.02) {
       const x = (1 - k) ** 2 * s0[0] + 2 * (1 - k) * k * c0[0] + k * k * bx, y = (1 - k) ** 2 * s0[1] + 2 * (1 - k) * k * c0[1] + k * k * by;
-      cv.put(x, y, { ramp: lr, v: 0.3 * dim + 0.05, z: z - 0.01, part: 'stem' + i });
+      lv.put(x, y, { ramp: lr, v: 0.3 * dim + 0.05, z: z - 0.01, part: 'stem' + i });
     }
-    leaf(cv, lr, { b: [bx, by], t, w, bend: (i % 2 ? 1 : -1) * 0.06, droop: by > 45 ? 0.1 : 0, z, dim, part: 'leaf' + i, varieg: fol === 'sunlit' });
+    leaf(lv, lr, { b: [bx, by], t, w, bend: (i % 2 ? 1 : -1) * 0.06, droop: by > 45 ? 0.1 : 0, z, dim, part: 'leaf' + i, varieg: fol === 'sunlit' });
   });
-  render(cv, `plant-${fol}-${potName}${face ? '-cat' : ''}`);
+  const name = `plant-${fol}-${potName}${face ? '-cat' : ''}`;
+  if (layers) { render(cv, name + '-pot'); render(lv, name + '-leaves'); }
+  else render(cv, name);
 }
 
 // ---------- BOOKS ----------
@@ -421,6 +425,7 @@ function backdrop(name, W, H, deskRows) {
 for (const gl of Object.keys(GLAZE)) { mug(gl, true); mug(gl, false); }
 steam();
 for (const f of Object.keys(LEAF)) for (const p of Object.keys(POT)) { plant(f, p, false); plant(f, p, true); }
+plant('forest', 'terracotta', false, true); // the v2 site's plant, in two layers
 books();
 [['note-1', 'orange', 'green'], ['note-2', 'amber', 'rust'], ['note-3', 'green', 'gold'], ['note-4', 'pink', 'green'],
  ['note-5', 'cream', 'rust'], ['note-6', 'crt', 'crt'], ['note-7', 'orange', 'teal']].forEach(a => note(...a));

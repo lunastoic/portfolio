@@ -58,85 +58,8 @@
     }
   ],
   "props": {
-    "mug": {
-      "file": "sprite-mug.png",
-      "boxPct": {
-        "left": 20.335,
-        "top": 58.236,
-        "width": 11.962,
-        "height": 27.418
-      },
-      "boxPx": [
-        340,
-        548,
-        540,
-        806
-      ],
-      "originPct": [
-        21.5,
-        91.86
-      ],
-      "spill": {
-        "boxPct": {
-          "left": 14.952,
-          "top": 57.386,
-          "width": 17.644,
-          "height": 29.118
-        },
-        "width": 295,
-        "height": 274,
-        "pivot": [
-          133,
-          245
-        ],
-        "rim": [
-          116,
-          125
-        ],
-        "landY": 242,
-        "mugLeft": 133
-      }
-    },
-    "steam": {
-      "file": "sprite-steam.png",
-      "boxPct": {
-        "left": 24.222,
-        "top": 59.086,
-        "width": 5.084,
-        "height": 11.902
-      },
-      "boxPx": [
-        405,
-        556,
-        490,
-        668
-      ],
-      "originPct": [
-        50,
-        100
-      ]
-    },
-    "note": {
-      "file": "sprite-note.png",
-      "boxPct": {
-        "left": 23.923,
-        "top": 38.47,
-        "width": 7.177,
-        "height": 14.24
-      },
-      "boxPx": [
-        400,
-        362,
-        520,
-        496
-      ],
-      "originPct": [
-        50,
-        5
-      ]
-    },
     "lamp-head": {
-      "file": "sprite-lamp-head.png",
+      "file": "/cinema/sprite-lamp-head.png",
       "boxPct": {
         "left": 12.38,
         "top": 26.886,
@@ -154,53 +77,130 @@
         32.34
       ]
     },
-    "plant-pot": {
-      "file": "sprite-plant-pot.png",
+    "mug": {
+      "file": "/props/mug-forest.png",
       "boxPct": {
-        "left": 73.086,
-        "top": 51.86,
-        "width": 18.301,
-        "height": 32.944
+        "left": 19.258,
+        "top": 59.83,
+        "width": 13.397,
+        "height": 27.205
       },
       "boxPx": [
-        1222,
-        488,
-        1528,
-        798
+        322,
+        563,
+        546,
+        819
       ],
       "originPct": [
-        50,
-        100
+        16.96,
+        85.94
+      ],
+      "spill": {
+        "boxPct": {
+          "left": 14.952,
+          "top": 57.386,
+          "width": 17.644,
+          "height": 29.118
+        },
+        "width": 295,
+        "height": 274,
+        "pivot": [
+          110,
+          243
+        ],
+        "rim": [
+          108,
+          79
+        ],
+        "landY": 240,
+        "mugLeft": 110
+      }
+    },
+    "steam": {
+      "file": "/props/mug-steam.png",
+      "boxPct": {
+        "left": 19.258,
+        "top": 59.83,
+        "width": 13.397,
+        "height": 27.205
+      },
+      "boxPx": [
+        322,
+        563,
+        546,
+        819
+      ],
+      "originPct": [
+        50.0,
+        100.0
+      ]
+    },
+    "note": {
+      "file": "/props/note-1.png",
+      "boxPct": {
+        "left": 23.206,
+        "top": 36.982,
+        "width": 9.33,
+        "height": 17.216
+      },
+      "boxPx": [
+        388,
+        348,
+        544,
+        510
+      ],
+      "originPct": [
+        46.15,
+        12.04
+      ]
+    },
+    "plant-pot": {
+      "file": "/props/plant-forest-terracotta-pot.png",
+      "boxPct": {
+        "left": 75.06,
+        "top": 50.372,
+        "width": 17.225,
+        "height": 35.707
+      },
+      "boxPx": [
+        1255,
+        474,
+        1543,
+        810
+      ],
+      "originPct": [
+        50.0,
+        95.24
       ]
     },
     "plant-leaves": {
-      "file": "sprite-plant-leaves.png",
+      "file": "/props/plant-forest-terracotta-leaves.png",
       "boxPct": {
-        "left": 73.086,
-        "top": 51.86,
-        "width": 18.301,
-        "height": 32.944
+        "left": 75.06,
+        "top": 50.372,
+        "width": 17.225,
+        "height": 35.707
       },
       "boxPx": [
-        1222,
-        488,
-        1528,
-        798
+        1255,
+        474,
+        1543,
+        810
       ],
       "originPct": [
-        50,
-        86
+        50.0,
+        61.9
       ]
     }
   },
   "antPct": {
     "from": [
-      78.35,
-      82.68
+      80.56,
+      84.38
     ],
     "to": [
       64.59,
-      85.02
+      85.55
     ]
   }
 }

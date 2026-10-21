@@ -71,15 +71,19 @@ const TIP_S = 0.3;
 const HOLD_S = 0.55;
 const POUR_DEG = 18;
 
-/** Back-to-front draw order of the cut-out props. */
+/** Back-to-front draw order of the props: the note is pinned to the wall behind the lamp head. */
 const SPRITE_ORDER: PropKey[] = [
-  "lamp-head",
   "note",
+  "lamp-head",
   "plant-pot",
   "plant-leaves",
   "steam",
   "mug",
 ];
+/** What the sticky note says; laid over the blank pixel note in the terminal face. */
+const NOTE_LINES = ["KEEP", "BUILDING", ":)"];
+/** Sprite files are given as site paths; bare names are the cinema-assets.py cut-outs. */
+const spriteSrc = (file: string) => (file.startsWith("/") ? file : `/cinema/${file}`);
 const SPRITE_LABEL: Record<PropKey, string> = {
   mug: "Tap the coffee mug",
   steam: "",
@@ -219,10 +223,12 @@ const prefersReducedMotion = () =>
  * v2 — the lo-fi pixel desk. You arrive standing back, the whole painted room
  * filling the window. Clicking the monitor sits you down: the view zooms in on
  * the monitor (the decks above it slide out of frame) and the live LUNA_OS
- * takes over the glass. Standing, the props are cut-outs on springs: tap the
- * mug and it tips and pours, the note swings, the lamp head bobs, the plant
- * gets nudged and its leaves sway while an ant walks out. Seated, ESC,
- * [ STAND UP ] or a click anywhere outside the screen stands you back up.
+ * takes over the glass. Standing, the props are sprites on springs (the mug,
+ * note and plant are the pixel drafts from scripts/pixel-props.js, the lamp
+ * head is cut from the painting): tap the mug and it tips and pours, the note
+ * swings, the lamp head bobs, the plant gets nudged and its leaves sway while
+ * an ant walks out. Seated, ESC, [ STAND UP ] or a click anywhere outside the
+ * screen stands you back up.
  */
 export default function CinemaScene() {
   const [vp, setVp] = useState({ w: 0, h: 0 });
@@ -547,7 +553,7 @@ export default function CinemaScene() {
           onError={() => setLoadedImage(art.image)}
         />
 
-        {/* Props cut out of the painting, back in their places, each on its own spring */}
+        {/* The props in their places on the painting, each on its own spring */}
         {SPRITE_ORDER.map((k) => {
           const p = art.props[k];
           if (!p) return null;
@@ -557,7 +563,7 @@ export default function CinemaScene() {
           };
           const img = (
             <Image
-              src={`/cinema/${p.file}`}
+              src={spriteSrc(p.file)}
               alt=""
               fill
               unoptimized
@@ -592,6 +598,13 @@ export default function CinemaScene() {
               aria-label={SPRITE_LABEL[k]}
             >
               {img}
+              {k === "note" && (
+                <span className="cinema__note-text" aria-hidden="true">
+                  {NOTE_LINES.map((line, i) => (
+                    <span key={i}>{line}</span>
+                  ))}
+                </span>
+              )}
             </button>
           );
         })}
