@@ -234,8 +234,8 @@
   opacity: 1;
   mix-blend-mode: screen;
   background:
-    radial-gradient(ellipse 34% 40% at 50% 38%, rgba(255, 72, 168, 0.34), rgba(255, 72, 168, 0.1) 60%, transparent 100%),
-    radial-gradient(ellipse 30% 7% at 50% 90%, rgba(255, 140, 120, 0.3), transparent 100%);
+    radial-gradient(ellipse 40% 44% at 50% 38%, rgba(255, 72, 168, 0.62), rgba(255, 72, 168, 0.24) 55%, transparent 100%),
+    radial-gradient(ellipse 36% 9% at 50% 90%, rgba(255, 130, 150, 0.55), transparent 100%);
 }
 
 .cinema__lamp-off img {

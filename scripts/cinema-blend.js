@@ -334,6 +334,18 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   // the shelf's spines stand upright: fill their text columns top to bottom
   fill(img, block(SHELF), [1580, 164, 1658, 294], 'col', 17);
 
+  // ---- the desk round the plant was painted as if a light shone on it; nothing there does (the room's
+  //      lights are the desk lamp, the monitor and the lava lamp), so it falls back to the desk's ambient ----
+  {
+    const ss = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
+    for (let y = 740; y <= 895; y++) for (let x = 1040; x <= 1600; x++) {
+      if (x >= 1474 && y < 776) continue; // the tower's own foot
+      const w = ss((x - 1060) / 150) * ss((1600 - x) / 90) * ss((y - 740) / 8) * ss((895 - y) / 10);
+      const f = 1 - 0.46 * w, i = (y * W + x) * 3;
+      for (let c = 0; c < 3; c++) img[i + c] = Math.round(img[i + c] * f);
+    }
+  }
+
   // 256 colours, saved lossless, like the rest of the painting's pipeline (about 410 KB)
   const quant = await sharp(img, { raw: { width: W, height: H, channels: 3 } }).png({ palette: true, colours: 256, dither: 0 }).toBuffer();
   await sharp(quant).webp({ lossless: true, effort: 6 }).toFile(path.join(CIN, 'desk.webp.tmp'));
