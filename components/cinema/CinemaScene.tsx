@@ -59,18 +59,21 @@ interface Manifest {
 
 const art = manifestJson as unknown as Manifest;
 
-const SIT_MS = 1900;
-const STAND_MS = 1500;
+const SIT_MS = 1700;
+const STAND_MS = 1400;
 /** Seated, the painted screen stands this tall relative to the viewport. */
 const SEAT_FRACTION: Record<LayoutKey, number> = { desktop: 0.6, mobile: 0.55 };
 /** Seated, the crop starts at least this far (art px) below the decks, so they stay out of view. */
 const DECK_CLEARANCE = 6;
 const HINT_DELAY_MS = 2200;
 
-/** The mug's tap: a knock that rocks it onto its heel, sloshes a little over the rim, and lets it settle. */
-const JOLT_DEG = 13;
-const JOLT_S = 0.13;
-const SLOSH_DROPS = 34;
+/** The mug's tap: it slides back across the desk, upright, slopping a little coffee that stays
+ *  on the desk where it stood. It stays pushed back until the page is reloaded. */
+const PUSH_S = 0.7;
+const PUSH_BACK = 30; // art px up the desk (away from you)
+const PUSH_SHRINK = 0.09; // further away, a touch smaller
+const LEAK_DROPS = 10;
+const LEAK_POOL = [52, 9]; // art px: the puddle's half-width and half-depth where it stood
 
 /** The sticky note: peel off the wall, drift down like paper, land flat on the desk, fade. */
 const PEEL_S = 0.24;
@@ -159,22 +162,22 @@ interface Stage extends Rect {
   scale: number;
 }
 
-/** The camera's extra move on top of the standing→seated framing: a lift, a lean and the zoom it needs to cover. */
+/** The camera's extra move on top of the standing→seated framing: a lift, and the zoom it needs to cover. */
 interface Cam {
   dy: number;
-  rot: number;
   zoom: number;
 }
-const CAM_REST: Cam = { dy: 0, rot: 0, zoom: 1 };
+const CAM_REST: Cam = { dy: 0, zoom: 1 };
 
 /** Everything that moves when a prop is tapped. Lives outside React state: the loop writes styles directly. */
 interface World {
   mug: {
-    phase: "idle" | "jolt" | "return";
+    phase: "home" | "pushing" | "back";
     t: number;
-    angle: number;
-    spring: Spring;
-    slide: Spring;
+    /** 0 at home, 1 pushed back. */
+    k: number;
+    /** A little shiver when it's knocked again where it stands. */
+    nudge: Spring;
   };
   note: {
     phase: "idle" | "peel" | "fall" | "land";
@@ -188,23 +191,17 @@ interface World {
     opacity: number;
   };
   pens: Spring[];
-  potX: Spring;
-  potRot: Spring;
   leafRot: Spring;
-  leafX: Spring;
   spill: Spill | null;
   last: number;
   raf: number;
 }
 
 const createWorld = (): World => ({
-  mug: { phase: "idle", t: 0, angle: 0, spring: new Spring(90, 6.5), slide: new Spring(210, 14) },
+  mug: { phase: "home", t: 0, k: 0, nudge: new Spring(420, 9) },
   note: { phase: "idle", t: 0, x: 0, y: 0, vy: 0, rot: 0, tilt: 0, side: 1, opacity: 1 },
   pens: [new Spring(170, 4.2), new Spring(150, 3.6), new Spring(190, 4.6)],
-  potX: new Spring(260, 11),
-  potRot: new Spring(300, 12),
   leafRot: new Spring(55, 2.6),
-  leafX: new Spring(120, 6),
   spill: null,
   last: 0,
   raf: 0,
@@ -263,13 +260,28 @@ function seatedStage(layout: LayoutKey, vw: number, vh: number): Stage {
 }
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const lerpStage = (a: Stage, b: Stage, t: number): Stage => ({
-  x: lerp(a.x, b.x, t),
-  y: lerp(a.y, b.y, t),
-  w: lerp(a.w, b.w, t),
-  h: lerp(a.h, b.h, t),
-  scale: lerp(a.scale, b.scale, t),
-});
+
+/**
+ * The view between two framings as a camera move rather than a rectangle tween: the zoom
+ * grows geometrically (each moment looks like the same speed of approach) and the point at
+ * the middle of the window travels so it moves at an even pace across the screen.
+ */
+function dollyStage(a: Stage, b: Stage, t: number, vw: number, vh: number): Stage {
+  if (t <= 0) return a;
+  if (t >= 1) return b;
+  const scale = a.scale * Math.pow(b.scale / a.scale, t);
+  const ca = [(vw / 2 - a.x) / a.scale, (vh / 2 - a.y) / a.scale];
+  const cb = [(vw / 2 - b.x) / b.scale, (vh / 2 - b.y) / b.scale];
+  const span = 1 / a.scale - 1 / b.scale;
+  const k = Math.abs(span) > 1e-9 ? (1 / a.scale - 1 / scale) / span : t;
+  return {
+    x: vw / 2 - lerp(ca[0], cb[0], k) * scale,
+    y: vh / 2 - lerp(ca[1], cb[1], k) * scale,
+    w: art.size.width * scale,
+    h: art.size.height * scale,
+    scale,
+  };
+}
 
 /** Where the art's screen is on the page for a given stage rect. */
 function screenRect(s: Stage): Rect {
@@ -286,30 +298,15 @@ const easeInOut = (t: number) =>
   t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
 /**
- * Sitting down, as a body does it, for raw time u (0→1). Two steps up to the desk
- * (the view bobs and rolls with each), standing over it the monitor sits low in view,
- * then you lower into the chair: the screen rises to eye level, the view leans a
- * touch and the cushion gives a little bounce. Standing up runs the same path
- * backwards, without the bounce.
+ * Sitting down for raw time u (0→1): one unbroken move in toward the screen that eases in and
+ * eases out. As you lower into the chair the monitor drifts up from just below eye level and
+ * settles there. Standing up is the same move run backwards.
  */
 function sitPath(u: number, rising: boolean, vh: number): { p: number; cam: Cam } {
   const v = rising ? 1 - u : u;
-  const p = easeInOut(clamp01((v - 0.06) / 0.8));
-  const walk = clamp01(v / 0.48);
-  const stepping = v < 0.48 ? 1 - walk * 0.35 : 0;
-  const bob = Math.abs(Math.sin(walk * 2 * Math.PI)) * 0.011 * vh * stepping;
-  const sway = Math.sin(walk * 2 * Math.PI) * 0.35 * stepping;
-  // over the desk, then down into the chair
-  const over = Math.sin(Math.PI * clamp01(v / 0.66)) * 0.07 * vh;
-  const s = clamp01((v - 0.66) / 0.34);
-  const cushion = rising ? 0 : -Math.sin(Math.PI * s) * Math.exp(-2.2 * s) * 0.026 * vh;
-  const lean = -Math.sin(Math.PI * clamp01((v - 0.42) / 0.5)) * 0.8;
-  const dy = bob + over + cushion;
-  const rot = sway + lean;
-  return {
-    p,
-    cam: { dy, rot, zoom: 1 + (Math.abs(dy) * 2.1) / vh + Math.abs(rot) * 0.014 },
-  };
+  const p = easeInOut(v);
+  const dy = Math.sin(Math.PI * p) ** 2 * 0.035 * vh;
+  return { p, cam: { dy, zoom: 1 + (dy * 2.1) / vh } };
 }
 
 const pctBox = (r: PctBox): CSSProperties => ({
@@ -318,10 +315,6 @@ const pctBox = (r: PctBox): CSSProperties => ({
   width: `${r.width}%`,
   height: `${r.height}%`,
 });
-
-/** Only the sit-down camera move honours this: the props move because someone clicked them. */
-const prefersReducedMotion = () =>
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function NoteFace({ index }: { index: number }) {
   const n = art.notes.length;
@@ -341,7 +334,7 @@ function NoteFace({ index }: { index: number }) {
  * v2 — the lo-fi pixel desk. You arrive standing back, the whole painted room
  * filling the window. Clicking the monitor sits you down: two steps up to the desk,
  * then down into the chair, and the LUNA_OS on the glass wakes up to your keys. Standing, the
- * desk is alive: knock the mug and it rocks and sloshes a little coffee, peel the
+ * desk is alive: push the mug and it slides back, upright, leaving a little spilt coffee behind, peel the
  * sticky note and it drifts down to the desk with the next one waiting behind it,
  * tap the pencil cup and the pens rattle, click the lamp to switch it off and on,
  * nudge the plant and an ant walks out. Seated, ESC, [ STAND UP ] or a click
@@ -416,7 +409,7 @@ export default function CinemaScene() {
       setProgress(p);
       setCam(c);
     };
-    if (prefersReducedMotion() || progressRef.current === to) {
+    if (progressRef.current === to) {
       set(to, CAM_REST);
       onDone();
       return;
@@ -484,32 +477,20 @@ export default function CinemaScene() {
       w.last = now;
       const s = scaleRef.current;
 
-      // the mug: knocked onto its heel, then a spring rocks it back down and it slides to rest
+      // the mug: slides back across the desk, upright, and stays there
       const m = w.mug;
-      if (m.phase === "jolt") {
+      if (m.phase === "pushing") {
         m.t += dt;
-        m.angle = -JOLT_DEG * easeOutCubic(m.t / JOLT_S);
-        if (m.t >= JOLT_S) {
-          m.phase = "return";
-          m.spring.x = m.angle;
-          m.spring.v = 0;
-          w.spill?.slosh(m.angle, SLOSH_DROPS);
+        // a shove: quick off the mark, dragging to a stop on the wood
+        m.k = easeOutCubic(m.t / PUSH_S);
+        if (m.t >= PUSH_S) {
+          m.k = 1;
+          m.phase = "back";
         }
       }
-      if (m.phase === "return") {
-        m.spring.step(dt);
-        // a mug rocks on its rim and lands on its base: it can't tip the other way past flat
-        m.angle = Math.min(0.6, m.spring.x);
-        if (m.spring.x > 0.6) m.spring.v *= -0.35;
-        if (m.spring.idle) {
-          m.spring.settle();
-          m.angle = 0;
-          m.phase = "idle";
-        }
-      }
-      m.slide.step(dt);
+      m.nudge.step(dt);
       if (w.spill) {
-        w.spill.step(dt, m.angle);
+        w.spill.step(dt, 0);
         const ctx = canvasRef.current?.getContext("2d");
         if (ctx) w.spill.draw(ctx);
       }
@@ -561,37 +542,27 @@ export default function CinemaScene() {
         }
       }
 
-      // the leaves follow the pot with a lag, on top of their own swing
-      w.leafRot.target = -w.potX.x * 1.1;
-      w.leafX.target = w.potX.x;
-      const springs = [...w.pens, w.potX, w.potRot, w.leafRot, w.leafX];
+      const springs = [...w.pens, w.leafRot, m.nudge];
       for (const sp of springs) sp.step(dt);
 
       const el = elsRef.current;
       const set = (node: HTMLElement | null | undefined, transform: string) => {
         if (node) node.style.transform = transform;
       };
-      set(el.mug, `translate(${(m.slide.x * s).toFixed(1)}px, 0) rotate(${m.angle.toFixed(2)}deg)`);
-      set(el.steam, `translate(${(m.slide.x * s).toFixed(1)}px, 0)`);
-      if (el.steam) el.steam.style.opacity = String(clamp01(1 + m.angle / 8));
+      const mugMove = `translate(${(m.nudge.x * s).toFixed(2)}px, ${(-PUSH_BACK * m.k * s).toFixed(1)}px) scale(${(1 - PUSH_SHRINK * m.k).toFixed(4)})`;
+      set(el.mug, mugMove);
+      set(el.steam, mugMove);
       w.pens.forEach((sp, i) => set(penRefs.current[i], `rotate(${sp.x.toFixed(2)}deg)`));
-      set(
-        el["plant-pot"],
-        `translate(${(w.potX.x * s).toFixed(1)}px, 0) rotate(${w.potRot.x.toFixed(2)}deg)`,
-      );
-      set(
-        el["plant-leaves"],
-        `translate(${(w.leafX.x * s).toFixed(1)}px, 0) rotate(${w.leafRot.x.toFixed(2)}deg)`,
-      );
+      // the pot stays put; the leaves sway on their stems
+      set(el["plant-leaves"], `rotate(${w.leafRot.x.toFixed(2)}deg)`);
 
       const idle =
-        m.phase === "idle" &&
-        m.slide.idle &&
+        m.phase !== "pushing" &&
         n.phase === "idle" &&
-        !(w.spill && w.spill.active) &&
+        !(w.spill && w.spill.moving) &&
         springs.every((sp) => sp.idle);
       if (idle) {
-        for (const sp of [...springs, m.slide]) sp.settle();
+        for (const sp of springs) sp.settle();
         w.raf = 0;
         w.last = 0;
       } else {
@@ -615,7 +586,12 @@ export default function CinemaScene() {
       const w = worldOf(worldRef);
       switch (key) {
         case "mug": {
-          if (w.mug.phase !== "idle") break;
+          if (w.mug.phase === "pushing") break;
+          if (w.mug.phase === "back") {
+            // already pushed back: it just shivers where it stands
+            w.mug.nudge.kick(w.mug.nudge.v >= 0 ? -60 : 60);
+            break;
+          }
           const geom = art.props.mug?.spill;
           if (!w.spill && geom) {
             w.spill = new Spill(
@@ -628,20 +604,22 @@ export default function CinemaScene() {
                 mugLeft: geom.mugLeft,
               },
               art.colors.coffee,
+              true,
             );
           }
-          w.mug.phase = "jolt";
+          w.mug.phase = "pushing";
           w.mug.t = 0;
-          // the knock shoves it a few pixels along the desk and it stays there; the next one shoves it back
-          w.mug.slide.target = w.mug.slide.target ? 0 : 3;
-          w.mug.slide.kick(w.mug.slide.target ? 90 : -90);
+          // the shove slops a little coffee over the rim and leaves a puddle where the base stood
+          // (the body is 120 art px across from mugLeft); it stays on the desk
+          if (w.spill && geom) {
+            w.spill.slosh(0, LEAK_DROPS);
+            w.spill.leak(geom.mugLeft + 60, LEAK_POOL[0], LEAK_POOL[1]);
+          }
           break;
         }
         case "plant-pot":
         case "plant-leaves":
-          w.potX.kick(150);
-          w.potRot.kick(60);
-          w.leafRot.kick(-85);
+          w.leafRot.kick(Math.random() < 0.5 ? -85 : 85);
           setAntKey((k) => k + 1);
           break;
         default:
@@ -705,10 +683,12 @@ export default function CinemaScene() {
   const layout = pickLayout(vp.w, vp.h);
   const ready = vp.w > 0;
   const stage = ready
-    ? lerpStage(
+    ? dollyStage(
         standingStage(vp.w, vp.h),
         seatedStage(layout, vp.w, vp.h),
         progress,
+        vp.w,
+        vp.h,
       )
     : null;
   const stageScale = stage?.scale ?? 1;
@@ -741,7 +721,7 @@ export default function CinemaScene() {
     cam === CAM_REST
       ? undefined
       : {
-          transform: `translateY(${cam.dy.toFixed(1)}px) rotate(${cam.rot.toFixed(3)}deg) scale(${cam.zoom.toFixed(4)})`,
+          transform: `translateY(${cam.dy.toFixed(1)}px) scale(${cam.zoom.toFixed(4)})`,
         };
   const standingTab = pose === "standing" ? 0 : -1;
 
@@ -849,10 +829,13 @@ export default function CinemaScene() {
           {SPRITE_ORDER.map((k) => {
             const p = art.props[k];
             if (!p) return null;
-            const style: CSSProperties = {
-              ...pctBox(p.boxPct),
-              transformOrigin: `${p.originPct[0]}% ${p.originPct[1]}%`,
-            };
+            // the mug and its steam shrink together toward the middle of the mug's base as it slides back
+            const mugBase = art.props.mug?.originPct[1];
+            const origin =
+              (k === "mug" || k === "steam") && mugBase != null
+                ? `50% ${mugBase}%`
+                : `${p.originPct[0]}% ${p.originPct[1]}%`;
+            const style: CSSProperties = { ...pctBox(p.boxPct), transformOrigin: origin };
             const img = (
               <Image
                 src={spriteSrc(p.file)}

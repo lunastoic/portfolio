@@ -141,12 +141,13 @@
   container-type: inline-size;
 }
 
+/* centred on the paper itself: it spans 2–45 of the sprite's 52 px across and 5–48 of 54 down */
 .cinema__note-text {
   position: absolute;
-  left: 9.6%;
-  top: 16.7%;
-  width: 80.8%;
-  height: 64.8%;
+  left: 3.8%;
+  top: 9.3%;
+  width: 82.7%;
+  height: 79.6%;
   display: flex;
   flex-direction: column;
   align-items: center;

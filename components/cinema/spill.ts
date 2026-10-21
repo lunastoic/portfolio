@@ -40,6 +40,7 @@ const MAX_DEPTH = 6;
 const DIFFUSE = 0.12;
 const SOAK_DELAY = 3; // s after the last drop lands
 const SOAK_RATE = 0.75; // 1/s
+const SPREAD_S = 1.5; // s the puddle keeps spreading after the last drop lands
 
 export class Spill {
   active = false;
@@ -49,12 +50,19 @@ export class Spill {
   private quietFor = 0;
   private soaking = false;
   private rng = () => Math.random();
+  /** The puddle's right-hand wall: the mug's left side while it stands there, none once it's moved. */
+  private wallX: number;
+  /** The pool left where the mug's base stood once it's pushed away: seen from above, growing to full size. */
+  private pool: { cx: number; rx: number; ry: number; k: number; wobble: number[] } | null = null;
 
   constructor(
     private g: SpillGeometry,
-    private colors: SpillColors
+    private colors: SpillColors,
+    /** Keep the puddle on the desk instead of letting it soak away. */
+    private persist = false
   ) {
     this.depth = new Float32Array(g.width);
+    this.wallX = g.mugLeft;
   }
 
   reset() {
@@ -64,6 +72,11 @@ export class Spill {
     this.quietFor = 0;
     this.soaking = false;
     this.active = false;
+  }
+
+  /** Anything still falling, pouring, spreading or soaking: the loop keeps drawing while this holds. */
+  get moving() {
+    return this.active && (this.pouring || this.drops.length > 0 || this.soaking || this.quietFor < SPREAD_S || (this.pool !== null && this.pool.k < 1));
   }
 
   /** Where the rim corner is for a given mug tilt (CSS rotate, degrees). */
@@ -82,6 +95,20 @@ export class Spill {
       this.soaking = false;
       this.quietFor = 0;
     }
+  }
+
+  /**
+   * The mug has been pushed off this spot: coffee that ran down its side is left in a puddle
+   * where its base stood (centred on cx, about `spread` px either side), free to spread both ways.
+   */
+  leak(cx: number, rx: number, ry: number) {
+    this.wallX = this.g.width;
+    // an uneven edge: a few lobes round the rim, fixed for this puddle
+    const wobble = Array.from({ length: 5 }, () => this.rng() * Math.PI * 2);
+    this.pool = { cx, rx, ry, k: 0, wobble };
+    this.active = true;
+    this.soaking = false;
+    this.quietFor = 0;
   }
 
   /** A jolt: a few drops thrown up and over the rim at once, no pour behind them. */
@@ -103,7 +130,10 @@ export class Spill {
 
   step(dt: number, angleDeg: number) {
     if (!this.active) return;
-    const { landY, mugLeft, width } = this.g;
+    const { landY, width } = this.g;
+    const mugLeft = this.wallX;
+    // the pool spreads out fast at first, then creeps to its edge
+    if (this.pool && this.pool.k < 1) this.pool.k = Math.min(1, this.pool.k + dt * 1.6 * (1.15 - this.pool.k));
 
     if (this.pouring) {
       const [sx, sy] = this.rimAt(angleDeg);
@@ -170,7 +200,7 @@ export class Spill {
     // once the pouring is over and the last drop has landed, the coffee soaks into the desk
     if (!this.pouring && this.drops.length === 0) {
       this.quietFor += dt;
-      if (this.quietFor > SOAK_DELAY) this.soaking = true;
+      if (this.quietFor > SOAK_DELAY && !this.persist) this.soaking = true;
     }
     if (this.soaking) {
       const f = Math.exp(-SOAK_RATE * dt);
@@ -189,6 +219,27 @@ export class Spill {
     ctx.clearRect(0, 0, width, height);
     if (!this.active) return;
     const { dark, mid, hi } = this.colors;
+
+    // the pool where the mug stood: a flat, slightly lobed ellipse on the desk, dark at its rim,
+    // a lighter sheen across its far side
+    if (this.pool) {
+      const { cx, rx, ry, k, wobble } = this.pool;
+      const ease = 1 - Math.pow(1 - k, 3), RX = rx * ease, RY = ry * ease, cy = landY + 1;
+      if (RX >= 1) {
+        for (let y = Math.floor(cy - RY - 2); y <= Math.ceil(cy + RY + 2); y++) {
+          for (let x = Math.floor(cx - RX - 3); x <= Math.ceil(cx + RX + 3); x++) {
+            const dx = (x + 0.5 - cx) / RX, dy = (y + 0.5 - cy) / Math.max(RY, 0.8);
+            const a = Math.atan2(dy, dx);
+            const edge = 1 + 0.12 * Math.sin(2 * a + wobble[0]) + 0.08 * Math.sin(3 * a + wobble[1]) + 0.05 * Math.sin(5 * a + wobble[2]);
+            const r = Math.hypot(dx, dy) / edge;
+            if (r > 1) continue;
+            ctx.fillStyle = r > 0.8 ? dark : mid;
+            if (r < 0.62 && dy < -0.25 && dx > -0.55 && dx < 0.25 && (x + y) % 2 === 0) ctx.fillStyle = hi;
+            ctx.fillRect(x, y, 1, 1);
+          }
+        }
+      }
+    }
 
     // puddle: a shallow bulge above the desk line and a perspective spread below it,
     // dark body with a lit rim on top

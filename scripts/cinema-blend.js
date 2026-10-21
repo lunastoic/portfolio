@@ -173,6 +173,70 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   // decks: each lettering box is filled down its columns from the face just above and below it
   const block = (boxes) => { const m = new Uint8Array(W * H); for (const [x0, y0, x1, y1] of boxes) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) m[y * W + x] = 1; return m; };
   for (const [x0, y0, x1, y1] of [[596, 82, 998, 130], [634, 217, 994, 253]]) fill(img, block([[x0, y0, x1, y1]]), [x0, y0 - 4, x1, y1 + 4], 'col', 19);
+  // the decks' painted rims wander (ragged edges, a gap at the nose, drips by the brackets), so each
+  // deck is redrawn from its outline's box as a clean stadium: dark outline, a maple edge lit along
+  // the top and shaded under, the flat face, a soft shadow on the wall; the brackets go back on top
+  {
+    const DECKS = [{ box: [492, 25, 1114, 175] }, { box: [494, 189, 1114, 341] }];
+    const BRACKETS = [641, 945].flatMap(x => [[19, 50], [150, 183], [297, 331]].map(([y0, y1]) => [x, y0, x + 22, y1]));
+    const src = Buffer.from(img);
+    for (const d of DECKS) {
+      const [x0, y0, x1, y1] = d.box, cy = (y0 + y1) / 2, R = (y1 - y0) / 2;
+      d.dist = (x, y) => { const cx = Math.min(Math.max(x + 0.5, x0 + R), x1 + 1 - R); return Math.hypot(x + 0.5 - cx, y + 0.5 - cy) - R; };
+      d.normal = (x, y) => { const cx = Math.min(Math.max(x + 0.5, x0 + R), x1 + 1 - R), dx = x + 0.5 - cx, dy = y + 0.5 - cy, l = Math.hypot(dx, dy) || 1; return [dx / l, dy / l]; };
+      // the face colour, read well inside the deck
+      const count = new Map();
+      for (let y = cy - 10; y <= cy + 10; y++) for (let x = x0 + 150; x <= x1 - 150; x += 3) {
+        const i = (y * W + x) * 3, k = (src[i] << 16) | (src[i + 1] << 8) | src[i + 2]; count.set(k, (count.get(k) || 0) + 1);
+      }
+      const k = [...count].sort((a, b) => b[1] - a[1])[0][0];
+      d.face = [k >> 16, (k >> 8) & 255, k & 255];
+    }
+    const RX0 = 470, RY0 = 10, RX1 = 1140, RY1 = 350;
+    const inBracket = (x, y) => BRACKETS.some(([a, b, c, e]) => x >= a && x <= c && y >= b && y <= e);
+    // 1. the wall behind each deck and wherever its old rim and drips reached, rebuilt across from the
+    //    wall either side (the decks are drawn over it after, so none of the old rim leaks into the fill)
+    const wallMask = new Uint8Array(W * H);
+    for (let y = RY0; y <= RY1; y++) for (let x = RX0; x <= RX1; x++) if (DECKS.some(d => d.dist(x, y) < 12)) wallMask[y * W + x] = 1;
+    fill(img, wallMask, [RX0 - 12, RY0, RX1 + 12, RY1], 'row', 23);
+    // 2. the shadow each deck throws down and right onto the wall
+    for (let y = RY0; y <= RY1; y++) for (let x = RX0; x <= RX1; x++) {
+      if (DECKS.some(d => d.dist(x, y) <= 0)) continue;
+      const s = Math.min(...DECKS.map(d => d.dist(x - 3, y - 5)));
+      if (s >= 4) continue;
+      const k = s < 0 ? 0.6 : 0.6 + 0.4 * (s / 4), i = (y * W + x) * 3;
+      for (let c = 0; c < 3; c++) img[i + c] = Math.round(img[i + c] * k);
+    }
+    // 3. the decks
+    const RIM_LIT = [244, 160, 78], RIM = [214, 108, 36], RIM_SHADE = [150, 66, 20], LINE = [22, 10, 5];
+    const mix = (a, b, t) => a.map((v, c) => v + (b[c] - v) * t);
+    for (const d of DECKS) {
+      const [x0, y0, x1, y1] = d.box;
+      for (let y = y0 - 1; y <= y1 + 1; y++) for (let x = x0 - 1; x <= x1 + 1; x++) {
+        const t = -d.dist(x, y); if (t < 0) continue;
+        let col;
+        if (t < 2.6) col = LINE;
+        else if (t < 9.5) {
+          // the edge faces outward: lit where it faces up-left, shaded where it faces down-right
+          const [nx, ny] = d.normal(x, y), lit = -(nx * 0.35 + ny * 0.94);
+          col = lit > 0 ? mix(RIM, RIM_LIT, Math.min(1, lit * 1.3)) : mix(RIM, RIM_SHADE, Math.min(1, -lit * 1.2));
+          if (t < 3.6) col = mix(col, RIM_LIT, lit > 0.3 ? 0.35 : 0);
+        } else if (t < 10.6) col = mix(d.face, LINE, 0.55);
+        else col = mix(d.face, [0, 0, 0], 0.1 * Math.max(0, 1 - (t - 10.6) / 14));
+        const i = (y * W + x) * 3;
+        for (let c = 0; c < 3; c++) img[i + c] = Math.round(col[c]);
+      }
+    }
+    // 4. the brackets, back on top: each one's outline and what it encloses
+    for (const [a, b, c, e] of BRACKETS) {
+      const inner = enclosed(src, [a - 2, b - 2, c + 2, e + 2], 30), keep = dilate(inner, 2);
+      for (let y = b - 2; y <= e + 2; y++) for (let x = a - 2; x <= c + 2; x++) {
+        const i = y * W + x; if (!keep[i] || !inBracket(x, y)) continue;
+        for (let k = 0; k < 3; k++) img[i * 3 + k] = src[i * 3 + k];
+      }
+    }
+  }
+
   // poster, book spines, the shelf's spines
   const POSTER = [[1107, 375, 1210, 532]], BOOKS = [[60, 618, 128, 652], [62, 660, 140, 692], [64, 698, 216, 740], [64, 736, 236, 780]];
   const SHELF = [[1586, 168, 1606, 290], [1628, 190, 1652, 286]];
