@@ -7,8 +7,8 @@ const ROWS: { label: string; value: string; href: string | null }[] = [
   { label: "EMAIL", value: "Luna_Christopher98@hotmail.com", href: "mailto:Luna_Christopher98@hotmail.com" },
   { label: "PHONE", value: "(714) 800-3264", href: "tel:+17148003264" },
   { label: "GITHUB", value: "github.com/lunastoic", href: "https://github.com/lunastoic" },
-  { label: "X", value: "", href: null },
-  { label: "LINKEDIN", value: "", href: null },
+  { label: "X", value: "x.com/lunastoic", href: "https://x.com/lunastoic" },
+  { label: "LINKEDIN", value: "linkedin.com/in/christopher-luna-a96324273", href: "https://www.linkedin.com/in/christopher-luna-a96324273" },
 ];
 
 /**
