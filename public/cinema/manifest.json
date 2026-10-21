@@ -58,27 +58,8 @@
     }
   ],
   "props": {
-    "lamp-head": {
-      "file": "/cinema/sprite-lamp-head.png",
-      "boxPct": {
-        "left": 12.38,
-        "top": 26.886,
-        "width": 11.663,
-        "height": 21.36
-      },
-      "boxPx": [
-        207,
-        253,
-        402,
-        454
-      ],
-      "originPct": [
-        15.9,
-        32.34
-      ]
-    },
     "mug": {
-      "file": "/props/mug-forest.png",
+      "file": "/cinema/prop-mug.png",
       "boxPct": {
         "left": 19.258,
         "top": 59.83,
@@ -131,12 +112,12 @@
         819
       ],
       "originPct": [
-        50.0,
-        100.0
+        50,
+        100
       ]
     },
     "note": {
-      "file": "/props/note-1.png",
+      "file": "/cinema/prop-sticky-1.png",
       "boxPct": {
         "left": 23.206,
         "top": 36.982,
@@ -155,7 +136,7 @@
       ]
     },
     "plant-pot": {
-      "file": "/props/plant-forest-terracotta-pot.png",
+      "file": "/cinema/prop-plant-pot.png",
       "boxPct": {
         "left": 75.06,
         "top": 50.372,
@@ -169,12 +150,12 @@
         810
       ],
       "originPct": [
-        50.0,
+        50,
         95.24
       ]
     },
     "plant-leaves": {
-      "file": "/props/plant-forest-terracotta-leaves.png",
+      "file": "/cinema/prop-plant-leaves.png",
       "boxPct": {
         "left": 75.06,
         "top": 50.372,
@@ -188,7 +169,7 @@
         810
       ],
       "originPct": [
-        50.0,
+        50,
         61.9
       ]
     }
@@ -202,5 +183,65 @@
       64.59,
       85.55
     ]
+  },
+  "notes": [
+    "/cinema/prop-sticky-1.png",
+    "/cinema/prop-sticky-2.png",
+    "/cinema/prop-sticky-3.png",
+    "/cinema/prop-sticky-4.png",
+    "/cinema/prop-sticky-5.png",
+    "/cinema/prop-sticky-6.png",
+    "/cinema/prop-sticky-7.png"
+  ],
+  "lamp": {
+    "off": {
+      "file": "/cinema/lamp-off.png",
+      "boxPct": {
+        "left": 12.201,
+        "top": 26.567,
+        "width": 12.261,
+        "height": 22.635
+      }
+    },
+    "shade": "/cinema/lamp-shade.png",
+    "hitPct": {
+      "left": 12.321,
+      "top": 26.78,
+      "width": 10.766,
+      "height": 21.679
+    }
+  },
+  "pens": {
+    "files": [
+      "/cinema/sprite-pen-1.png",
+      "/cinema/sprite-pen-2.png",
+      "/cinema/sprite-pen-3.png"
+    ],
+    "boxPct": {
+      "left": 67.225,
+      "top": 63.018,
+      "width": 5.323,
+      "height": 7.226
+    },
+    "originPct": [
+      [
+        20.22,
+        100
+      ],
+      [
+        47.19,
+        100
+      ],
+      [
+        76.4,
+        100
+      ]
+    ],
+    "hitPct": {
+      "left": 66.148,
+      "top": 62.699,
+      "width": 6.699,
+      "height": 19.129
+    }
   }
 }

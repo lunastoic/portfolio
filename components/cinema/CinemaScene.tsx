@@ -17,8 +17,7 @@ import "./cinema.css";
 
 type Pose = "standing" | "sitting" | "seated" | "rising";
 type LayoutKey = "desktop" | "mobile";
-type PropKey =
-  "mug" | "steam" | "note" | "lamp-head" | "plant-pot" | "plant-leaves";
+type PropKey = "mug" | "steam" | "note" | "plant-pot" | "plant-leaves";
 
 interface PctBox {
   left: number;
@@ -30,6 +29,7 @@ interface PctBox {
 interface Prop {
   file: string;
   boxPct: PctBox;
+  boxPx: number[];
   originPct: number[];
   spill?: {
     boxPct: PctBox;
@@ -50,13 +50,17 @@ interface Manifest {
   monitorPct: PctBox;
   decksPct: PctBox[];
   props: Partial<Record<PropKey, Prop>>;
+  notes: string[];
+  lamp: { off: { file: string; boxPct: PctBox }; shade: string; hitPct: PctBox };
+  pens: { files: string[]; boxPct: PctBox; originPct: number[][]; hitPct: PctBox };
   antPct: { from: number[]; to: number[] };
   colors: { coffee: { dark: string; mid: string; hi: string } };
 }
 
 const art = manifestJson as unknown as Manifest;
 
-const SIT_MS = 1000;
+const SIT_MS = 1900;
+const STAND_MS = 1500;
 /** Seated, the painted screen stands this tall relative to the viewport. */
 const SEAT_FRACTION: Record<LayoutKey, number> = { desktop: 0.6, mobile: 0.55 };
 /** Seated, the crop starts at least this far (art px) below the decks, so they stay out of view. */
@@ -65,30 +69,40 @@ const DECK_CLEARANCE = 6;
 const SCREEN_ON_AT = 0.9;
 const HINT_DELAY_MS = 2200;
 
-/** The mug's tap: tip over, hold while it pours, then spring back. */
-const TIP_DEG = 36;
-const TIP_S = 0.3;
-const HOLD_S = 0.55;
-const POUR_DEG = 18;
+/** The mug's tap: a knock that rocks it onto its heel, sloshes a little over the rim, and lets it settle. */
+const JOLT_DEG = 13;
+const JOLT_S = 0.13;
+const SLOSH_DROPS = 34;
 
-/** Back-to-front draw order of the props: the note is pinned to the wall behind the lamp head. */
-const SPRITE_ORDER: PropKey[] = [
-  "note",
-  "lamp-head",
-  "plant-pot",
-  "plant-leaves",
-  "steam",
-  "mug",
+/** The sticky note: peel off the wall, drift down like paper, land flat on the desk, fade. */
+const PEEL_S = 0.24;
+const NOTE_GRAVITY = 900; // art px / s²
+const NOTE_DRAG = 5.2; // 1/s, so it falls at about 170 art px/s
+const NOTE_SWAY = 34; // art px
+const NOTE_SWAY_W = 5.2; // rad/s
+const NOTE_LAND_Y = 412; // art px below the wall spot: the desk behind the mug
+const NOTE_REST_S = 1.4;
+const NOTE_FADE_S = 0.6;
+
+/** What each sticky note says, in the order they come off the wall; laid over the blank pixel notes. */
+const NOTE_TEXTS = [
+  ["KEEP", "BUILDING", ":)"],
+  ["SHIP", "IT"],
+  ["DRINK", "WATER"],
+  ["COMMIT", "OFTEN"],
+  ["TODO:", "SLEEP"],
+  ["HELLO", "WORLD"],
+  ["ONE", "MORE", "BUG"],
 ];
-/** What the sticky note says; laid over the blank pixel note in the terminal face. */
-const NOTE_LINES = ["KEEP", "BUILDING", ":)"];
 /** Sprite files are given as site paths; bare names are the cinema-assets.py cut-outs. */
 const spriteSrc = (file: string) => (file.startsWith("/") ? file : `/cinema/${file}`);
+
+/** Back-to-front draw order of the props. */
+const SPRITE_ORDER: PropKey[] = ["plant-pot", "plant-leaves", "steam", "mug"];
 const SPRITE_LABEL: Record<PropKey, string> = {
-  mug: "Tap the coffee mug",
+  mug: "Knock the coffee mug",
   steam: "",
-  note: "Flick the sticky note",
-  "lamp-head": "Tap the desk lamp",
+  note: "Peel off the sticky note",
   "plant-pot": "Nudge the plant",
   "plant-leaves": "Rustle the plant",
 };
@@ -104,16 +118,35 @@ interface Stage extends Rect {
   scale: number;
 }
 
+/** The camera's extra move on top of the standing→seated framing: a lift, a lean and the zoom it needs to cover. */
+interface Cam {
+  dy: number;
+  rot: number;
+  zoom: number;
+}
+const CAM_REST: Cam = { dy: 0, rot: 0, zoom: 1 };
+
 /** Everything that moves when a prop is tapped. Lives outside React state: the loop writes styles directly. */
 interface World {
   mug: {
-    phase: "idle" | "tip" | "return";
+    phase: "idle" | "jolt" | "return";
     t: number;
     angle: number;
     spring: Spring;
+    slide: Spring;
   };
-  note: Spring;
-  lampHead: Spring;
+  note: {
+    phase: "idle" | "peel" | "fall" | "land";
+    t: number;
+    x: number;
+    y: number;
+    vy: number;
+    rot: number;
+    tilt: number;
+    side: number;
+    opacity: number;
+  };
+  pens: Spring[];
   potX: Spring;
   potRot: Spring;
   leafRot: Spring;
@@ -124,9 +157,9 @@ interface World {
 }
 
 const createWorld = (): World => ({
-  mug: { phase: "idle", t: 0, angle: 0, spring: new Spring(70, 5.5) },
-  note: new Spring(85, 2.8),
-  lampHead: new Spring(140, 6),
+  mug: { phase: "idle", t: 0, angle: 0, spring: new Spring(90, 6.5), slide: new Spring(210, 14) },
+  note: { phase: "idle", t: 0, x: 0, y: 0, vy: 0, rot: 0, tilt: 0, side: 1, opacity: 1 },
+  pens: [new Spring(170, 4.2), new Spring(150, 3.6), new Spring(190, 4.6)],
   potX: new Spring(260, 11),
   potRot: new Spring(300, 12),
   leafRot: new Spring(55, 2.6),
@@ -135,6 +168,8 @@ const createWorld = (): World => ({
   last: 0,
   raf: 0,
 });
+
+const worldOf = (ref: { current: World | null }) => (ref.current ??= createWorld());
 
 /** Portrait or narrow viewports use the phone framing of the same painting. */
 const pickLayout = (vw: number, vh: number): LayoutKey =>
@@ -209,6 +244,33 @@ function screenRect(s: Stage): Rect {
 const easeInOut = (t: number) =>
   t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
+/**
+ * Sitting down, as a body does it, for raw time u (0→1). Two steps up to the desk
+ * (the view bobs and rolls with each), standing over it the monitor sits low in view,
+ * then you lower into the chair: the screen rises to eye level, the view leans a
+ * touch and the cushion gives a little bounce. Standing up runs the same path
+ * backwards, without the bounce.
+ */
+function sitPath(u: number, rising: boolean, vh: number): { p: number; cam: Cam } {
+  const v = rising ? 1 - u : u;
+  const p = easeInOut(clamp01((v - 0.06) / 0.8));
+  const walk = clamp01(v / 0.48);
+  const stepping = v < 0.48 ? 1 - walk * 0.35 : 0;
+  const bob = Math.abs(Math.sin(walk * 2 * Math.PI)) * 0.011 * vh * stepping;
+  const sway = Math.sin(walk * 2 * Math.PI) * 0.35 * stepping;
+  // over the desk, then down into the chair
+  const over = Math.sin(Math.PI * clamp01(v / 0.66)) * 0.07 * vh;
+  const s = clamp01((v - 0.66) / 0.34);
+  const cushion = rising ? 0 : -Math.sin(Math.PI * s) * Math.exp(-2.2 * s) * 0.026 * vh;
+  const lean = -Math.sin(Math.PI * clamp01((v - 0.42) / 0.5)) * 0.8;
+  const dy = bob + over + cushion;
+  const rot = sway + lean;
+  return {
+    p,
+    cam: { dy, rot, zoom: 1 + (Math.abs(dy) * 2.1) / vh + Math.abs(rot) * 0.014 },
+  };
+}
+
 const pctBox = (r: PctBox): CSSProperties => ({
   left: `${r.left}%`,
   top: `${r.top}%`,
@@ -219,31 +281,50 @@ const pctBox = (r: PctBox): CSSProperties => ({
 const prefersReducedMotion = () =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+function NoteFace({ index }: { index: number }) {
+  const n = art.notes.length;
+  return (
+    <>
+      <Image src={art.notes[index % n]} alt="" fill unoptimized draggable={false} />
+      <span className="cinema__note-text" aria-hidden="true">
+        {NOTE_TEXTS[index % NOTE_TEXTS.length].map((line, i) => (
+          <span key={i}>{line}</span>
+        ))}
+      </span>
+    </>
+  );
+}
+
 /**
  * v2 — the lo-fi pixel desk. You arrive standing back, the whole painted room
- * filling the window. Clicking the monitor sits you down: the view zooms in on
- * the monitor (the decks above it slide out of frame) and the live LUNA_OS
- * takes over the glass. Standing, the props are sprites on springs (the mug,
- * note and plant are the pixel drafts from scripts/pixel-props.js, the lamp
- * head is cut from the painting): tap the mug and it tips and pours, the note
- * swings, the lamp head bobs, the plant gets nudged and its leaves sway while
- * an ant walks out. Seated, ESC, [ STAND UP ] or a click anywhere outside the
- * screen stands you back up.
+ * filling the window. Clicking the monitor sits you down: two steps up to the desk,
+ * then down into the chair, and the live LUNA_OS takes over the glass. Standing, the
+ * desk is alive: knock the mug and it rocks and sloshes a little coffee, peel the
+ * sticky note and it drifts down to the desk with the next one waiting behind it,
+ * tap the pencil cup and the pens rattle, click the lamp to switch it off and on,
+ * nudge the plant and an ant walks out. Seated, ESC, [ STAND UP ] or a click
+ * anywhere outside the screen stands you back up.
  */
 export default function CinemaScene() {
   const [vp, setVp] = useState({ w: 0, h: 0 });
   const [pose, setPose] = useState<Pose>("standing");
   const [progress, setProgress] = useState(0); // 0 = standing, 1 = seated (already eased)
+  const [cam, setCam] = useState<Cam>(CAM_REST);
   const [loadedImage, setLoadedImage] = useState<string | null>(null);
   const [hint, setHint] = useState(false);
   const [pendingPopup, setPendingPopup] = useState<LofiPopup>(null);
-  const [flickerKey, setFlickerKey] = useState(0);
   const [antKey, setAntKey] = useState(0);
+  const [noteIndex, setNoteIndex] = useState(0);
+  const [fallingNote, setFallingNote] = useState<number | null>(null);
+  const [lampOn, setLampOn] = useState(true);
+  const [lampSwitches, setLampSwitches] = useState(0);
   const progressRef = useRef(0);
   const rafRef = useRef(0);
   const fallbackRef = useRef(0);
   const worldRef = useRef<World | null>(null);
   const elsRef = useRef<Partial<Record<PropKey, HTMLElement | null>>>({});
+  const fallerRef = useRef<HTMLDivElement | null>(null);
+  const penRefs = useRef<(HTMLDivElement | null)[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scaleRef = useRef(1);
 
@@ -282,32 +363,34 @@ export default function CinemaScene() {
 
   /* ---------------- sit down / stand up ---------------- */
 
-  /** Ease progress from where it is to `to`; duration scales with the distance left. */
+  /** Walk the sit (or stand) path from start to end; standing and seated are its two ends. */
   const animateTo = useCallback((to: 0 | 1, onDone: () => void) => {
     cancelAnimationFrame(rafRef.current);
     clearTimeout(fallbackRef.current);
-    const from = progressRef.current;
-    const set = (p: number) => {
+    const rising = to === 0;
+    const set = (p: number, c: Cam) => {
       progressRef.current = p;
       setProgress(p);
+      setCam(c);
     };
-    if (prefersReducedMotion() || from === to) {
-      set(to);
+    if (prefersReducedMotion() || progressRef.current === to) {
+      set(to, CAM_REST);
       onDone();
       return;
     }
-    const duration = SIT_MS * Math.abs(to - from);
+    const duration = rising ? STAND_MS : SIT_MS;
     const start = performance.now();
     const finish = () => {
       cancelAnimationFrame(rafRef.current);
       clearTimeout(fallbackRef.current);
-      set(to);
+      set(to, CAM_REST);
       onDone();
     };
     const step = (now: number) => {
-      const t = Math.min(1, (now - start) / duration);
-      if (t >= 1) return finish();
-      set(from + (to - from) * easeInOut(t));
+      const u = Math.min(1, (now - start) / duration);
+      if (u >= 1) return finish();
+      const { p, cam: c } = sitPath(u, rising, window.innerHeight);
+      set(p, c);
       rafRef.current = requestAnimationFrame(step);
     };
     rafRef.current = requestAnimationFrame(step);
@@ -355,57 +438,97 @@ export default function CinemaScene() {
       w.last = now;
       const s = scaleRef.current;
 
-      // the mug: scripted tip and hold, then a spring brings it back with a wobble
+      // the mug: knocked onto its heel, then a spring rocks it back down and it slides to rest
       const m = w.mug;
-      if (m.phase === "tip") {
+      if (m.phase === "jolt") {
         m.t += dt;
-        if (m.t < TIP_S) m.angle = -TIP_DEG * easeOutCubic(m.t / TIP_S);
-        else if (m.t < TIP_S + HOLD_S) {
-          const u = (m.t - TIP_S) / HOLD_S;
-          m.angle = -TIP_DEG + 2.5 * Math.sin(u * 14) * (1 - u);
-        } else {
+        m.angle = -JOLT_DEG * easeOutCubic(m.t / JOLT_S);
+        if (m.t >= JOLT_S) {
           m.phase = "return";
           m.spring.x = m.angle;
-          m.spring.v = 60;
+          m.spring.v = 0;
+          w.spill?.slosh(m.angle, SLOSH_DROPS);
         }
       }
       if (m.phase === "return") {
         m.spring.step(dt);
-        m.angle = m.spring.x;
+        // a mug rocks on its rim and lands on its base: it can't tip the other way past flat
+        m.angle = Math.min(0.6, m.spring.x);
+        if (m.spring.x > 0.6) m.spring.v *= -0.35;
         if (m.spring.idle) {
           m.spring.settle();
           m.angle = 0;
           m.phase = "idle";
         }
       }
+      m.slide.step(dt);
       if (w.spill) {
-        w.spill.setPouring(m.phase !== "idle" && m.angle < -POUR_DEG);
         w.spill.step(dt, m.angle);
         const ctx = canvasRef.current?.getContext("2d");
         if (ctx) w.spill.draw(ctx);
       }
 
+      // the falling sticky note
+      const n = w.note;
+      if (n.phase !== "idle") {
+        n.t += dt;
+        if (n.phase === "peel") {
+          // the bottom lets go first and curls off the wall, one corner ahead of the other
+          const k = easeOutCubic(n.t / PEEL_S);
+          n.tilt = 30 * k;
+          n.rot = 5 * n.side * k;
+          n.y = 6 * k * k;
+          if (n.t >= PEEL_S) {
+            n.phase = "fall";
+            n.t = 0;
+            n.vy = 40;
+          }
+        } else if (n.phase === "fall") {
+          // paper falls at a slow terminal speed, gliding side to side and banking into each swing
+          n.vy += (NOTE_GRAVITY - NOTE_DRAG * n.vy) * dt;
+          n.y += n.vy * dt;
+          const grow = 1 - Math.exp(-2.4 * n.t);
+          const ph = NOTE_SWAY_W * n.t;
+          n.x = NOTE_SWAY * grow * Math.sin(ph) * n.side;
+          n.rot = 5 * n.side * (1 - grow) + 16 * grow * Math.cos(ph) * n.side;
+          n.tilt = 30 + 24 * grow * Math.sin(2 * ph + 0.6);
+          if (n.y >= NOTE_LAND_Y) {
+            n.y = NOTE_LAND_Y;
+            n.phase = "land";
+            n.t = 0;
+          }
+        } else {
+          // flat on the desk: it settles, rests a moment, then goes
+          const k = easeOutCubic(n.t / 0.28);
+          n.tilt = lerp(n.tilt, 78, k);
+          n.rot *= 1 - 0.12 * Math.min(1, dt * 60);
+          n.opacity = 1 - clamp01((n.t - NOTE_REST_S) / NOTE_FADE_S);
+          if (n.t >= NOTE_REST_S + NOTE_FADE_S) {
+            n.phase = "idle";
+            setFallingNote(null);
+          }
+        }
+        const f = fallerRef.current;
+        if (f) {
+          f.style.transform = `translate(${(n.x * s).toFixed(1)}px, ${(n.y * s).toFixed(1)}px) perspective(${(600 * s).toFixed(0)}px) rotateZ(${n.rot.toFixed(2)}deg) rotateX(${n.tilt.toFixed(2)}deg)`;
+          f.style.opacity = n.opacity.toFixed(3);
+        }
+      }
+
       // the leaves follow the pot with a lag, on top of their own swing
       w.leafRot.target = -w.potX.x * 1.1;
       w.leafX.target = w.potX.x;
-      const springs = [
-        w.note,
-        w.lampHead,
-        w.potX,
-        w.potRot,
-        w.leafRot,
-        w.leafX,
-      ];
+      const springs = [...w.pens, w.potX, w.potRot, w.leafRot, w.leafX];
       for (const sp of springs) sp.step(dt);
 
       const el = elsRef.current;
       const set = (node: HTMLElement | null | undefined, transform: string) => {
         if (node) node.style.transform = transform;
       };
-      set(el.mug, `rotate(${m.angle.toFixed(2)}deg)`);
-      if (el.steam) el.steam.style.opacity = String(clamp01(1 + m.angle / 20));
-      set(el.note, `rotate(${w.note.x.toFixed(2)}deg)`);
-      set(el["lamp-head"], `rotate(${w.lampHead.x.toFixed(2)}deg)`);
+      set(el.mug, `translate(${(m.slide.x * s).toFixed(1)}px, 0) rotate(${m.angle.toFixed(2)}deg)`);
+      set(el.steam, `translate(${(m.slide.x * s).toFixed(1)}px, 0)`);
+      if (el.steam) el.steam.style.opacity = String(clamp01(1 + m.angle / 8));
+      w.pens.forEach((sp, i) => set(penRefs.current[i], `rotate(${sp.x.toFixed(2)}deg)`));
       set(
         el["plant-pot"],
         `translate(${(w.potX.x * s).toFixed(1)}px, 0) rotate(${w.potRot.x.toFixed(2)}deg)`,
@@ -417,10 +540,12 @@ export default function CinemaScene() {
 
       const idle =
         m.phase === "idle" &&
+        m.slide.idle &&
+        n.phase === "idle" &&
         !(w.spill && w.spill.active) &&
         springs.every((sp) => sp.idle);
       if (idle) {
-        for (const sp of springs) sp.settle();
+        for (const sp of [...springs, m.slide]) sp.settle();
         w.raf = 0;
         w.last = 0;
       } else {
@@ -442,8 +567,7 @@ export default function CinemaScene() {
       if (pose !== "standing") return;
       e.stopPropagation();
       if (prefersReducedMotion()) return;
-      if (!worldRef.current) worldRef.current = createWorld();
-      const w = worldRef.current;
+      const w = worldOf(worldRef);
       switch (key) {
         case "mug": {
           if (w.mug.phase !== "idle") break;
@@ -461,17 +585,13 @@ export default function CinemaScene() {
               art.colors.coffee,
             );
           }
-          w.mug.phase = "tip";
+          w.mug.phase = "jolt";
           w.mug.t = 0;
+          // the knock shoves it a few pixels along the desk and it stays there; the next one shoves it back
+          w.mug.slide.target = w.mug.slide.target ? 0 : 3;
+          w.mug.slide.kick(w.mug.slide.target ? 90 : -90);
           break;
         }
-        case "note":
-          w.note.kick(240);
-          break;
-        case "lamp-head":
-          w.lampHead.kick(90);
-          setFlickerKey((k) => k + 1);
-          break;
         case "plant-pot":
         case "plant-leaves":
           w.potX.kick(150);
@@ -485,6 +605,59 @@ export default function CinemaScene() {
       ensureRunning();
     },
     [pose, ensureRunning],
+  );
+
+  const peelNote = useCallback(
+    (e: React.MouseEvent) => {
+      if (pose !== "standing") return;
+      e.stopPropagation();
+      if (fallingNote !== null) return;
+      const next = noteIndex + 1;
+      if (prefersReducedMotion()) {
+        setNoteIndex(next);
+        return;
+      }
+      const w = worldOf(worldRef);
+      Object.assign(w.note, {
+        phase: "peel",
+        t: 0,
+        x: 0,
+        y: 0,
+        vy: 0,
+        rot: 0,
+        tilt: 0,
+        side: Math.random() < 0.5 ? -1 : 1,
+        opacity: 1,
+      });
+      setFallingNote(noteIndex);
+      setNoteIndex(next);
+      ensureRunning();
+    },
+    [pose, fallingNote, noteIndex, ensureRunning],
+  );
+
+  const rattlePens = useCallback(
+    (e: React.MouseEvent) => {
+      if (pose !== "standing") return;
+      e.stopPropagation();
+      if (prefersReducedMotion()) return;
+      const w = worldOf(worldRef);
+      // each pen knocks against the next: opposite directions, different strengths
+      const side = Math.random() < 0.5 ? -1 : 1;
+      [55, -70, 48].forEach((v, i) => w.pens[i].kick(side * v * (0.8 + Math.random() * 0.4)));
+      ensureRunning();
+    },
+    [pose, ensureRunning],
+  );
+
+  const switchLamp = useCallback(
+    (e: React.MouseEvent) => {
+      if (pose !== "standing") return;
+      e.stopPropagation();
+      setLampOn((on) => !on);
+      setLampSwitches((n) => n + 1);
+    },
+    [pose],
   );
 
   /* ---------------- geometry ---------------- */
@@ -525,159 +698,241 @@ export default function CinemaScene() {
     .filter(Boolean)
     .join(" ");
   const spill = art.props.mug?.spill;
+  const note = art.props.note;
+  const camStyle: CSSProperties | undefined =
+    cam === CAM_REST
+      ? undefined
+      : {
+          transform: `translateY(${cam.dy.toFixed(1)}px) rotate(${cam.rot.toFixed(3)}deg) scale(${cam.zoom.toFixed(4)})`,
+        };
+  const standingTab = pose === "standing" ? 0 : -1;
 
   return (
     <div className={classes} data-layout={layout}>
-      {/* Standing, the monitor sits you down (the props are easter eggs); seated, anything
-          outside the live screen stands you up. ESC and [ STAND UP ] cover keyboard users. */}
-      <div
-        className="cinema__stage"
-        style={
-          stage
-            ? { left: stage.x, top: stage.y, width: stage.w, height: stage.h }
-            : undefined
-        }
-        onClick={pose === "seated" ? standUp : undefined}
-      >
-        <Image
-          src={`/cinema/${art.image}`}
-          alt=""
-          fill
-          priority
-          unoptimized
-          sizes="100vw"
-          draggable={false}
-          className="cinema__backdrop"
-          ref={attachBackdrop}
-          onLoad={() => setLoadedImage(art.image)}
-          onError={() => setLoadedImage(art.image)}
-        />
-
-        {/* The props in their places on the painting, each on its own spring */}
-        {SPRITE_ORDER.map((k) => {
-          const p = art.props[k];
-          if (!p) return null;
-          const style: CSSProperties = {
-            ...pctBox(p.boxPct),
-            transformOrigin: `${p.originPct[0]}% ${p.originPct[1]}%`,
-          };
-          const img = (
-            <Image
-              src={spriteSrc(p.file)}
-              alt=""
-              fill
-              unoptimized
-              draggable={false}
-            />
-          );
-          const attach = (node: HTMLElement | null) => {
-            elsRef.current[k] = node;
-          };
-          if (k === "steam") {
-            return (
-              <div
-                key={k}
-                ref={attach}
-                className="cinema__sprite cinema__sprite--steam"
-                style={style}
-                aria-hidden="true"
-              >
-                {img}
-              </div>
-            );
+      {/* The camera: the stage and the live screen move together as you sit down and stand up */}
+      <div className="cinema__camera" style={camStyle}>
+        {/* Standing, the monitor sits you down (the props are easter eggs); seated, anything
+            outside the live screen stands you up. ESC and [ STAND UP ] cover keyboard users. */}
+        <div
+          className="cinema__stage"
+          style={
+            stage
+              ? { left: stage.x, top: stage.y, width: stage.w, height: stage.h }
+              : undefined
           }
-          return (
-            <button
-              key={k}
-              ref={attach}
-              type="button"
-              className={`cinema__sprite cinema__sprite--${k}`}
-              style={style}
-              onClick={tap(k)}
-              tabIndex={pose === "standing" ? 0 : -1}
-              aria-label={SPRITE_LABEL[k]}
-            >
-              {img}
-              {k === "note" && (
-                <span className="cinema__note-text" aria-hidden="true">
-                  {NOTE_LINES.map((line, i) => (
-                    <span key={i}>{line}</span>
-                  ))}
-                </span>
-              )}
-            </button>
-          );
-        })}
-
-        {/* The coffee that slops out of the tipped mug, drawn on the painting's pixel grid */}
-        {spill && (
-          <canvas
-            ref={canvasRef}
-            className="cinema__spill"
-            width={spill.width}
-            height={spill.height}
-            style={pctBox(spill.boxPct)}
-            aria-hidden="true"
+          onClick={pose === "seated" ? standUp : undefined}
+        >
+          <Image
+            src={`/cinema/${art.image}`}
+            alt=""
+            fill
+            priority
+            unoptimized
+            sizes="100vw"
+            draggable={false}
+            className="cinema__backdrop"
+            ref={attachBackdrop}
+            onLoad={() => setLoadedImage(art.image)}
+            onError={() => setLoadedImage(art.image)}
           />
-        )}
 
-        {pose === "standing" && (
-          <button
-            type="button"
-            className="cinema__hotspot cinema__hotspot--monitor"
-            style={pctBox(art.monitorPct)}
-            onClick={() => sitDown()}
-            aria-label="Sit down at the computer"
-          />
-        )}
-
-        {antKey > 0 && (
+          {/* The lamp's head with the bulb out, over the painted one */}
           <div
-            key={antKey}
-            className="cinema__ant"
-            style={antStyle()}
-            onAnimationEnd={() => setAntKey(0)}
+            key={`head-${lampSwitches}`}
+            className={`cinema__lamp-off${lampOn ? "" : " is-off"}${lampSwitches ? " is-switching" : ""}`}
+            style={pctBox(art.lamp.off.boxPct)}
             aria-hidden="true"
           >
-            <Image
-              src="/cinema/sprite-ant.png"
-              alt=""
-              width={28}
-              height={16}
-              unoptimized
-              draggable={false}
-            />
+            <Image src={art.lamp.off.file} alt="" fill unoptimized draggable={false} />
           </div>
-        )}
 
-        {flickerKey > 0 && (
+          {/* The sticky notes on the wall: the one you can peel, and the next one under it */}
+          {note && (
+            <>
+              <div
+                className="cinema__sprite cinema__sprite--note cinema__note-under"
+                style={pctBox(note.boxPct)}
+                aria-hidden="true"
+              >
+                <NoteFace index={noteIndex + 1} />
+              </div>
+              <button
+                key={`note-${noteIndex}`}
+                type="button"
+                className="cinema__sprite cinema__sprite--note"
+                style={pctBox(note.boxPct)}
+                onClick={peelNote}
+                tabIndex={standingTab}
+                aria-label={SPRITE_LABEL.note}
+              >
+                <NoteFace index={noteIndex} />
+              </button>
+              {fallingNote !== null && (
+                <div
+                  ref={fallerRef}
+                  className="cinema__sprite cinema__sprite--note cinema__note-falling"
+                  style={{ ...pctBox(note.boxPct), transformOrigin: "50% 3%" }}
+                  aria-hidden="true"
+                >
+                  <NoteFace index={fallingNote} />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* The pens in the cat pencil cup, cut from the painting, each rocking on its own */}
+          {art.pens.files.map((file, i) => (
+            <div
+              key={file}
+              ref={(node) => {
+                penRefs.current[i] = node;
+              }}
+              className="cinema__pen"
+              style={{
+                ...pctBox(art.pens.boxPct),
+                transformOrigin: `${art.pens.originPct[i][0]}% ${art.pens.originPct[i][1]}%`,
+              }}
+              aria-hidden="true"
+            >
+              <Image src={file} alt="" fill unoptimized draggable={false} />
+            </div>
+          ))}
+
+          {/* The props in their places on the painting, each on its own spring */}
+          {SPRITE_ORDER.map((k) => {
+            const p = art.props[k];
+            if (!p) return null;
+            const style: CSSProperties = {
+              ...pctBox(p.boxPct),
+              transformOrigin: `${p.originPct[0]}% ${p.originPct[1]}%`,
+            };
+            const img = (
+              <Image
+                src={spriteSrc(p.file)}
+                alt=""
+                fill
+                unoptimized
+                draggable={false}
+              />
+            );
+            const attach = (node: HTMLElement | null) => {
+              elsRef.current[k] = node;
+            };
+            if (k === "steam") {
+              return (
+                <div
+                  key={k}
+                  ref={attach}
+                  className="cinema__sprite cinema__sprite--steam"
+                  style={style}
+                  aria-hidden="true"
+                >
+                  {img}
+                </div>
+              );
+            }
+            return (
+              <button
+                key={k}
+                ref={attach}
+                type="button"
+                className={`cinema__sprite cinema__sprite--${k}`}
+                style={style}
+                onClick={tap(k)}
+                tabIndex={standingTab}
+                aria-label={SPRITE_LABEL[k]}
+              >
+                {img}
+              </button>
+            );
+          })}
+
+          {/* The coffee that slops out of the knocked mug, drawn on the painting's pixel grid */}
+          {spill && (
+            <canvas
+              ref={canvasRef}
+              className="cinema__spill"
+              width={spill.width}
+              height={spill.height}
+              style={pctBox(spill.boxPct)}
+              aria-hidden="true"
+            />
+          )}
+
+          {/* With the lamp off, the wall and desk it lit fall into shadow */}
           <div
-            key={flickerKey}
-            className="cinema__flicker"
-            onAnimationEnd={() => setFlickerKey(0)}
+            key={`shade-${lampSwitches}`}
+            className={`cinema__lamp-shade${lampOn ? "" : " is-off"}${lampSwitches ? " is-switching" : ""}`}
+            style={{ backgroundImage: `url(${art.lamp.shade})` }}
             aria-hidden="true"
           />
-        )}
-        <div className="cinema__dark" aria-hidden="true" />
-      </div>
 
-      {/* The live screen rides the painted one; it only lights up seated */}
-      {screen && (
-        <div
-          className="cinema__screen"
-          style={
-            {
-              left: screen.x,
-              top: screen.y,
-              width: screen.w,
-              height: screen.h,
-              "--screen-w": `${screen.w}px`,
-            } as CSSProperties
-          }
-        >
-          {screenOn && <LofiOS initialPopup={pendingPopup} />}
+          {pose === "standing" && (
+            <>
+              <button
+                type="button"
+                className="cinema__hotspot cinema__hotspot--monitor"
+                style={pctBox(art.monitorPct)}
+                onClick={() => sitDown()}
+                aria-label="Sit down at the computer"
+              />
+              <button
+                type="button"
+                className="cinema__hotspot cinema__hotspot--lamp"
+                style={pctBox(art.lamp.hitPct)}
+                onClick={switchLamp}
+                aria-label={lampOn ? "Switch the desk lamp off" : "Switch the desk lamp on"}
+              />
+              <button
+                type="button"
+                className="cinema__hotspot cinema__hotspot--pens"
+                style={pctBox(art.pens.hitPct)}
+                onClick={rattlePens}
+                aria-label="Rattle the pencil cup"
+              />
+            </>
+          )}
+
+          {antKey > 0 && (
+            <div
+              key={antKey}
+              className="cinema__ant"
+              style={antStyle()}
+              onAnimationEnd={() => setAntKey(0)}
+              aria-hidden="true"
+            >
+              <Image
+                src="/cinema/sprite-ant.png"
+                alt=""
+                width={28}
+                height={16}
+                unoptimized
+                draggable={false}
+              />
+            </div>
+          )}
+
+          <div className="cinema__dark" aria-hidden="true" />
         </div>
-      )}
+
+        {/* The live screen rides the painted one; it only lights up seated */}
+        {screen && (
+          <div
+            className="cinema__screen"
+            style={
+              {
+                left: screen.x,
+                top: screen.y,
+                width: screen.w,
+                height: screen.h,
+                "--screen-w": `${screen.w}px`,
+              } as CSSProperties
+            }
+          >
+            {screenOn && <LofiOS initialPopup={pendingPopup} />}
+          </div>
+        )}
+      </div>
 
       {!loaded && (
         <div className="cinema__loading" aria-live="polite">

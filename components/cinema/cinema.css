@@ -16,6 +16,19 @@
   background: radial-gradient(ellipse at 50% 42%, #2d1f18 0%, #171009 52%, #0b0807 100%);
 }
 
+/* ---- the camera: JS walks it to the desk and down into the chair (and back) ---- */
+
+.cinema__camera {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+}
+
+.cinema--sitting .cinema__camera,
+.cinema--rising .cinema__camera {
+  will-change: transform;
+}
+
 /* ---- the art: JS animates this rect between standing and seated ---- */
 
 .cinema__stage {
@@ -85,10 +98,26 @@
   z-index: 5;
 }
 
-/* the plant stands in the corner the lamp barely reaches */
-.cinema__sprite--plant-pot img,
-.cinema__sprite--plant-leaves img {
-  filter: brightness(0.88) saturate(0.9);
+/* the sticky notes: the next one waits under the top one; a peeled one falls in front of both */
+.cinema__note-under {
+  pointer-events: none;
+}
+
+.cinema__note-falling {
+  pointer-events: none;
+  backface-visibility: visible;
+}
+
+/* the pens in the pencil cup, rocking on their bases */
+.cinema__pen {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.cinema__pen img {
+  image-rendering: pixelated;
 }
 
 /* the sticky note's message, set in the terminal face and sized with the note */
@@ -135,27 +164,59 @@
   image-rendering: pixelated;
 }
 
-/* the lamp's loose bulb */
-.cinema__flicker {
+/* the desk lamp switched off: its bulb goes dark and the wall and desk it lit fall into shadow */
+.cinema__lamp-off,
+.cinema__lamp-shade {
   position: absolute;
-  inset: 0;
-  z-index: 3;
   pointer-events: none;
-  background: #0b0807;
   opacity: 0;
-  animation: cinema-flicker 0.8s ease-in-out both;
 }
 
-@keyframes cinema-flicker {
+.cinema__lamp-off {
+  z-index: 3;
+}
+
+.cinema__lamp-off img {
+  image-rendering: pixelated;
+}
+
+.cinema__lamp-shade {
+  inset: 0;
+  z-index: 6;
+  background-size: 100% 100%;
+  mix-blend-mode: multiply;
+}
+
+.cinema__lamp-off.is-off,
+.cinema__lamp-shade.is-off {
+  opacity: 1;
+}
+
+/* off: the filament catches once or twice before it dies; on: it stutters awake */
+.is-switching.is-off {
+  animation: cinema-lamp-off 0.5s linear both;
+}
+
+.is-switching:not(.is-off) {
+  animation: cinema-lamp-on 0.42s linear both;
+}
+
+@keyframes cinema-lamp-off {
   0% { opacity: 0; }
-  10% { opacity: 0.5; }
-  18% { opacity: 0.05; }
-  32% { opacity: 0.62; }
-  42% { opacity: 0.12; }
-  58% { opacity: 0.4; }
-  72% { opacity: 0.04; }
-  84% { opacity: 0.18; }
-  100% { opacity: 0; }
+  14% { opacity: 1; }
+  22% { opacity: 0.25; }
+  36% { opacity: 1; }
+  48% { opacity: 0.6; }
+  60%, 100% { opacity: 1; }
+}
+
+@keyframes cinema-lamp-on {
+  0% { opacity: 1; }
+  18% { opacity: 0.2; }
+  28% { opacity: 0.85; }
+  42% { opacity: 0; }
+  52% { opacity: 0.4; }
+  64%, 100% { opacity: 0; }
 }
 
 /* an ant out of the plant pot, across the desk */
@@ -181,7 +242,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cinema__flicker,
+  .cinema__lamp-off,
+  .cinema__lamp-shade,
   .cinema__ant {
     animation: none;
   }

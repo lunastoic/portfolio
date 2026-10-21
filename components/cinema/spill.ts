@@ -84,6 +84,23 @@ export class Spill {
     }
   }
 
+  /** A jolt: a few drops thrown up and over the rim at once, no pour behind them. */
+  slosh(angleDeg: number, count: number) {
+    const [sx, sy] = this.rimAt(angleDeg);
+    for (let i = 0; i < count; i++) {
+      this.drops.push({
+        x: sx + (this.rng() - 0.3) * 4,
+        y: sy - this.rng() * 2,
+        vx: -(25 + this.rng() * 70),
+        vy: -(40 + this.rng() * 120),
+        r: 1.4 + this.rng() * 1.3,
+      });
+    }
+    this.active = true;
+    this.soaking = false;
+    this.quietFor = 0;
+  }
+
   step(dt: number, angleDeg: number) {
     if (!this.active) return;
     const { landY, mugLeft, width } = this.g;
