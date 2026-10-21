@@ -174,7 +174,7 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   const block = (boxes) => { const m = new Uint8Array(W * H); for (const [x0, y0, x1, y1] of boxes) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) m[y * W + x] = 1; return m; };
   for (const [x0, y0, x1, y1] of [[596, 82, 998, 130], [634, 217, 994, 253]]) fill(img, block([[x0, y0, x1, y1]]), [x0, y0 - 4, x1, y1 + 4], 'col', 19);
   // the decks' painted rims wander (ragged edges, a gap at the nose, drips by the brackets), so each
-  // deck is redrawn from its outline's box as a clean stadium: dark outline, a maple edge lit along
+  // deck is redrawn from its outline's box as a clean stadium: dark outline, a thin wood line lit along
   // the top and shaded under, the flat face, a soft shadow on the wall; the brackets go back on top
   {
     const DECKS = [{ box: [492, 25, 1114, 175] }, { box: [494, 189, 1114, 341] }];
@@ -208,21 +208,21 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
       for (let c = 0; c < 3; c++) img[i + c] = Math.round(img[i + c] * k);
     }
     // 3. the decks
-    const RIM_LIT = [244, 160, 78], RIM = [214, 108, 36], RIM_SHADE = [150, 66, 20], LINE = [22, 10, 5];
+    // a thin, muted wood edge: a brown line two pixels wide, not a bright band
+    const RIM_LIT = [150, 98, 58], RIM = [112, 70, 40], RIM_SHADE = [74, 44, 26], LINE = [22, 10, 5];
     const mix = (a, b, t) => a.map((v, c) => v + (b[c] - v) * t);
     for (const d of DECKS) {
       const [x0, y0, x1, y1] = d.box;
       for (let y = y0 - 1; y <= y1 + 1; y++) for (let x = x0 - 1; x <= x1 + 1; x++) {
         const t = -d.dist(x, y); if (t < 0) continue;
         let col;
-        if (t < 2.6) col = LINE;
-        else if (t < 9.5) {
+        if (t < 2.2) col = LINE;
+        else if (t < 4.3) {
           // the edge faces outward: lit where it faces up-left, shaded where it faces down-right
           const [nx, ny] = d.normal(x, y), lit = -(nx * 0.35 + ny * 0.94);
           col = lit > 0 ? mix(RIM, RIM_LIT, Math.min(1, lit * 1.3)) : mix(RIM, RIM_SHADE, Math.min(1, -lit * 1.2));
-          if (t < 3.6) col = mix(col, RIM_LIT, lit > 0.3 ? 0.35 : 0);
-        } else if (t < 10.6) col = mix(d.face, LINE, 0.55);
-        else col = mix(d.face, [0, 0, 0], 0.1 * Math.max(0, 1 - (t - 10.6) / 14));
+        } else if (t < 5.1) col = mix(d.face, LINE, 0.45);
+        else col = mix(d.face, [0, 0, 0], 0.08 * Math.max(0, 1 - (t - 5.1) / 14));
         const i = (y * W + x) * 3;
         for (let c = 0; c < 3; c++) img[i + c] = Math.round(col[c]);
       }
@@ -232,6 +232,8 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
       const inner = enclosed(src, [a - 2, b - 2, c + 2, e + 2], 30), keep = dilate(inner, 2);
       for (let y = b - 2; y <= e + 2; y++) for (let x = a - 2; x <= c + 2; x++) {
         const i = y * W + x; if (!keep[i] || !inBracket(x, y)) continue;
+        // round the edge, only the bracket's own dark outline: not the old rim beside it
+        if (!inner[i] && lum(src, i) > 40) continue;
         for (let k = 0; k < 3; k++) img[i * 3 + k] = src[i * 3 + k];
       }
     }

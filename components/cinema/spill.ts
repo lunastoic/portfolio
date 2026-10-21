@@ -224,7 +224,7 @@ export class Spill {
     // a lighter sheen across its far side
     if (this.pool) {
       const { cx, rx, ry, k, wobble } = this.pool;
-      const ease = 1 - Math.pow(1 - k, 3), RX = rx * ease, RY = ry * ease, cy = landY + 1;
+      const ease = 1 - Math.pow(1 - k, 3), RX = rx * ease, RY = ry * ease, cy = landY + 3;
       if (RX >= 1) {
         for (let y = Math.floor(cy - RY - 2); y <= Math.ceil(cy + RY + 2); y++) {
           for (let x = Math.floor(cx - RX - 3); x <= Math.ceil(cx + RX + 3); x++) {

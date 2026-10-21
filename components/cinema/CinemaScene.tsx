@@ -11,7 +11,7 @@ import {
 } from "react";
 import manifestJson from "../../public/cinema/manifest.json";
 import LofiOS, { type LofiPopup } from "./LofiOS";
-import { Spring, clamp01, easeOutCubic } from "./physics";
+import { Spring, easeOutCubic } from "./physics";
 import { Spill } from "./spill";
 import "./cinema.css";
 
@@ -70,9 +70,9 @@ const HINT_DELAY_MS = 2200;
 
 /** The mug's tap: it slides back across the desk, upright, slopping a little coffee that stays
  *  on the desk where it stood. It stays pushed back until the page is reloaded. */
-const PUSH_S = 0.7;
-const PUSH_BACK = 30; // art px up the desk (away from you)
-const PUSH_SHRINK = 0.09; // further away, a touch smaller
+const PUSH_S = 0.35;
+const PUSH_BACK = 5; // art px up the desk (away from you): a small bump back
+const PUSH_SHRINK = 0.015; // further away, a hair smaller
 const LEAK_DROPS = 10;
 const LEAK_POOL = [52, 9]; // art px: the puddle's half-width and half-depth where it stood
 
@@ -82,9 +82,8 @@ const NOTE_GRAVITY = 900; // art px / s²
 const NOTE_DRAG = 5.2; // 1/s, so it falls at about 170 art px/s
 const NOTE_SWAY = 34; // art px
 const NOTE_SWAY_W = 5.2; // rad/s
-const NOTE_LAND_Y = 412; // art px below the wall spot: the desk behind the mug
-const NOTE_REST_S = 1.4;
-const NOTE_FADE_S = 0.6;
+const NOTE_LAND_Y = 362; // art px below the wall spot: lying on the desk behind the mug
+const NOTE_SCATTER = [14, 10, 22]; // a landed note's spread: ± art px across, ± art px deep, ± degrees
 
 /** What each sticky note says, in the order they come off the wall: a real to-do list. */
 const NOTE_TEXTS = [
@@ -170,6 +169,22 @@ interface Cam {
 }
 const CAM_REST: Cam = { dy: 0, zoom: 1 };
 
+interface NoteFall {
+  id: number;
+  phase: "peel" | "fall" | "land" | "rest";
+  t: number;
+  x: number;
+  y: number;
+  vy: number;
+  rot: number;
+  tilt: number;
+  side: number;
+  /** Where it ends up: a little off the others, so they pile up scattered. */
+  landY: number;
+  landRot: number;
+  landDx: number;
+}
+
 /** Everything that moves when a prop is tapped. Lives outside React state: the loop writes styles directly. */
 interface World {
   mug: {
@@ -180,17 +195,8 @@ interface World {
     /** A little shiver when it's knocked again where it stands. */
     nudge: Spring;
   };
-  note: {
-    phase: "idle" | "peel" | "fall" | "land";
-    t: number;
-    x: number;
-    y: number;
-    vy: number;
-    rot: number;
-    tilt: number;
-    side: number;
-    opacity: number;
-  };
+  /** Every note peeled off the wall, in the order they came off: falling, landing or lying on the desk. */
+  notes: NoteFall[];
   pens: Spring[];
   /** One per leaf, back to front: each flutters on its own stem. */
   leaves: Spring[];
@@ -201,7 +207,7 @@ interface World {
 
 const createWorld = (): World => ({
   mug: { phase: "home", t: 0, k: 0, nudge: new Spring(420, 9) },
-  note: { phase: "idle", t: 0, x: 0, y: 0, vy: 0, rot: 0, tilt: 0, side: 1, opacity: 1 },
+  notes: [],
   pens: [new Spring(170, 4.2), new Spring(150, 3.6), new Spring(190, 4.6)],
   // a spread of stiffnesses, so the leaves never flutter in step
   leaves: art.leaves.files.map((_, i) => new Spring(48 + ((i * 37) % 41), 2.1 + (i % 3) * 0.35)),
@@ -335,11 +341,11 @@ function NoteFace({ index }: { index: number }) {
 
 /**
  * v2 — the lo-fi pixel desk. You arrive standing back, the whole painted room
- * filling the window. Clicking the monitor sits you down: two steps up to the desk,
- * then down into the chair, and the LUNA_OS on the glass wakes up to your keys. Standing, the
- * desk is alive: push the mug and it slides back, upright, leaving a little spilt coffee behind, peel the
- * sticky note and it drifts down to the desk with the next one waiting behind it,
- * tap the pencil cup and the pens rattle, click the lamp to switch it off and on,
+ * filling the window. Clicking the monitor sits you down in one smooth move toward the screen,
+ * and the LUNA_OS on the glass wakes up to your keys. Standing, the desk is alive: push the mug
+ * and it bumps back a little, upright, leaving spilt coffee behind; peel the sticky notes, as fast
+ * as you like, and they drift down and pile up behind the mug; tap the pencil cup and the pens
+ * rattle; click the lamp to switch it off and on;
  * brush the plant and its leaves rustle while an ant walks out. Seated, ESC, [ STAND UP ] or a click
  * anywhere outside the screen stands you back up.
  */
@@ -353,7 +359,8 @@ export default function CinemaScene() {
   const [pendingPopup, setPendingPopup] = useState<LofiPopup>(null);
   const [antKey, setAntKey] = useState(0);
   const [noteIndex, setNoteIndex] = useState(0);
-  const [fallingNote, setFallingNote] = useState<number | null>(null);
+  /** Every note peeled off so far (which note it was), in order: they stay on the desk until reload. */
+  const [fallen, setFallen] = useState<number[]>([]);
   const [lampOn, setLampOn] = useState(true);
   const [lampSwitches, setLampSwitches] = useState(0);
   const [visits, setVisits] = useState(0); // each stand-up hands back a fresh screen at the menu
@@ -362,7 +369,7 @@ export default function CinemaScene() {
   const fallbackRef = useRef(0);
   const worldRef = useRef<World | null>(null);
   const elsRef = useRef<Partial<Record<PropKey, HTMLElement | null>>>({});
-  const fallerRef = useRef<HTMLDivElement | null>(null);
+  const noteRefs = useRef(new Map<number, HTMLDivElement>());
   const penRefs = useRef<(HTMLDivElement | null)[]>([]);
   const leafRefs = useRef<(HTMLDivElement | null)[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -499,9 +506,9 @@ export default function CinemaScene() {
         if (ctx) w.spill.draw(ctx);
       }
 
-      // the falling sticky note
-      const n = w.note;
-      if (n.phase !== "idle") {
+      // the peeled sticky notes: each falls on its own and stays where it lands
+      for (const n of w.notes) {
+        if (n.phase === "rest") continue;
         n.t += dt;
         if (n.phase === "peel") {
           // the bottom lets go first and curls off the wall, one corner ahead of the other
@@ -523,26 +530,22 @@ export default function CinemaScene() {
           n.x = NOTE_SWAY * grow * Math.sin(ph) * n.side;
           n.rot = 5 * n.side * (1 - grow) + 16 * grow * Math.cos(ph) * n.side;
           n.tilt = 30 + 24 * grow * Math.sin(2 * ph + 0.6);
-          if (n.y >= NOTE_LAND_Y) {
-            n.y = NOTE_LAND_Y;
+          if (n.y >= n.landY) {
+            n.y = n.landY;
             n.phase = "land";
             n.t = 0;
           }
         } else {
-          // flat on the desk: it settles, rests a moment, then goes
-          const k = easeOutCubic(n.t / 0.28);
+          // flat on the desk: it slides the last bit and settles at its own angle, and stays
+          const k = easeOutCubic(n.t / 0.32);
           n.tilt = lerp(n.tilt, 78, k);
-          n.rot *= 1 - 0.12 * Math.min(1, dt * 60);
-          n.opacity = 1 - clamp01((n.t - NOTE_REST_S) / NOTE_FADE_S);
-          if (n.t >= NOTE_REST_S + NOTE_FADE_S) {
-            n.phase = "idle";
-            setFallingNote(null);
-          }
+          n.rot = lerp(n.rot, n.landRot, k);
+          n.x = lerp(n.x, n.landDx, k * 0.25);
+          if (n.t >= 0.32) n.phase = "rest";
         }
-        const f = fallerRef.current;
+        const f = noteRefs.current.get(n.id);
         if (f) {
           f.style.transform = `translate(${(n.x * s).toFixed(1)}px, ${(n.y * s).toFixed(1)}px) perspective(${(600 * s).toFixed(0)}px) rotateZ(${n.rot.toFixed(2)}deg) rotateX(${n.tilt.toFixed(2)}deg)`;
-          f.style.opacity = n.opacity.toFixed(3);
         }
       }
 
@@ -562,7 +565,7 @@ export default function CinemaScene() {
 
       const idle =
         m.phase !== "pushing" &&
-        n.phase === "idle" &&
+        w.notes.every((n) => n.phase === "rest") &&
         !(w.spill && w.spill.moving) &&
         springs.every((sp) => sp.idle);
       if (idle) {
@@ -639,10 +642,10 @@ export default function CinemaScene() {
     (e: React.MouseEvent) => {
       if (pose !== "standing") return;
       e.stopPropagation();
-      if (fallingNote !== null) return;
-      const next = noteIndex + 1;
       const w = worldOf(worldRef);
-      Object.assign(w.note, {
+      const r = () => Math.random() * 2 - 1;
+      w.notes.push({
+        id: w.notes.length,
         phase: "peel",
         t: 0,
         x: 0,
@@ -651,13 +654,15 @@ export default function CinemaScene() {
         rot: 0,
         tilt: 0,
         side: Math.random() < 0.5 ? -1 : 1,
-        opacity: 1,
+        landY: NOTE_LAND_Y + r() * NOTE_SCATTER[1],
+        landRot: r() * NOTE_SCATTER[2],
+        landDx: r() * NOTE_SCATTER[0],
       });
-      setFallingNote(noteIndex);
-      setNoteIndex(next);
+      setFallen((f) => [...f, noteIndex]);
+      setNoteIndex(noteIndex + 1);
       ensureRunning();
     },
-    [pose, fallingNote, noteIndex, ensureRunning],
+    [pose, noteIndex, ensureRunning],
   );
 
   const rattlePens = useCallback(
@@ -799,16 +804,21 @@ export default function CinemaScene() {
               >
                 <NoteFace index={noteIndex} />
               </button>
-              {fallingNote !== null && (
+              {/* the notes peeled so far: falling, or lying where they landed behind the mug */}
+              {fallen.map((index, id) => (
                 <div
-                  ref={fallerRef}
+                  key={id}
+                  ref={(node) => {
+                    if (node) noteRefs.current.set(id, node);
+                    else noteRefs.current.delete(id);
+                  }}
                   className="cinema__sprite cinema__sprite--note cinema__note-falling"
                   style={{ ...pctBox(note.boxPct), transformOrigin: "50% 3%" }}
                   aria-hidden="true"
                 >
-                  <NoteFace index={fallingNote} />
+                  <NoteFace index={index} />
                 </div>
-              )}
+              ))}
             </>
           )}
 
