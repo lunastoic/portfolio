@@ -241,14 +241,6 @@
   100% { transform: translate(var(--ant-dx), var(--ant-dy)) scaleX(-1); opacity: 0; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .cinema__lamp-off,
-  .cinema__lamp-shade,
-  .cinema__ant {
-    animation: none;
-  }
-}
-
 /* ---- hotspots over objects in the art ---- */
 
 .cinema__hotspot {

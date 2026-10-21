@@ -278,6 +278,7 @@ const pctBox = (r: PctBox): CSSProperties => ({
   height: `${r.height}%`,
 });
 
+/** Only the sit-down camera move honours this: the props move because someone clicked them. */
 const prefersReducedMotion = () =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -566,7 +567,6 @@ export default function CinemaScene() {
     (key: PropKey) => (e: React.MouseEvent) => {
       if (pose !== "standing") return;
       e.stopPropagation();
-      if (prefersReducedMotion()) return;
       const w = worldOf(worldRef);
       switch (key) {
         case "mug": {
@@ -613,10 +613,6 @@ export default function CinemaScene() {
       e.stopPropagation();
       if (fallingNote !== null) return;
       const next = noteIndex + 1;
-      if (prefersReducedMotion()) {
-        setNoteIndex(next);
-        return;
-      }
       const w = worldOf(worldRef);
       Object.assign(w.note, {
         phase: "peel",
@@ -640,7 +636,6 @@ export default function CinemaScene() {
     (e: React.MouseEvent) => {
       if (pose !== "standing") return;
       e.stopPropagation();
-      if (prefersReducedMotion()) return;
       const w = worldOf(worldRef);
       // each pen knocks against the next: opposite directions, different strengths
       const side = Math.random() < 0.5 ? -1 : 1;
