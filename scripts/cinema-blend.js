@@ -173,12 +173,11 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   // decks: each lettering box is filled down its columns from the face just above and below it
   const block = (boxes) => { const m = new Uint8Array(W * H); for (const [x0, y0, x1, y1] of boxes) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) m[y * W + x] = 1; return m; };
   for (const [x0, y0, x1, y1] of [[596, 82, 998, 130], [634, 217, 994, 253]]) fill(img, block([[x0, y0, x1, y1]]), [x0, y0 - 4, x1, y1 + 4], 'col', 19);
-  // the decks' painted rims wander (ragged edges, a gap at the nose, drips by the brackets), so each
-  // deck is redrawn from its outline's box as a clean stadium: dark outline, a thin wood line lit along
-  // the top and shaded under, the flat face, a soft shadow on the wall; the brackets go back on top
+  // the decks' painted rims wander (ragged edges, a gap at the nose, drips by the blocks), so each
+  // deck is redrawn from its outline's box as a clean stadium: dark outline, a thin wood edge lit along
+  // the top and shaded under, the flat face, a soft shadow on the wall; it rests on two steel brackets
   {
     const DECKS = [{ box: [492, 25, 1114, 175] }, { box: [494, 189, 1114, 341] }];
-    const BRACKETS = [641, 945].flatMap(x => [[19, 50], [150, 183], [297, 331]].map(([y0, y1]) => [x, y0, x + 22, y1]));
     const src = Buffer.from(img);
     for (const d of DECKS) {
       const [x0, y0, x1, y1] = d.box, cy = (y0 + y1) / 2, R = (y1 - y0) / 2;
@@ -193,7 +192,6 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
       d.face = [k >> 16, (k >> 8) & 255, k & 255];
     }
     const RX0 = 470, RY0 = 10, RX1 = 1140, RY1 = 350;
-    const inBracket = (x, y) => BRACKETS.some(([a, b, c, e]) => x >= a && x <= c && y >= b && y <= e);
     // 1. the wall behind each deck and wherever its old rim and drips reached, rebuilt across from the
     //    wall either side (the decks are drawn over it after, so none of the old rim leaks into the fill)
     const wallMask = new Uint8Array(W * H);
@@ -217,24 +215,42 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
         const t = -d.dist(x, y); if (t < 0) continue;
         let col;
         if (t < 2.2) col = LINE;
-        else if (t < 4.3) {
+        else if (t < 5.7) {
           // the edge faces outward: lit where it faces up-left, shaded where it faces down-right
           const [nx, ny] = d.normal(x, y), lit = -(nx * 0.35 + ny * 0.94);
           col = lit > 0 ? mix(RIM, RIM_LIT, Math.min(1, lit * 1.3)) : mix(RIM, RIM_SHADE, Math.min(1, -lit * 1.2));
-        } else if (t < 5.1) col = mix(d.face, LINE, 0.45);
-        else col = mix(d.face, [0, 0, 0], 0.08 * Math.max(0, 1 - (t - 5.1) / 14));
+        } else if (t < 6.5) col = mix(d.face, LINE, 0.45);
+        else col = mix(d.face, [0, 0, 0], 0.08 * Math.max(0, 1 - (t - 6.5) / 14));
         const i = (y * W + x) * 3;
         for (let c = 0; c < 3; c++) img[i + c] = Math.round(col[c]);
       }
     }
-    // 4. the brackets, back on top: each one's outline and what it encloses
-    for (const [a, b, c, e] of BRACKETS) {
-      const inner = enclosed(src, [a - 2, b - 2, c + 2, e + 2], 30), keep = dilate(inner, 2);
-      for (let y = b - 2; y <= e + 2; y++) for (let x = a - 2; x <= c + 2; x++) {
-        const i = y * W + x; if (!keep[i] || !inBracket(x, y)) continue;
-        // round the edge, only the bracket's own dark outline: not the old rim beside it
-        if (!inner[i] && lum(src, i) > 40) continue;
-        for (let k = 0; k < 3; k++) img[i * 3 + k] = src[i * 3 + k];
+    // 4. two steel L-brackets under each deck: a lip the deck sits on and a short strap down the wall,
+    //    two screws in it, a little shadow on the wall
+    const STEEL = [[18, 18, 22], [52, 52, 60], [92, 92, 102], [150, 150, 160], [206, 206, 214]];
+    const put = (x, y, col) => { const i = (y * W + x) * 3; for (let c = 0; c < 3; c++) img[i + c] = col[c]; };
+    const darken = (x, y, k) => { const i = (y * W + x) * 3; for (let c = 0; c < 3; c++) img[i + c] = Math.round(img[i + c] * k); };
+    for (const d of DECKS) {
+      const [x0, , x1, y1] = d.box;
+      for (const fx of [0.28, 0.72]) {
+        const cx = Math.round(x0 + (x1 - x0) * fx), lipTop = y1 - 2, lipBot = y1 + 2, strapBot = y1 + 11;
+        // shadow on the wall, down and right
+        for (let y = lipTop + 3; y <= strapBot + 3; y++) for (let x = cx - 9; x <= cx + 14; x++) {
+          const inLip = y <= lipBot + 3 && x >= cx - 9 && x <= cx + 14, inStrap = x >= cx - 1 && x <= cx + 7;
+          if ((inLip || inStrap) && DECKS.every(o => o.dist(x, y) > 0)) darken(x, y, 0.62);
+        }
+        // the lip under the deck's edge
+        for (let y = lipTop; y <= lipBot; y++) for (let x = cx - 12; x <= cx + 12; x++) {
+          const edge = y === lipTop || y === lipBot || x === cx - 12 || x === cx + 12;
+          put(x, y, edge ? STEEL[0] : y === lipTop + 1 ? STEEL[4] : STEEL[2]);
+        }
+        // the strap down the wall
+        for (let y = lipBot; y <= strapBot; y++) for (let x = cx - 4; x <= cx + 4; x++) {
+          const edge = x === cx - 4 || x === cx + 4 || y === strapBot;
+          put(x, y, edge ? STEEL[0] : x === cx - 3 ? STEEL[3] : x >= cx + 2 ? STEEL[1] : STEEL[2]);
+        }
+        // two screws
+        for (const sy of [lipBot + 3, strapBot - 3]) { put(cx, sy, STEEL[0]); put(cx - 1, sy - 1, STEEL[4]); }
       }
     }
   }

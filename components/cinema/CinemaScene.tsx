@@ -115,7 +115,11 @@ interface WallText {
   leading?: number;
 }
 const WALL_TEXT: WallText[] = [
-  { lines: ["CHRISTOPHER LUNA"], x: 796, y: 106, size: 40, color: "#f6bb5c", weight: 700, track: 0.06 },
+  { lines: ["CHRISTOPHER LUNA"], x: 803, y: 92, size: 40, color: "#f6bb5c", weight: 700, track: 0.06 },
+  {
+    lines: ["ANAHEIM, CA 92806  ·  LUNA_CHRISTOPHER98@HOTMAIL.COM  ·  (714) 800-3264"],
+    x: 803, y: 128, size: 11.5, color: "#e9b468", weight: 500, track: 0.05,
+  },
   { lines: ["SOFTWARE ENGINEER"], x: 814, y: 235, size: 25, color: "#eb9a4c", weight: 600, track: 0.3 },
   {
     lines: ["MAKE IT", "WORK.", "MAKE IT", "RIGHT.", "MAKE IT", "FAST."],

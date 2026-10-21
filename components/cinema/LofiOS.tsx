@@ -6,7 +6,7 @@ import type { AppId } from "@/components/types";
 import AboutWindow from "@/components/monitor/AboutWindow";
 import ProjectsWindow from "@/components/monitor/ProjectsWindow";
 import ResumeWindow from "@/components/monitor/ResumeWindow";
-import ContactWindow from "@/components/monitor/ContactWindow";
+import ContactCard from "./ContactCard";
 import CoffeeWindow from "@/components/monitor/CoffeeWindow";
 import manifest from "../../public/cinema/manifest.json";
 import PixelIcon, { type IconName } from "./PixelIcon";
@@ -133,7 +133,7 @@ export default function LofiOS({
           {activeApp === "about" && <AboutWindow onClose={close} />}
           {activeApp === "projects" && <ProjectsWindow onClose={close} />}
           {activeApp === "resume" && <ResumeWindow onClose={close} />}
-          {activeApp === "contact" && <ContactWindow onClose={close} />}
+          {activeApp === "contact" && <ContactCard onClose={close} />}
         </div>
       )}
 

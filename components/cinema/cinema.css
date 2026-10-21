@@ -460,6 +460,72 @@ body:has(.cinema) .crt-flicker {
   margin: 0.3em 0;
 }
 
+/* CONTACT.EXE on the desk's computer: a business card */
+.lofi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1em;
+  padding: 0.4em 0.2em;
+}
+
+.lofi-card__head {
+  padding-bottom: 0.8em;
+  border-bottom: 2px dashed var(--green-dim);
+}
+
+.lofi-card__name {
+  margin: 0;
+  font-size: 1.7em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #b9f7a4;
+}
+
+.lofi-card__title,
+.lofi-card__place {
+  margin: 0.2em 0 0;
+  letter-spacing: 0.08em;
+}
+
+.lofi-card__place {
+  color: var(--green-mid);
+}
+
+.lofi-card__rows {
+  display: grid;
+  gap: 0.45em;
+  margin: 0;
+}
+
+.lofi-card__row {
+  display: grid;
+  grid-template-columns: 6.5em 1fr;
+  align-items: baseline;
+  gap: 0.6em;
+}
+
+.lofi-card__row dt {
+  letter-spacing: 0.1em;
+  color: var(--green-mid);
+}
+
+.lofi-card__row dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.lofi-card__row a {
+  color: var(--lofi-text);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.lofi-card__row a:hover,
+.lofi-card__row a:focus-visible {
+  color: #c8ffb6;
+}
+
 /* ASCII art and code-ish blocks stay on the monospace terminal face */
 .lofi pre,
 .lofi .cursor-blink {
