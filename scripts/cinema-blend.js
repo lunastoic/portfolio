@@ -206,6 +206,7 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   }
   const movePen = ([x, y]) => [cupX + (x - CUP[0]) * CUP_S, cupY + (y - CUP[1]) * CUP_S];
 
+  const DECK_BOXES = [];
   // ---- lettering: the painting's own words go; the scene sets real type in their place ----
   // decks: each lettering box is filled down its columns from the face just above and below it
   const block = (boxes) => { const m = new Uint8Array(W * H); for (const [x0, y0, x1, y1] of boxes) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) m[y * W + x] = 1; return m; };
@@ -214,8 +215,15 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   // deck is redrawn from its outline's box as a clean stadium: dark outline, a thin wood edge lit along
   // the top and shaded under, the flat face, a soft shadow on the wall; it rests on two steel brackets
   {
-    // the second deck is repainted sage, so the school's burgundy and gold read on it
-    const DECKS = [{ box: [492, 25, 1114, 175] }, { box: [494, 189, 1114, 341], repaint: [134, 160, 112] }];
+    // both decks hang higher than the painting has them (same size), so there's a gap between the bottom
+    // one's brackets and the monitor; `was` is where the painting had them, filled back to wall. The second
+    // deck is repainted a muted parchment, so the school's burgundy and gold both read on it
+    const DECKS = [
+      { box: [492, 7, 1114, 157], was: [492, 25, 1114, 175] },
+      { box: [494, 167, 1114, 319], was: [494, 189, 1114, 341], repaint: [150, 133, 106] },
+    ];
+    const MONITOR_TOP = 340;
+    DECK_BOXES.push(...DECKS.map(d => d.box));
     const src = Buffer.from(img);
     for (const d of DECKS) {
       const [x0, y0, x1, y1] = d.box, cy = (y0 + y1) / 2, R = (y1 - y0) / 2;
@@ -229,15 +237,21 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
       const k = [...count].sort((a, b) => b[1] - a[1])[0][0];
       d.face = d.repaint ?? [k >> 16, (k >> 8) & 255, k & 255];
     }
-    const RX0 = 470, RY0 = 10, RX1 = 1140, RY1 = 350;
+    const RX0 = 470, RY0 = 0, RX1 = 1140, RY1 = 354;
+    const pre = Buffer.from(img);
     // 1. the wall behind each deck and wherever its old rim and drips reached, rebuilt across from the
     //    wall either side (the decks are drawn over it after, so none of the old rim leaks into the fill)
     const wallMask = new Uint8Array(W * H);
-    for (let y = RY0; y <= RY1; y++) for (let x = RX0; x <= RX1; x++) if (DECKS.some(d => d.dist(x, y) < 12)) wallMask[y * W + x] = 1;
-    fill(img, wallMask, [RX0 - 12, RY0, RX1 + 12, RY1], 'row', 23);
+    const wasDist = (d, x, y) => { const [x0, y0, x1, y1] = d.was, cy = (y0 + y1) / 2, R = (y1 - y0) / 2, cx = Math.min(Math.max(x + 0.5, x0 + R), x1 + 1 - R); return Math.hypot(x + 0.5 - cx, y + 0.5 - cy) - R; };
+    for (let y = RY0; y < MONITOR_TOP; y++) for (let x = RX0; x <= RX1; x++) if (DECKS.some(d => d.dist(x, y) < 12 || wasDist(d, x, y) < 12)) wallMask[y * W + x] = 1;
+    fill(img, wallMask, [RX0 - 12, RY0, RX1 + 12, MONITOR_TOP - 1], 'row', 23);
+    // the monitor's top edge, which the old deck and its brackets sat on, comes back as painted
+    for (let y = MONITOR_TOP; y <= RY1; y++) for (let x = RX0; x <= RX1; x++) {
+      const i = (y * W + x) * 3; for (let c = 0; c < 3; c++) img[i + c] = pre[i + c];
+    }
     // 2. the shadow each deck throws down and right onto the wall
     for (let y = RY0; y <= RY1; y++) for (let x = RX0; x <= RX1; x++) {
-      if (DECKS.some(d => d.dist(x, y) <= 0)) continue;
+      if (y >= MONITOR_TOP || DECKS.some(d => d.dist(x, y) <= 0)) continue;
       const s = Math.min(...DECKS.map(d => d.dist(x - 3, y - 5)));
       if (s >= 4) continue;
       const k = s < 0 ? 0.6 : 0.6 + 0.4 * (s / 4), i = (y * W + x) * 3;
@@ -264,14 +278,15 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
       }
     }
     // 4. two steel L-brackets under each deck: a lip the deck sits on and a short strap down the wall,
-    //    two screws in it, a little shadow on the wall
+    //    screwed in, a little shadow on the wall
     const STEEL = [[18, 18, 22], [52, 52, 60], [92, 92, 102], [150, 150, 160], [206, 206, 214]];
     const put = (x, y, col) => { const i = (y * W + x) * 3; for (let c = 0; c < 3; c++) img[i + c] = col[c]; };
     const darken = (x, y, k) => { const i = (y * W + x) * 3; for (let c = 0; c < 3; c++) img[i + c] = Math.round(img[i + c] * k); };
     for (const d of DECKS) {
       const [x0, , x1, y1] = d.box;
       for (const fx of [0.28, 0.72]) {
-        const cx = Math.round(x0 + (x1 - x0) * fx), lipTop = y1 - 2, lipBot = y1 + 2, strapBot = y1 + 11;
+        // a short strap (7 px), so the top deck's brackets stop clear of the deck below
+        const cx = Math.round(x0 + (x1 - x0) * fx), lipTop = y1 - 2, lipBot = y1 + 2, strapBot = y1 + 7;
         // shadow on the wall, down and right
         for (let y = lipTop + 3; y <= strapBot + 3; y++) for (let x = cx - 9; x <= cx + 14; x++) {
           const inLip = y <= lipBot + 3 && x >= cx - 9 && x <= cx + 14, inStrap = x >= cx - 1 && x <= cx + 7;
@@ -287,8 +302,8 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
           const edge = x === cx - 4 || x === cx + 4 || y === strapBot;
           put(x, y, edge ? STEEL[0] : x === cx - 3 ? STEEL[3] : x >= cx + 2 ? STEEL[1] : STEEL[2]);
         }
-        // two screws
-        for (const sy of [lipBot + 3, strapBot - 3]) { put(cx, sy, STEEL[0]); put(cx - 1, sy - 1, STEEL[4]); }
+        // a screw
+        put(cx, lipBot + 3, STEEL[0]); put(cx - 1, lipBot + 2, STEEL[4]);
       }
     }
   }
@@ -463,6 +478,8 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   };
   // the lava lamp stands where the cat cup was, on the desk in front of the ledge
   m.lava = { boxPct: pct([1110, 566, 1214, 774]) };
+  // where the decks hang now (the seated view keeps them out of frame)
+  m.decksPct = DECK_BOXES.map(([x0, y0, x1, y1]) => pct([x0, y0, x1 + 1, y1 + 1]));
   fs.writeFileSync(mf, JSON.stringify(m, null, 2) + '\n');
 
   if (REVIEW) {

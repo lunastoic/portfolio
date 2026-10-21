@@ -73,7 +73,7 @@ const STAND_MS = 1400;
 /** Seated, the painted screen stands this tall relative to the viewport. */
 const SEAT_FRACTION: Record<LayoutKey, number> = { desktop: 0.6, mobile: 0.55 };
 /** Seated, the crop starts at least this far (art px) below the decks, so they stay out of view. */
-const DECK_CLEARANCE = 6;
+const DECK_CLEARANCE = 12; // clears the brackets under the deck too
 const HINT_DELAY_MS = 2200;
 
 /** The mug's tap: each click bumps it a little further back across the desk, upright, up to
@@ -129,20 +129,24 @@ interface WallText {
   track?: number;
   weight?: number;
   leading?: number;
+  /** A thin dark edge, for gold on the light deck. */
+  edged?: boolean;
 }
 const CSU_BURGUNDY = "#7e012d";
 const DH_GOLD = "#fcbe11";
+const NAME_GOLD = "#f6bb5c";
 const WALL_TEXT: WallText[] = [
-  { lines: ["CHRISTOPHER LUNA"], x: 803, y: 86, size: 40, color: "#f6bb5c", weight: 700, track: 0.06 },
-  { lines: ["LUNA_CHRISTOPHER98@HOTMAIL.COM"], x: 803, y: 120, size: 15, color: "#e9b468", weight: 500, track: 0.06 },
-  { lines: ["ANAHEIM, CA 92806  ·  (714) 800-3264"], x: 803, y: 140, size: 11.5, color: "#e9b468", weight: 500, track: 0.08 },
-  // the school in its colours, CSU burgundy and DH gold, on the sage deck
+  { lines: ["CHRISTOPHER LUNA"], x: 803, y: 68, size: 40, color: NAME_GOLD, weight: 700, track: 0.06 },
+  { lines: ["LUNA_CHRISTOPHER98@HOTMAIL.COM"], x: 803, y: 102, size: 15, color: "#e9b468", weight: 500, track: 0.06 },
+  { lines: ["ANAHEIM, CA 92806  ·  (714) 800-3264"], x: 803, y: 122, size: 11.5, color: "#e9b468", weight: 500, track: 0.08 },
+  // the school in its colours, CSU burgundy and DH gold, then the degree in the name's colour, sized like
+  // the email and the line under it
   {
     lines: [[{ text: "CALIFORNIA STATE UNIVERSITY, ", color: CSU_BURGUNDY }, { text: "DOMINGUEZ HILLS", color: DH_GOLD }]],
-    x: 803, y: 240, size: 18, color: CSU_BURGUNDY, weight: 700, track: 0.07,
+    x: 803, y: 216, size: 18, color: CSU_BURGUNDY, weight: 700, track: 0.07,
   },
-  { lines: ["BACHELOR OF SCIENCE  ·  COMPUTER SCIENCE"], x: 803, y: 270, size: 13, color: CSU_BURGUNDY, weight: 600, track: 0.1 },
-  { lines: ["FIRST GEN"], x: 803, y: 292, size: 12, color: CSU_BURGUNDY, weight: 600, track: 0.24 },
+  { lines: ["BACHELOR OF SCIENCE  ·  COMPUTER SCIENCE"], x: 803, y: 247, size: 15, color: NAME_GOLD, weight: 600, track: 0.06, edged: true },
+  { lines: ["FIRST GEN"], x: 803, y: 268, size: 11.5, color: NAME_GOLD, weight: 600, track: 0.08, edged: true },
   { lines: ["ALGORITHMS"], x: 66, y: 637, size: 15, color: "#e7a256", align: "left", rotate: -2.2, track: 0.14, weight: 600 },
   { lines: ["TYPESCRIPT"], x: 68, y: 677, size: 15, color: "#e7a256", align: "left", rotate: -2.7, track: 0.14, weight: 600 },
   { lines: ["SYSTEM DESIGN"], x: 70, y: 719, size: 15.5, color: "#e7a256", align: "left", rotate: -4.8, track: 0.14, weight: 600 },
@@ -828,7 +832,7 @@ export default function CinemaScene() {
           {WALL_TEXT.map((t) => (
             <p
               key={t.lines.map((l) => (typeof l === "string" ? l : l.map((r) => r.text).join(""))).join(" ")}
-              className="cinema__wall-text"
+              className={`cinema__wall-text${t.edged ? " cinema__wall-gold" : ""}`}
               style={wallTextStyle(t)}
             >
               {t.lines.map((line, i) => (
