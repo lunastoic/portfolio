@@ -382,7 +382,7 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
     shape([x0, y0, x1, y1], pill(x0, y0, x1, y1), 'deckWood', (x, y) => (y < y0 + 1.4 ? 0.92 : y > y1 - 1.6 ? 0.3 : 0.62));
     shape([x0 + 1.9, y0 + 1.9, x1 - 1.9, y1 - 1.9], pill(x0 + 1.9, y0 + 1.9, x1 - 1.9, y1 - 1.9), face, deckShade(y0 + 1.9, y1 - 1.9, sheen), { outline: false });
     const cy = (y0 + y1) / 2;
-    for (const hx of [x0 + 11, x0 + 16, x1 - 16, x1 - 11]) for (const hy of [cy - 3, cy + 3]) shape([hx - 1.4, hy - 1.4, hx + 1.4, hy + 1.4], ell(hx, hy, 1.05, 1.05), 'ink', 0.2, { outline: false });
+    for (const hx of [x0 + 15, x0 + 20, x1 - 20, x1 - 15]) for (const hy of [cy - 3, cy + 3]) shape([hx - 1.4, hy - 1.4, hx + 1.4, hy + 1.4], ell(hx, hy, 1.05, 1.05), 'ink', 0.2, { outline: false });
   };
   deck(146, 2, 304, 39, 'deckA', 120);
   deck(145, 42, 303, 78.5, 'deckB', 175);
