@@ -7,10 +7,10 @@
 //   the beam on the desk go with it; then the room drops a little darker and cooler, the monitor's green
 //   reaches the desk in front of it, and the bulb sits dark in its shade.
 // - side-left.png, side-right.png (and side-*-off.png for the lamp off): the room past the painting's
-//   edges for wide windows, built from the painting's own pixels so it scales as crisply: the wall, the
-//   desk and its front carried on with their grain, each row from the painting's edge colour toward the
-//   room's ambient, and the things the edge cuts (the shelf, the pegboard, the book stack, the right
-//   bookcase, the tower, the book on the desk) carried on a little way and ended.
+//   edges for wide windows, built from the painting's own pixels so it scales as crisply: the plain wall
+//   behind the desk, the desk and its front carried on with their grain, the lamp's light on the left
+//   fading out with distance, and the things the edge cuts (the shelf, the pegboard, the book stack, the
+//   bookcase, the tower, the book on the desk) ended a few px out so only the wall goes on.
 const fs = require('fs'), path = require('path'), sharp = require('sharp');
 
 const ROOT = path.join(__dirname, '..'), CIN = path.join(ROOT, 'public/cinema');
@@ -215,37 +215,51 @@ function relight(img, screen, debug) {
    ------------------------------------------------------------------------------------------------ */
 
 /**
- * Rows at each edge that end on plain wall, desk or desk front (everything else is something the edge
- * cuts through, and borrows its base colour from the plain rows round it).
+ * Rows at each edge that end on plain wall, desk or desk front. The rest is something the edge cuts
+ * through (the shelf, the pegboard and the book stack on the left; the bookcase, the tower and the book
+ * on the desk on the right): it runs on a few px past the edge to its outline, and the wall and desk go
+ * on beyond it.
  */
-const PLAIN = { left: [[0, 129], [509, 604], [786, H - 1]], right: [[0, 61], [849, H - 1]] };
+const PLAIN = { left: [[0, 129], [509, 604], [786, H - 1]], right: [[0, 79], [849, H - 1]] };
+const CUT = 6;
 
 function sides(src, suffix) {
   const ref = ambient(src);
+  const amb = (y) => [ref[y * 3], ref[y * 3 + 1], ref[y * 3 + 2]];
   const files = {};
   for (const side of ['left', 'right']) {
     const out = Buffer.alloc(SW * H * 3);
     const ex = side === 'left' ? 0 : W - 1;
     const X = (k) => (side === 'left' ? SW - 1 - k : k); // k counts out from the painting
-    const put = (k, y, c) => { if (k < 0 || k >= SW || y < 0 || y >= H) return; const o = (y * SW + X(k)) * 3; out[o] = clamp(Math.round(c[0]), 0, 255); out[o + 1] = clamp(Math.round(c[1]), 0, 255); out[o + 2] = clamp(Math.round(c[2]), 0, 255); };
+    const put = (k, y, c) => { const o = (y * SW + X(k)) * 3; out[o] = clamp(Math.round(c[0]), 0, 255); out[o + 1] = clamp(Math.round(c[1]), 0, 255); out[o + 2] = clamp(Math.round(c[2]), 0, 255); };
     const px = (x, y) => { const i = idx(clamp(x, 0, W - 1), clamp(y, 0, H - 1)); return [src[i], src[i + 1], src[i + 2]]; };
-    /** The painting's column `x0 + j` counted out from the edge, mirrored back and forth over `n` columns. */
+    /** The painting's column `j` in from the edge, mirrored back and forth over `n` columns. */
     const tile = (k, n) => { const m = k % (2 * n), j = m < n ? m : 2 * n - 1 - m; return side === 'left' ? j : W - 1 - j; };
-
-    // the painting's edge colour per row (the plain rows read, the rest bridged between them)
-    const edge = new Array(H), plain = new Uint8Array(H);
-    for (const [a, b] of PLAIN[side]) for (let y = a; y <= b; y++) { plain[y] = 1; edge[y] = avg(src, side === 'left' ? 0 : W - 6, side === 'left' ? 5 : W - 1, y, y); }
-    // (bridged only within the wall, the desk top or the desk front: the wall meets the desk in a step)
     const zone = (y) => (y < DESK ? [0, DESK - 1] : y < FRONT ? [DESK, FRONT - 1] : [FRONT, H - 1]);
+
+    // how much lighter or darker the painting's edge is than the room's ambient, row by row: read off the
+    // plain rows, bridged across the cut things within the wall, the desk and its front (the wall meets the
+    // desk in a step), then softened down the rows so the lamp's light on the left wall carries out past the
+    // edge as one glow rather than as bands
+    const plain = new Uint8Array(H), lift = new Array(H);
+    for (const [a, b] of PLAIN[side]) for (let y = a; y <= b; y++) {
+      plain[y] = 1;
+      const e = avg(src, side === 'left' ? 0 : W - 6, side === 'left' ? 5 : W - 1, y, y);
+      lift[y] = e.map((v, c) => v / Math.max(1, amb(y)[c]));
+    }
     for (let y = 0; y < H; y++) if (!plain[y]) {
       const [z0, z1] = zone(y);
       let a = y, b = y; while (a > z0 && !plain[a]) a--; while (b < z1 && !plain[b]) b++;
-      const ta = plain[a] ? edge[a] : edge[b], tb = plain[b] ? edge[b] : edge[a], t = plain[a] && plain[b] && b > a ? (y - a) / (b - a) : plain[a] ? 0 : 1;
-      edge[y] = ta.map((v, c) => lerp(v, tb[c], t));
+      const ta = plain[a] ? lift[a] : lift[b], tb = plain[b] ? lift[b] : lift[a], t = plain[a] && plain[b] && b > a ? (y - a) / (b - a) : plain[a] ? 0 : 1;
+      lift[y] = ta.map((v, c) => lerp(v, tb[c], t));
     }
-    // the room's colour per row away from the painting: the ambient wall and desk, the front's own edge
-    const far = (y) => (y < FRONT ? [ref[y * 3], ref[y * 3 + 1], ref[y * 3 + 2]] : avg(src, 1656, 1671, y, y));
-    // the painting's grain, lifted off clean stretches of wall and desk and tiled out
+    const blurRows = (rows) => rows.map((_, y) => {
+      const [z0, z1] = zone(y), y0 = Math.max(z0, y - 50), y1 = Math.min(z1, y + 50), s = [0, 0, 0];
+      for (let k = y0; k <= y1; k++) for (let c = 0; c < 3; c++) s[c] += rows[k][c];
+      return s.map((v) => v / (y1 - y0 + 1));
+    });
+    const soft = blurRows(blurRows(lift));
+
     // the painting's grain, lifted off clean stretches of wall and desk: the wall's fine dither is
     // tiled out (mirrored, so it never seams); the desk's streaks of grain run on along their rows
     const rowMean = (x0, n) => Array.from({ length: H }, (_, y) => avg(src, x0, x0 + n - 1, y, y));
@@ -259,58 +273,15 @@ function sides(src, suffix) {
     const dim = (k) => 1 - 0.3 * ss((k - 120) / (SW - 120));
 
     for (let y = 0; y < H; y++) {
-      const e = px(ex, y), f = far(y);
+      const e = px(ex, y), a = amb(y);
       for (let k = 0; k < SW; k++) {
-        const t = 1 - Math.exp(-k / 320), g = grain(k, y), s = ss(k / 8);
-        put(k, y, edge[y].map((v, c) => lerp(plain[y] ? e[c] : v, (lerp(v, f[c], t) + g[c]) , s) * dim(k) + hash(k, y, side === 'left' ? 1 : 7) * 3));
-      }
-    }
-
-    // ---- the things the edge cuts, carried on and ended ----
-    const DARK = [6, 3, 2];
-    if (side === 'left') {
-      // the shelf: 44 px on with its slope (it rises away from the lamp), shaded to a dark end
-      const EXT = 44;
-      for (let k = 0; k < EXT + 24; k++) for (let sy = 128; sy <= 194; sy++) {
-        const y = sy - Math.round(0.1 * Math.min(k, EXT)), j = k - EXT;
-        let c = px(tile(Math.min(k, EXT - 1), 24), sy);
-        if (j >= 0 && j < 10) c = c.map((v) => v * (1 - 0.55 * (j / 10)));
-        else if (j >= 10 && j < 18) c = [8, 4, 2];
-        else if (j >= 18) c = [38, 19, 9];
-        put(k, y, c.map((v) => v * dim(k)));
-      }
-      // the pegboard ends at the edge: its frame, and a little shadow on the wall beside it
-      for (let y = 194; y <= 508; y++) {
-        put(0, y, DARK); put(1, y, DARK);
-        for (let k = 2; k < 5; k++) put(k, y, px(ex, y).map((v) => v * 0.8));
-      }
-      // the stack of books: the page edges run on a few px to their outline
-      for (let y = 605; y <= 785; y++) {
-        for (let k = 0; k < 5; k++) put(k, y, px(tile(k, 5), y));
-        put(5, y, DARK); put(6, y, DARK);
-      }
-    } else {
-      // the bookcase: planks and all 60 px on with their slope, to a post that mirrors its left one;
-      // the box on the top shelf ends after 14 px, the case's dark back behind it
-      const EXT = 60, back = avg(src, 1648, 1671, 380, 420);
-      for (let k = 0; k < EXT; k++) for (let sy = 62; sy <= 440; sy++) {
-        const y = sy - Math.round(0.1 * k);
-        let c = px(tile(k, 24), sy);
-        if (sy >= 124 && sy <= 288) { if (k >= 14 && k < 16) c = DARK; else if (k >= 16) c = back.map((v, i) => v + grain(k, sy)[i] * 0.5); }
-        put(k, y, c.map((v) => v * dim(k)));
-      }
-      // the case's lower part, behind the tower and in its shadow, down to the desk
-      for (let k = 12; k < EXT; k++) for (let y = 441; y < DESK; y++) put(k, y, back.map((v, i) => (v * 0.7 + grain(k, y)[i] * 0.5) * dim(k)));
-      for (let j = 0; j < 45; j++) for (let y = 56; y < DESK; y++) put(EXT + j, y, px(1555 - j, y + 6).map((v) => v * dim(EXT + j)));
-      // the tower's front: 10 px more of it, then its edge
-      for (let y = 440; y <= 771; y++) {
-        for (let k = 0; k < 10; k++) put(k, y, px(tile(k, 10), y).map((v) => v * dim(k)));
-        put(10, y, DARK); put(11, y, DARK);
-      }
-      // the book lying on the desk ends 10 px out
-      for (let y = 772; y <= 848; y++) {
-        for (let k = 0; k < 10; k++) put(k, y, px(tile(k, 10), y).map((v) => v * dim(k)));
-        put(10, y, [4, 2, 2]); put(11, y, [4, 2, 2]);
+        // the lamp's extra light fades out within a short way; shadow (the edge darker than the room) stays
+        const fade = Math.exp(-k / 140), g = grain(k, y), d = dim(k);
+        const base = a.map((v, c) => (v * (soft[y][c] > 1 ? 1 + (soft[y][c] - 1) * fade : soft[y][c]) + g[c]) * d + hash(k, y, side === 'left' ? 1 : 7) * 3);
+        if (plain[y]) put(k, y, base.map((v, c) => lerp(e[c], v, ss(k / 8))));
+        else if (k < CUT) put(k, y, px(tile(k, CUT), y).map((v) => v * d)); // the cut thing runs on a little
+        else if (k < CUT + 2) put(k, y, [6, 3, 2]); // to its outline
+        else put(k, y, base.map((v) => v * (k < CUT + 8 ? 0.82 + 0.03 * (k - CUT - 2) : 1))); // a touch of shadow beside it
       }
     }
     files[side] = out;

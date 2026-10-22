@@ -35,6 +35,8 @@ interface Rivulet {
   base: number;
   age: number;
   phase: number;
+  /** Its pace against RUN_BURST / RUN_CREEP: 1 for the first run, less for a slower one. */
+  speed: number;
   done: boolean;
 }
 
@@ -64,6 +66,10 @@ const SOAK_RATE = 0.75; // 1/s
 const SPREAD_S = 1.5; // s the puddle keeps spreading after the last drop lands
 /** How wide a run down the mug's face is, art px: coffee runs down a cup in an even band. */
 const RUN_W = 6;
+/** A run's pace, art px/s: a short rush over the lip, then a slow creep down the face (about eight
+ *  seconds for the whole mug at speed 1). */
+const RUN_BURST = 70;
+const RUN_CREEP = 20;
 
 export class Spill {
   active = false;
@@ -139,18 +145,35 @@ export class Spill {
 
   /**
    * The mug has been bumped: coffee slops over the front of the lip at each x and runs down the
-   * mug's face (from lipY to baseY, mug coords). Where it reaches the desk it pools at the base,
-   * a puddle about rx by ry the first time, a little wider with every run after.
+   * mug's face (from lipY to baseY, mug coords) at `speed` times the usual pace. Where it reaches
+   * the desk it pools at the base, a puddle about rx by ry the first time, a little wider with
+   * every run after.
    */
-  drip(xs: number[], lipY: number, baseY: number, pool: { cx: number; rx: number; ry: number }) {
+  drip(xs: number[], lipY: number, baseY: number, pool: { cx: number; rx: number; ry: number }, speed = 1) {
     this.wallX = this.g.width;
     this.feed = pool;
     for (const x of xs) {
-      this.rivulets.push({ x, top: lipY, y: lipY, base: baseY, age: 0, phase: this.rng() * Math.PI * 2, done: false });
+      this.rivulets.push({ x, top: lipY, y: lipY, base: baseY, age: 0, phase: this.rng() * Math.PI * 2, speed, done: false });
     }
     this.active = true;
     this.soaking = false;
     this.quietFor = 0;
+  }
+
+  /** How many runs have come down the mug's face so far. */
+  get runs() {
+    return this.rivulets.length;
+  }
+
+  /** Where the runs are across the face (mug coords), so a new one can keep clear of them. */
+  get runXs() {
+    return this.rivulets.map((r) => r.x);
+  }
+
+  /** Whether the latest run's head has got at least this far (0–1) down the face. */
+  runPast(frac: number) {
+    const r = this.rivulets[this.rivulets.length - 1];
+    return !!r && r.y - r.top >= frac * (r.base - r.top);
   }
 
   /** A run of coffee reached the desk: start the puddle there, or spread it a little. */
@@ -202,11 +225,11 @@ export class Spill {
       if (Math.abs(p.ryTo - p.ry) < 0.05) p.ry = p.ryTo;
     }
 
-    // the runs down the mug's face: quick off the lip, then creeping, beading as they go
+    // the runs down the mug's face: a rush off the lip, then creeping, beading as they go
     for (const r of this.rivulets) {
       if (r.done) continue;
       r.age += dt;
-      const v = Math.max(16, 85 * Math.exp(-0.9 * r.age)) * (0.5 + 0.5 * Math.abs(Math.sin(r.age * 4.5 + r.phase)));
+      const v = Math.max(RUN_CREEP, RUN_BURST * Math.exp(-0.8 * r.age)) * r.speed * (0.65 + 0.35 * Math.abs(Math.sin(r.age * 3 + r.phase)));
       r.y += v * dt;
       if (r.y >= r.base) {
         r.y = r.base;

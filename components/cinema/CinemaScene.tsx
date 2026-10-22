@@ -79,14 +79,21 @@ const DECK_CLEARANCE = 12; // clears the brackets under the deck too
 const HINT_DELAY_MS = 2200;
 
 /** The mug's tap: each click bumps it a little further back across the desk, upright, up to
- *  three bumps, slopping a little more coffee each time. It all stays until the page is reloaded. */
+ *  three bumps, slopping a little coffee off the back of the rim each time. The first bump also sends
+ *  one slow run of coffee over the front lip and down the mug's face; once that is halfway down, the
+ *  next bump sends a second, slower one, and that's the last. It all stays until the page is reloaded. */
 const PUSH_S = 0.35;
 const PUSH_STEP = 4.5; // art px up the desk (away from you) per bump
 const PUSH_MAX = 3; // bumps before it won't go further
 const PUSH_SHRINK = 0.003; // per art px further away, a hair smaller
 const LEAK_DROPS = 10;
+const RUN_SLOWER = 0.65; // the second run's pace against the first
+const RUN_GAP = 22; // canvas px the second run keeps clear of the first
 const LEAK_POOL = [34, 6]; // art px: the front puddle's half-width and half-depth, small
 /** Coffee over the front lip: where it runs down the mug's face, canvas px (body is x 110–228). */
+/** Art px as a share of the stage's width (container query units), so a prop's move scales with the stage
+ *  as you sit and stand instead of being pinned at the px it was last drawn at. */
+const cq = (artPx: number) => `${((artPx / art.size.width) * 100).toFixed(3)}cqw`;
 const DRIP_LIP = 82;
 const DRIP_BASE = 243;
 const DRIP_X = [118, 216];
@@ -426,7 +433,6 @@ export default function CinemaScene() {
   const penRefs = useRef<(HTMLDivElement | null)[]>([]);
   const leafRefs = useRef<(HTMLDivElement | null)[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const scaleRef = useRef(1);
 
   useLayoutEffect(() => {
     const update = () => setVp({ w: window.innerWidth, h: window.innerHeight });
@@ -539,7 +545,6 @@ export default function CinemaScene() {
       if (!w) return;
       const dt = w.last ? Math.min(0.033, (now - w.last) / 1000) : 1 / 60;
       w.last = now;
-      const s = scaleRef.current;
 
       // the mug: each bump slides it back a little, upright, and it stays there
       const m = w.mug;
@@ -604,7 +609,7 @@ export default function CinemaScene() {
         }
         const f = noteRefs.current.get(n.id);
         if (f) {
-          f.style.transform = `translate(${(n.x * s).toFixed(1)}px, ${(n.y * s).toFixed(1)}px) perspective(${(600 * s).toFixed(0)}px) rotateZ(${n.rot.toFixed(2)}deg) rotateX(${n.tilt.toFixed(2)}deg)`;
+          f.style.transform = `translate(${cq(n.x)}, ${cq(n.y)}) perspective(${cq(600)}) rotateZ(${n.rot.toFixed(2)}deg) rotateX(${n.tilt.toFixed(2)}deg)`;
         }
       }
 
@@ -615,7 +620,7 @@ export default function CinemaScene() {
       const set = (node: HTMLElement | null | undefined, transform: string) => {
         if (node) node.style.transform = transform;
       };
-      const mugMove = `translate(${(m.nudge.x * s).toFixed(2)}px, ${(-m.pos * s).toFixed(1)}px) scale(${(1 - PUSH_SHRINK * m.pos).toFixed(4)})`;
+      const mugMove = `translate(${cq(m.nudge.x)}, ${cq(-m.pos)}) scale(${(1 - PUSH_SHRINK * m.pos).toFixed(4)})`;
       set(el.mug, mugMove);
       set(el.steam, mugMove);
       w.pens.forEach((sp, i) => set(penRefs.current[i], `rotate(${sp.x.toFixed(2)}deg)`));
@@ -678,14 +683,20 @@ export default function CinemaScene() {
           w.mug.from = w.mug.pos;
           w.mug.bumps += 1;
           w.mug.to = PUSH_STEP * w.mug.bumps;
-          // each shove slops a little coffee: drops off the back of the rim to the left, and a run or
-          // two over the front lip, down the mug's face, into a small puddle at its base; it all stays
+          // each shove slops a few drops off the back of the rim to the left; the first also sends one
+          // slow run over the front lip and down the mug's face into a small puddle at its base, and once
+          // that run is halfway down the next shove sends a second, slower one, clear of the first: the
+          // last there is. It all stays.
           if (w.spill && geom) {
             w.spill.slosh(0, LEAK_DROPS);
-            const [x0, x1] = DRIP_X;
-            const a = x0 + Math.random() * (x1 - x0 - 30);
-            const runs = Math.random() < 0.55 ? [a, a + 16 + Math.random() * (x1 - a - 16)] : [a + Math.random() * 20];
-            w.spill.drip(runs, DRIP_LIP, DRIP_BASE, { cx: geom.mugLeft + 60, rx: LEAK_POOL[0], ry: LEAK_POOL[1] });
+            const n = w.spill.runs;
+            if (n === 0 || (n === 1 && w.spill.runPast(0.5))) {
+              const [x0, x1] = DRIP_X;
+              const taken = w.spill.runXs;
+              let x = x0 + Math.random() * (x1 - x0);
+              for (let tries = 0; tries < 12 && taken.some((t) => Math.abs(t - x) < RUN_GAP); tries++) x = x0 + Math.random() * (x1 - x0);
+              w.spill.drip([x], DRIP_LIP, DRIP_BASE, { cx: geom.mugLeft + 60, rx: LEAK_POOL[0], ry: LEAK_POOL[1] }, n === 0 ? 1 : RUN_SLOWER);
+            }
           }
           break;
         }
@@ -775,10 +786,6 @@ export default function CinemaScene() {
         vp.h,
       )
     : null;
-  const stageScale = stage?.scale ?? 1;
-  useEffect(() => {
-    scaleRef.current = stageScale;
-  }, [stageScale]);
   const screen = stage ? screenRect(stage) : null;
   // the live screen is laid out at its seated size and only scaled as you sit and stand, so the text
   // never reflows or jumps between font sizes on the way
