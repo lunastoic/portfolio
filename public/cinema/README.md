@@ -1,15 +1,14 @@
 # Lo-fi desk scene (v2) artwork
 
-**The room is the mockup.** `node scripts/mockup-room.js` takes `scripts/art/mockup.png` (the layout: a desk
-fitted wall to wall in a closet, table lamp, decks, monitor on three books, plant, Xbox, lava lamp, headset on
-its hook, controller) as the backdrop, scaled 1.2x to art px, with the deck and spine lettering cleared (the
-scene sets real type) and the mug, sticky note, plant and lava lamp taken out (their sprites stand in their
-places), each region filled from the wall or desk round it. It writes `room.webp`, `desk-off.webp` (lamp off),
-the `side-*` closet walls for very wide windows, and `room.json`. No filters: the room is the mockup's own
-pixels. The live things are cut from the mockup itself along hand-traced outlines (`cut-mug.png` with its
-steam lifted as a soft layer, `cut-plant.png`, `cut-note-1…7.png` with the lettering painted out and recoloured,
-`cut-lava-off.png` laid over the lava lamp when it's switched off), so they match it exactly. Everything below about the painting
-(`desk.webp`, `cinema-blend.js`) describes the earlier room, kept but unused.
+**The room is drawn as pixel art.** `node scripts/pixel-room.js` draws everything from scratch on a 461 x 227
+grid (each pixel is 4 art px, so the room is 1844 x 908): flat colours, 1 px outlines, straight edges, and the
+desk lamp's light as flat bands with a checker dither between them. The layout follows `scripts/art/mockup.png`
+and keeps every place the scene relies on (the screen's glass, the decks and spines the words sit on, the mug's
+spill, the notes). It writes `room.png` (lamp on), `desk-off.png` (lamp off: no pool on the wall or desk, the
+monitor's green the light that's left), the `side-*` strips for very wide windows (the same drawing, carried on),
+the sprites (`cut-mug.png`, `cut-note-1…7.png`, `cut-plant.png`, `cut-lava-off.png`) and `room.json`.
+`scripts/mockup-room.js` (the room cut from the mockup) and everything below about the painting (`desk.webp`,
+`cinema-blend.js`) describe earlier rooms, kept but unused.
 
 Assets for the pixel-art "v2" room. Nothing here is used by v1.
 

@@ -157,7 +157,7 @@ interface WallText {
 const CSU_BURGUNDY = "#7e012d";
 const DH_GOLD = "#fcbe11";
 const NAME_GOLD = "#f6bb5c";
-// art px = mockup px x 1.2 (scripts/mockup-room.js)
+// art px: the room is drawn on a grid of 4 art px per pixel (scripts/pixel-room.js)
 const SPINE = "#d9b77a";
 const WALL_TEXT: WallText[] = [
   { lines: ["CHRISTOPHER LUNA"], x: 781, y: 61, size: 44, color: NAME_GOLD, weight: 700, track: 0.06 },
@@ -171,9 +171,9 @@ const WALL_TEXT: WallText[] = [
   { lines: ["BACHELOR OF SCIENCE  ·  COMPUTER SCIENCE"], x: 781, y: 239, size: 18, color: NAME_GOLD, weight: 600, track: 0.06, edged: true },
   { lines: ["FIRST GEN"], x: 781, y: 262, size: 13.5, color: NAME_GOLD, weight: 600, track: 0.08, edged: true },
   // the three books under the monitor, titles in gilt on their spines
-  { lines: ["COMPUTER SCIENCE"], x: 625, y: 693, size: 15.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
-  { lines: ["DATA STRUCTURES & ALGORITHMS"], x: 625, y: 730, size: 15.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
-  { lines: ["COMPUTER ORGANIZATION"], x: 625, y: 766, size: 15.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
+  { lines: ["COMPUTER SCIENCE"], x: 625, y: 694, size: 15.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
+  { lines: ["DATA STRUCTURES & ALGORITHMS"], x: 625, y: 734, size: 15.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
+  { lines: ["COMPUTER ORGANIZATION"], x: 625, y: 774, size: 15.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
 ];
 const wallTextStyle = (t: WallText): CSSProperties => ({
   left: `${((t.x + (art.textDx ?? 0)) / art.size.width) * 100}%`,
