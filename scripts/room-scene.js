@@ -218,39 +218,6 @@ function poster() {
   return asset('poster', x0, y0, cv);
 }
 
-function headset() {
-  const X = 1088, Y = 96, W = 110, H = 170, cv = new Cv(W, H), cx = 55;
-  // the hook: a plate on the wall with a prong
-  for (let y = 3; y <= 24; y++) for (let x = 44; x <= 64; x++) {
-    const screw = (y === 8 || y === 19) && x === 54;
-    cv.put(x, y, cell(PLASTIC, screw ? 0.2 : 0.42 - (y - 3) * 0.006, 1, 'hook'));
-  }
-  // the headband over it
-  const bcx = cx, bcy = 98, rx = 38, ry = 76;
-  for (let y = 0; y < bcy; y++) for (let x = 0; x < W; x++) {
-    const e = Math.hypot((x - bcx) / rx, (y - bcy) / ry);
-    if (e > 1 || e < 0.84) continue;
-    const k = (e - 0.84) / 0.16, n = norm([(x - bcx) / rx, (y - bcy) / ry, 0.4 + Math.sin(k * Math.PI)]);
-    cv.put(x, y, cell(LEATHER.black, light(n, { spec: 0.6 }) * 1.05, 2, 'band'));
-  }
-  // the yokes and the cups, the right one with the logo
-  for (const ux of [cx - 33, cx + 33]) {
-    for (let y = 92; y <= 104; y++) for (let x = ux - 2; x <= ux + 2; x++) cv.put(x, y, cell(CHROME, 0.4 + (ux - x) * 0.05, 2.2, 'yoke'));
-    for (let y = 96; y < H; y++) for (let x = ux - 21; x <= ux + 21; x++) {
-      const ex = (x - ux) / 20, ey = (y - 132) / 36, e = ex * ex + ey * ey;
-      if (e > 1) continue;
-      const n = norm([ex, ey, Math.sqrt(1 - Math.min(1, e))]);
-      const inner = (ex / 0.7) ** 2 + (ey / 0.78) ** 2 <= 1;
-      const logo = ux > cx && Math.hypot(x - ux, y - 136) <= 5;
-      if (logo) {
-        const xmark = Math.abs(Math.abs(x - ux) - Math.abs(y - 136)) <= 0.6;
-        cv.put(x, y, { col: xmark ? '#0f3a16' : '#46c454', z: 3, part: 'logo', glow: true });
-      } else cv.put(x, y, cell(inner ? PLASTIC : LEATHER.black, light(n, { spec: 0.8, shin: 20 }) * (inner ? 1.05 : 0.95), inner ? 2.6 : 2.4, inner ? 'shell' : 'cup'));
-    }
-  }
-  return asset('headset', X, Y, cv);
-}
-
 /** A Catmull-Rom spline through points, sampled every half pixel. */
 function spline(pts) {
   const out = [];
@@ -360,28 +327,6 @@ function book(name, x0, y0, x1, y1, ramp) {
     cv.put(x, y, c);
   }
   return asset(name, x0, y0, cv);
-}
-
-function keyboard() {
-  const [X, Y] = [409, 559], W = 419, H = 66, cv = new Cv(W, H);
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const d = rrect(x, y, 0, 0, W - 1, H - 1, 6);
-    if (d < 0) continue;
-    const v = y >= H - 7 ? 0.18 : d < 2 && (y < 3 || x < 3) ? 0.6 : 0.3;
-    cv.put(x, y, cell(PLASTIC, v, 1, 'case'));
-  }
-  const u = 19.4, rows = [
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2], [1.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.5],
-    [1.75, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.25], [2.25, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.75], [1.25, 1.25, 1.25, 6.25, 1.25, 1.25, 1.25, 1.25]];
-  const key = (kx0, ky0, kw, dark) => {
-    for (let y = 0; y < 10; y++) for (let x = 0; x < Math.round(kw) - 2; x++) {
-      const top = y < 7, v = top ? (y === 0 ? 0.62 : 0.4 - y * 0.02) - (dark ? 0.1 : 0) : 0.16;
-      cv.put(kx0 + x, ky0 + y, cell(GLAZE.forest, x === Math.round(kw) - 3 && top ? v - 0.12 : v, 2 + ky0 * 0.001, 'k' + kx0 + '-' + ky0));
-    }
-  };
-  rows.forEach((r, j) => { let kx = 12; r.forEach((w, i) => { key(Math.round(kx), 6 + j * 11, w * u, w > 1 && w < 6); kx += w * u; }); });
-  for (let j = 0; j < 5; j++) for (let i = 0; i < 4; i++) key(Math.round(318 + i * 22), 6 + j * 11, 22, i === 3);
-  return asset('keyboard', X, Y, cv);
 }
 
 function coaster(cx, cy) {
@@ -520,7 +465,6 @@ function mouse() {
   return asset('mouse', X, Y, cv);
 }
 
-/** An Xbox One: glossy top on the left, vented on the right; the disc slot along the front, the lit logo. */
 function xbox() {
   const [X, Y] = [916, 480], W = 218, H = 77, cv = new Cv(W, H), split = 132, TOP = 10;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -550,7 +494,6 @@ function xbox() {
   return asset('xbox', X, Y, cv);
 }
 
-/** An Xbox One controller: the wide top with its bumpers, two grips, offset sticks, d-pad, ABXY, the lit guide button. */
 function controller() {
   const [X, Y] = [1043, 548], W = 142, H = 68, cv = new Cv(W, H);
   const e = (x, y, cx, cy, rx, ry) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2;
@@ -587,6 +530,133 @@ function controller() {
     cv.put(x, y, c);
   }
   return asset('controller', X, Y, cv);
+}
+
+/** A full-size keyboard: a low case lit along its back edge, every keycap a lighter top face over a darker
+ *  skirt, all on even pixels so each key stays crisp in the chunky draft. */
+function keyboard() {
+  const [X, Y] = [411, 559], W = 414, H = 66, cv = new Cv(W, H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const d = rrect(x, y, 0, 0, W - 1, H - 1, 6);
+    if (d < 0) continue;
+    cv.put(x, y, cell(PLASTIC, y >= H - 4 ? 0.12 : y < 2 ? 0.55 : 0.24, 1, 'case'));
+  }
+  const key = (x0, y0, w, mod) => {
+    for (let y = 0; y < 10; y++) for (let x = 0; x < w; x++) {
+      let v;
+      if (y < 6) v = (y < 2 ? 0.72 : 0.54) - (mod ? 0.1 : 0) - (x >= w - 2 ? 0.12 : 0) + (x < 2 ? 0.05 : 0);
+      else v = 0.24 - (y - 6) * 0.03;
+      cv.put(x0 + x, y0 + y, cell(GLAZE.forest, v, 2, 'k' + x0 + '-' + y0));
+    }
+  };
+  const rows = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2], [1.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.5],
+    [1.75, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.25], [2.25, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.75], [1.25, 1.25, 1.25, 6.25, 1.25, 1.25, 1.25, 1.25]];
+  const U = 20, ex = (c) => 8 + Math.round((c * U) / 2) * 2;
+  rows.forEach((r, j) => { let c = 0; for (const w of r) { key(ex(c), 4 + j * 12, ex(c + w) - ex(c) - 2, w !== 1 && w < 6); c += w; } });
+  for (let j = 0; j < 5; j++) for (let i = 0; i < 4; i++) key(320 + i * 20, 4 + j * 12, 18, i === 3);
+  return asset('keyboard', X, Y, cv);
+}
+
+/** An Xbox One: the glossy top on the left and the vented one on the right, a matte front with the slot-loading
+ *  disc drive, and the glossy power panel with its lit logo. */
+function xbox() {
+  const [X, Y] = [916, 476], W = 218, H = 81, cv = new Cv(W, H), split = 140, TOP = 14;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (rrect(x, y, 0, 0, W - 1, H - 1, 3) < 0) continue;
+    let c;
+    if (y < TOP) {
+      if (x < split) c = cell(PLASTIC, 0.32 + (Math.abs(x - 3 * y - 30) < 10 ? 0.2 : 0) + (Math.abs(x - 3 * y - 70) < 3 ? 0.12 : 0), 1.1, 'top-gloss', { noOutline: true });
+      else c = cell(PLASTIC, (x + 2 * y) % 4 < 2 ? 0.06 : 0.44, 1.1, 'top-vent', { noOutline: true });
+      if (y >= TOP - 2) c = cell(PLASTIC, 0.66, 1.15, 'bevel', { noOutline: true });
+    } else if (x < split) {
+      c = cell(PLASTIC, 0.38 - 0.08 * ((y - TOP) / (H - TOP)) + 0.03 * (hash(x, y, 5) - 0.5), 1, 'front', { noOutline: true });
+      if (y >= 40 && y <= 41 && x > 12 && x < 106) c = cell(PLASTIC, 0.02, 1.2, 'slot', { noOutline: true });
+      if (y >= 42 && y <= 43 && x > 12 && x < 106) c = cell(PLASTIC, 0.66, 1.2, 'lip', { noOutline: true });
+      if (Math.hypot(x - 116, y - 41) < 2) c = cell(PLASTIC, 0.5, 1.2, 'eject', { noOutline: true });
+      if (y >= 58 && y <= 62 && x >= 14 && x <= 23) c = cell(PLASTIC, y === 58 ? 0.48 : 0.04, 1.2, 'usb', { noOutline: true });
+      if (Math.hypot(x - 32, y - 60) < 2) c = cell(PLASTIC, 0.45, 1.2, 'sync', { noOutline: true });
+    } else {
+      const s = (x - split) - 0.8 * (y - TOP);
+      c = cell(PLASTIC, 0.16 + (Math.abs(s - 16) < 9 ? 0.26 : 0) + (Math.abs(s - 38) < 3 ? 0.12 : 0), 1, 'gloss', { noOutline: true });
+    }
+    if (y >= TOP && x >= split && x < split + 2) c = cell(PLASTIC, 0.02, 1.2, 'seam', { noOutline: true });
+    if (y >= H - 3) c = cell(PLASTIC, 0.06, 1.2, 'foot');
+    const lr = Math.hypot(x - 182, y - 44);
+    if (lr <= 5) c = { col: Math.abs(Math.abs(x - 182) - Math.abs(y - 44)) <= 0.8 && lr < 4 ? '#8c9290' : '#f2f4f0', z: 2, part: 'logo', glow: true };
+    cv.put(x, y, c);
+  }
+  return asset('xbox', X, Y, cv);
+}
+
+/** An Xbox One controller: a wide top with its bumpers and two grips angled out and down, the left stick high
+ *  and the right one low in their wells, the d-pad, A B X Y, view and menu, and the lit guide button. */
+function controller() {
+  const [X, Y] = [1043, 548], W = 142, H = 68, cv = new Cv(W, H);
+  const ell = (x, y, cx, cy, rx, ry, a) => { const dx = x - cx, dy = y - cy, c = Math.cos(a), s = Math.sin(a), u = dx * c + dy * s, v = -dx * s + dy * c; return (u / rx) ** 2 + (v / ry) ** 2; };
+  const inside = (x, y) => {
+    const top = ell(x, y, 71, 25, 55, 18, 0) <= 1, gl = ell(x, y, 33, 42, 18, 24, 0.5) <= 1, gr = ell(x, y, 109, 42, 18, 24, -0.5) <= 1;
+    return (top && ell(x, y, 71, 62, 25, 20, 0) > 1) || gl || gr;
+  };
+  const { n } = dome(W, H, inside, 9);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (!inside(x, y)) continue;
+    let c = cell(PLASTIC, light(n(x, y), { spec: 1.1, shin: 26 }) * 1.0, 1, 'body');
+    if (y < 14 && ((x > 18 && x < 58) || (x > 84 && x < 124)) && !inside(x, y - 4)) c = cell(PLASTIC, 0.5 - y * 0.015, 1.4, x < 71 ? 'lb' : 'rb');
+    for (const [sx, sy] of [[44, 22], [89, 38]]) {
+      const r = Math.hypot(x - sx, y - sy);
+      if (r <= 7) c = r > 5.5 ? cell(PLASTIC, 0.04, 1.5, 'well' + sx, { noOutline: true })
+        : cell(PLASTIC, r > 4.3 ? 0.5 : 0.22 + 0.06 * ((x - sx) + (y - sy)) / 4, 1.6, 'stick' + sx);
+    }
+    const dx = x - 57, dy = y - 38;
+    if (Math.hypot(dx, dy) <= 6.5) c = cell(PLASTIC, 0.06, 1.5, 'dwell', { noOutline: true });
+    if ((Math.abs(dx) <= 1.6 && Math.abs(dy) <= 5) || (Math.abs(dy) <= 1.6 && Math.abs(dx) <= 5)) c = cell(PLASTIC, 0.4 - (dx + dy) * 0.02, 1.6, 'dpad');
+    for (const [bx, by, col] of [[105, 15, '#d8b630'], [99, 21, '#3a6ed0'], [111, 21, '#d0443a'], [105, 27, '#46b456']]) {
+      const r = Math.hypot(x - bx, y - by);
+      if (r <= 2.8) c = r <= 1.3 ? { col, z: 1.8, part: 'btn' + bx + by, glow: true } : cell(PLASTIC, y < by ? 0.4 : 0.14, 1.7, 'btn' + bx + by);
+    }
+    for (const bx of [64, 78]) if (Math.hypot(x - bx, y - 24) <= 1.6) c = cell(PLASTIC, 0.12, 1.6, 'vm' + bx);
+    const gr = Math.hypot(x - 71, y - 11);
+    if (gr <= 4.6) c = { col: Math.abs(Math.abs(x - 71) - Math.abs(y - 11)) <= 0.7 && gr < 3.2 ? '#8c9290' : '#f2f4f0', z: 1.8, part: 'guide', glow: true };
+    cv.put(x, y, c);
+  }
+  return asset('controller', X, Y, cv);
+}
+
+/** A wireless headset hanging on its wall hook: a padded band over the prong, metal sliders, round cups with
+ *  their cushions peeking out on the inner side, the logo lit on the right cup. */
+function headset() {
+  const X = 1088, Y = 96, W = 110, H = 172, cv = new Cv(W, H), cx = 55;
+  for (let y = 2; y <= 20; y++) for (let x = 47; x <= 63; x++) cv.put(x, y, cell(PLASTIC, y < 4 || x < 49 ? 0.55 : 0.3, 1, 'plate'));
+  for (let y = 20; y <= 30; y++) for (let x = 51; x <= 59; x++) cv.put(x, y, cell(PLASTIC, 0.42 - (y - 20) * 0.02, 3.5, 'prong'));
+  const bcy = 102, rx = 40, ry = 76;
+  for (let y = 0; y <= bcy - 6; y++) for (let x = 0; x < W; x++) {
+    const e = Math.hypot((x - cx) / rx, (y - bcy) / ry), th = 0.1 + 0.06 * clamp((bcy - y) / ry - 0.5, 0, 1) * 2;
+    if (e > 1 || e < 1 - th) continue;
+    const k = (e - (1 - th)) / th;
+    if (k < 0.35) cv.put(x, y, cell(LEATHER.black, 0.5 + 0.1 * Math.sin(y * 0.6), 2.1, 'pad'));
+    else { const nn = norm([(x - cx) / rx, (y - bcy) / ry, 0.3 + Math.sin(Math.PI * k)]); cv.put(x, y, cell(PLASTIC, light(nn, { spec: 0.9, shin: 20 }) * 1.05, 2.2, 'band')); }
+  }
+  for (const s of [-1, 1]) {
+    const bx = cx + s * (rx - 4);
+    for (let y = bcy - 12; y <= bcy + 8; y++) for (let x = bx - 2; x <= bx + 2; x++) cv.put(x, y, cell(CHROME, 0.62 - s * (x - bx) * 0.08, 2.3, 'slider' + s));
+    const ux = cx + s * 33, uy = 136;
+    // the cushion, peeking out toward the middle
+    for (let y = uy - 30; y <= uy + 30; y++) for (let x = ux - 26; x <= ux + 26; x++) {
+      if (((x - (ux - s * 7)) / 15) ** 2 + ((y - uy) / 27) ** 2 > 1) continue;
+      cv.put(x, y, cell(LEATHER.black, 0.42 + 0.08 * Math.sin(y * 0.5), 2.4, 'cushion' + s));
+    }
+    // the cup's shell, with its rim ring
+    for (let y = uy - 30; y <= uy + 30; y++) for (let x = ux - 22; x <= ux + 22; x++) {
+      const ex = (x - ux) / 19, ey = (y - uy) / 26, e = ex * ex + ey * ey;
+      if (e > 1) continue;
+      const nn = norm([ex, ey, Math.sqrt(1 - e) + 0.2]);
+      const ring = e > 0.72 && e < 0.84;
+      let c = cell(PLASTIC, ring ? 0.5 : light(nn, { spec: 1, shin: 24 }) * 1.0, 2.6, 'cup' + s);
+      if (s > 0 && Math.hypot(x - ux, y - uy) <= 4.5) c = { col: Math.abs(Math.abs(x - ux) - Math.abs(y - uy)) <= 0.8 && Math.hypot(x - ux, y - uy) < 3.4 ? '#14401c' : '#46c454', z: 3, part: 'logo', glow: true };
+      cv.put(x, y, c);
+    }
+  }
+  return asset('headset', X, Y, cv);
 }
 
 // ------------------------------------------------------------------------------------------------
