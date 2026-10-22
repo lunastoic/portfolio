@@ -1,10 +1,8 @@
 // Pixel-art prop renderer: shaded shapes -> palette ramps + Bayer dither + selective outlines -> PNG.
 // usage: node scripts/pixel-props.js public/props [previewDir] [canvasProjectDir]
 const fs = require('fs'), zlib = require('zlib'), path = require('path');
-// (required by another script, nothing is drawn and the toolkit is exported: see the bottom)
-const MAIN = require.main === module;
-const OUT = MAIN ? process.argv[2] : null, PREV = MAIN ? process.argv[3] : null;
-if (OUT) fs.mkdirSync(OUT, { recursive: true });
+const OUT = process.argv[2], PREV = process.argv[3];
+fs.mkdirSync(OUT, { recursive: true });
 if (PREV) fs.mkdirSync(PREV, { recursive: true });
 
 // ---------- PNG ----------
@@ -47,14 +45,7 @@ class Cv {
 const solid = s => s && s.solid !== false;
 
 const GR = {};
-function render(cv, name, opts = {}) {
-  const { px } = paint(cv, name, opts);
-  const { W, H } = cv, { scale = 6 } = opts;
-  writePng(path.join(OUT, name + '.png'), W, H, px);
-  preview(px, W, H, name, scale);
-}
-/** A canvas's cells to RGBA pixels (ramps dithered, selective outlines), without writing anything. */
-function paint(cv, name, { outline = true, dither = 0.6 } = {}) {
+function render(cv, name, { outline = true, dither = 0.6, scale = 6 } = {}) {
   const { W, H } = cv; const px = new Uint8Array(W * H * 4); const g = GR[name] = { W, H, cells: new Array(W * H).fill(null) };
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const c = cv.get(x, y); if (!c) continue;
@@ -83,9 +74,7 @@ function paint(cv, name, { outline = true, dither = 0.6 } = {}) {
     if (c.col) g.cells[y * W + x] = { col: c.col, a };
     const i = (y * W + x) * 4; px[i] = rgb[0]; px[i + 1] = rgb[1]; px[i + 2] = rgb[2]; px[i + 3] = Math.round(a * 255);
   }
-  return { px, W, H };
-}
-function preview(px, W, H, name, scale) {
+  writePng(path.join(OUT, name + '.png'), W, H, px);
   if (PREV) {
     const S = scale, P = new Uint8Array(W * S * H * S * 4);
     for (let y = 0; y < H * S; y++) for (let x = 0; x < W * S; x++) {
@@ -872,10 +861,9 @@ function backdrop(name, W, H, deskRows) {
 }
 
 // more props live in scripts/props/*.js, each `module.exports = core => { ... }`; PROPS_ONLY=<name> renders just that one
-const core = { Cv, render, paint, writePng, hex, light, norm, dot, hash, vnoise, shadowEllipse, solid, BAYER,
+const core = { Cv, render, light, norm, dot, hash, vnoise, shadowEllipse, solid, BAYER,
   GLAZE, GOLD, COFFEE, LEAF, POT, SOIL, BOOK, PAGES, PAPER, PIN, CHROME, IRON, LEATHER, LENS, SHAVED, GRAPHITE, MAPLE, DECK, WALL, WOOD,
   bookUp, bookFlat, spine, bookend, leaf, stem, pencil };
-if (!MAIN) { module.exports = core; return; }
 const PROPS = path.join(__dirname, 'props');
 if (fs.existsSync(PROPS)) for (const f of fs.readdirSync(PROPS).filter(f => f.endsWith('.js')).sort()) {
   if (process.env.PROPS_ONLY && f !== process.env.PROPS_ONLY + '.js') continue;
