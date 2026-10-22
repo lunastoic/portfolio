@@ -76,7 +76,7 @@
 }
 
 /* what stood in the lamp's light goes dark with it: the mug and its steam, the coffee down its side,
-   the notes, the pens, the shade's edge, the words on the spines; the decks and the plant less so */
+   the notes, the pens, the shade's edge, the words on the spines; the decks less so */
 .cinema__sprite,
 .cinema__pen,
 .cinema__spill,
@@ -104,11 +104,6 @@
 
 .cinema--lamp-off .cinema__wall-text--desk {
   filter: brightness(0.5) saturate(0.85);
-}
-
-.cinema--lamp-off .cinema__sprite--plant-pot,
-.cinema--lamp-off .cinema__sprite--plant-leaves {
-  filter: brightness(0.78);
 }
 
 .cinema--seated .cinema__stage {
@@ -162,22 +157,6 @@
   z-index: 5;
   pointer-events: none;
   transition: opacity 0.15s linear, filter 0.5s ease;
-}
-
-.cinema__sprite--plant-leaves {
-  z-index: 5;
-}
-
-/* one leaf of the plant, filling the plant's box; the loop rocks it about its stem */
-.cinema__leaf {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  will-change: transform;
-}
-
-.cinema__leaf img {
-  image-rendering: pixelated;
 }
 
 /* the words on the decks, the poster and the book spines, in the room's typeface */
@@ -243,13 +222,13 @@
   container-type: inline-size;
 }
 
-/* centred on the paper itself: it spans 2–45 of the sprite's 52 px across and 5–48 of 54 down */
+/* centred on the paper itself, below the band at its top and clear of the folded corner */
 .cinema__note-text {
   position: absolute;
-  left: 3.8%;
-  top: 9.3%;
-  width: 82.7%;
-  height: 79.6%;
+  left: 5%;
+  top: 10.1%;
+  width: 89%;
+  height: 76.7%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -305,15 +284,27 @@
   image-rendering: pixelated;
 }
 
-.cinema__lava-glow {
-  position: absolute;
-  z-index: 3;
-  pointer-events: none;
+/* the room with the lava lamp's pink light gone (desk lamp on, and in the unlit room), faded in as it switches off
+   and out as it warms up again */
+.cinema__lava-dark {
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+
+.cinema__lava-dark.is-shown {
   opacity: 1;
-  mix-blend-mode: screen;
-  background:
-    radial-gradient(ellipse 40% 44% at 50% 38%, rgba(255, 72, 168, 0.62), rgba(255, 72, 168, 0.24) 55%, transparent 100%),
-    radial-gradient(ellipse 36% 9% at 50% 90%, rgba(255, 130, 150, 0.55), transparent 100%);
+}
+
+/* the headset's cable: a live pixel canvas from the hook to the controller; tap it and it sways */
+.cinema__cable {
+  z-index: 3;
+}
+
+.cinema__cable canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
 }
 
 /* off: the filament catches once or twice before it dies; on: it stutters awake */
@@ -341,28 +332,6 @@
   42% { opacity: 0; }
   52% { opacity: 0.4; }
   64%, 100% { opacity: 0; }
-}
-
-/* an ant out of the plant pot, across the desk */
-.cinema__ant {
-  position: absolute;
-  z-index: 5;
-  width: 1.7%;
-  pointer-events: none;
-  animation: cinema-ant 2.8s linear forwards;
-}
-
-.cinema__ant img {
-  width: 100%;
-  height: auto;
-  image-rendering: pixelated;
-}
-
-@keyframes cinema-ant {
-  0% { transform: translate(0, 0) scaleX(-1); opacity: 0; }
-  6% { opacity: 1; }
-  94% { opacity: 1; }
-  100% { transform: translate(var(--ant-dx), var(--ant-dy)) scaleX(-1); opacity: 0; }
 }
 
 /* ---- hotspots over objects in the art ---- */
@@ -739,13 +708,4 @@ body:has(.cinema) .crt-flicker {
 .lofi .retro-window--popup {
   font-size: 0.8em;
   inset: 12% 10% auto;
-}
-
-/* the lava lamp in the picture: switched off, its darkened cut-out lies over it */
-.cinema__lava-pic img {
-  transition: opacity 0.6s ease;
-}
-
-.cinema__lava-pic img.is-hidden {
-  opacity: 0;
 }

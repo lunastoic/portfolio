@@ -1,14 +1,19 @@
 # Lo-fi desk scene (v2) artwork
 
-**The room is drawn as pixel art.** `node scripts/pixel-room.js` draws everything from scratch on a 461 x 227
-grid (each pixel is 4 art px, so the room is 1844 x 908): flat colours, 1 px outlines, straight edges, and the
-desk lamp's light as flat bands with a checker dither between them. The layout follows `scripts/art/mockup.png`
-and keeps every place the scene relies on (the screen's glass, the decks and spines the words sit on, the mug's
-spill, the notes). It writes `room.png` (lamp on), `desk-off.png` (lamp off: no pool on the wall or desk, the
-monitor's green the light that's left), the `side-*` strips for very wide windows (the same drawing, carried on),
-the sprites (`cut-mug.png`, `cut-note-1…7.png`, `cut-plant.png`, `cut-lava-off.png`) and `room.json`.
-`scripts/mockup-room.js` (the room cut from the mockup) and everything below about the painting (`desk.webp`,
-`cinema-blend.js`) describe earlier rooms, kept but unused.
+**The room is the Ember study from the Desk Room Studies.** `node scripts/pixel-room.js` runs the studies'
+renderer (`scripts/desk-room.js`): the room laid out on its 461 x 227 u grid, drawn on a 640 x 316 pixel grid with
+the lamps' light picked from material ramps through a 4 x 4 dither, and some things modelled in 3D and shaded as
+pixel art (the headset, the lamp's foot, the iPad, the mouse, the controller). Each pixel becomes 3 x 3 art px, so the
+room is 1920 x 948. The things that move are left out of the backdrop and cut out on their own (the pixels where the
+room with the thing differs from the room without it): `cut-mug.png` (with its steam), `cut-note-1…7.png` (the
+sticky note in seven colours) and `cut-pen-1…3.png` (each pen in the cat cup). The lava lamp
+(`components/cinema/LavaLamp.tsx`) and the headset's cable (`HeadsetCable.tsx`) are drawn live on the page, so
+`room.json` only says where they go. The backdrops: `room.png` and `desk-off.png` (desk lamp on / off) and
+`room-lava-off.png` and `desk-off-lava-off.png` (the lava lamp's light gone as well), and the `side-*` strips for very
+wide windows (the same drawing carried on past each edge). `room.json` holds every place the scene uses: the
+screen's glass, the decks, the mug and its coffee spill, the note and where it lands, the pens' pivots, the lamp's
+hit box, the lava lamp's box and the cable's path. `scripts/mockup-room.js` and everything below about the painting
+(`desk.webp`, `cinema-blend.js`) describe earlier rooms, kept but unused.
 
 Assets for the pixel-art "v2" room. Nothing here is used by v1.
 

@@ -10,6 +10,7 @@ import {
   type CSSProperties,
 } from "react";
 import manifestJson from "../../public/cinema/room.json";
+import HeadsetCable from "./HeadsetCable";
 import LavaLamp from "./LavaLamp";
 import LofiOS, { type LofiPopup } from "./LofiOS";
 import { Spring, clamp01, easeOutCubic } from "./physics";
@@ -18,7 +19,7 @@ import "./cinema.css";
 
 type Pose = "standing" | "sitting" | "seated" | "rising";
 type LayoutKey = "desktop" | "mobile";
-type PropKey = "mug" | "steam" | "note" | "plant-pot" | "plant-leaves";
+type PropKey = "mug" | "steam" | "note";
 
 interface PctBox {
   left: number;
@@ -61,17 +62,18 @@ interface Manifest {
   };
   /** The room past the painting's edges (wall, desk, the things the edge cuts), lit and unlit. */
   sides: { px: number; left: string; right: string; leftOff: string; rightOff: string };
-  /** The lava lamp: with `off`, it's part of the picture and `off` is its switched-off look laid over it. */
-  lava: { boxPct: PctBox; off?: string };
-  pens: { files: string[]; boxPct: PctBox; originPct: number[][]; hitPct: PctBox };
-  leaves: { stems: string; files: string[]; originPct: number[][] };
-  antPct: { from: number[]; to: number[] };
+  /** The room again with the lava lamp's light gone, desk lamp on and off, laid over the room as it switches off. */
+  lavaOff: { on: string; off: string };
+  /** The lava lamp, drawn live (LavaLamp). */
+  lava: { boxPct: PctBox };
+  /** The pens in the cat cup, each in its own box, each rocking about where it leaves the cup. */
+  pens: { files: string[]; boxes: PctBox[]; originPct: number[][]; hitPct: PctBox };
+  /** The headset's cable, drawn live (HeadsetCable). */
+  cable: { boxPct: PctBox; width: number; height: number; points: number[][]; color: { on: string; off: string } };
   /** Where a peeled note comes to rest, art px from where it hangs: on the desk behind the mug. */
   noteLand: { dx: number; dy: number };
   /** How far the deck and spine words move in the widened room (art px). */
   textDx?: number;
-  /** Sprites that just sit in the room (the console, controller, headset and its cable), back to front. */
-  decor?: { name: string; file: string; boxPct: PctBox; z: number }[];
   colors: { coffee: { dark: string; mid: string; hi: string } };
 }
 
@@ -98,13 +100,13 @@ const LEAK_DROPS = 10;
 const RUN_SLOWER = 0.65; // the second run's pace against the first
 const RUN_GAP = 22; // canvas px the second run keeps clear of the first
 const LEAK_POOL = [34, 6]; // art px: the front puddle's half-width and half-depth, small
-/** Coffee over the front lip: where it runs down the mug's face, canvas px (body is x 110–228). */
+/** Coffee over the front lip: where it runs down the mug's face, canvas px (body is x 110–235). */
 /** Art px as a share of the stage's width (container query units), so a prop's move scales with the stage
  *  as you sit and stand instead of being pinned at the px it was last drawn at. */
 const cq = (artPx: number) => `${((artPx / art.size.width) * 100).toFixed(3)}cqw`;
 const DRIP_LIP = 82;
-const DRIP_BASE = 243;
-const DRIP_X = [118, 216];
+const DRIP_BASE = art.props.mug?.spill?.pivot[1] ?? 242;
+const DRIP_X = [118, 226];
 
 /** The sticky note: peel off the wall, drift down like paper, land flat on the desk, fade. */
 const PEEL_S = 0.24;
@@ -136,7 +138,7 @@ const NOTE_TEXTS = [
  * The words round the room (the decks and the book spines), set in real type over the places the painting's own
  * lettering was cleared (scripts/cinema-blend.js). Painting px (mapped into the widened room by mapX): x, y is
  * the text's anchor (its centre, or its left middle with align "left"), size the font size, rotate follows the
- * book spines' slant.
+ * book spines' slant. Set where the Desk Room Studies set them.
  */
 /** A run of a line in its own colour (the school's two colours share a line). */
 type WallRun = { text: string; color: string };
@@ -157,23 +159,23 @@ interface WallText {
 const CSU_BURGUNDY = "#7e012d";
 const DH_GOLD = "#fcbe11";
 const NAME_GOLD = "#f6bb5c";
-// art px: the room is drawn on a grid of 4 art px per pixel (scripts/pixel-room.js)
+// art px: the room is drawn on a grid of 3 art px per pixel, 1920 / 461 art px per u (scripts/pixel-room.js)
 const SPINE = "#d9b77a";
 const WALL_TEXT: WallText[] = [
-  { lines: ["CHRISTOPHER LUNA"], x: 781, y: 61, size: 44, color: NAME_GOLD, weight: 700, track: 0.06 },
-  { lines: ["LUNA_CHRISTOPHER98@HOTMAIL.COM"], x: 781, y: 99, size: 19, color: "#e9b468", weight: 500, track: 0.06 },
-  { lines: ["ANAHEIM, CA 92806  ·  (714) 800-3264"], x: 781, y: 120, size: 14.5, color: "#e9b468", weight: 500, track: 0.08 },
+  { lines: ["CHRISTOPHER LUNA"], x: 937, y: 56, size: 40, color: NAME_GOLD, weight: 700, track: 0.06 },
+  { lines: ["LUNA_CHRISTOPHER98@HOTMAIL.COM"], x: 937, y: 97.5, size: 17.5, color: "#e9b468", weight: 500, track: 0.06 },
+  { lines: ["ANAHEIM, CA 92806  ·  (714) 800-3264"], x: 937, y: 119, size: 13.3, color: "#e9b468", weight: 500, track: 0.08 },
   // the school in its colours, CSU burgundy and DH gold, then the degree in the name's colour
   {
     lines: [[{ text: "CALIFORNIA STATE UNIVERSITY, ", color: CSU_BURGUNDY }, { text: "DOMINGUEZ HILLS", color: DH_GOLD }]],
-    x: 781, y: 210, size: 22, color: CSU_BURGUNDY, weight: 700, track: 0.07,
+    x: 933, y: 223, size: 18.3, color: CSU_BURGUNDY, weight: 700, track: 0.07,
   },
-  { lines: ["BACHELOR OF SCIENCE  ·  COMPUTER SCIENCE"], x: 781, y: 239, size: 18, color: NAME_GOLD, weight: 600, track: 0.06, edged: true },
-  { lines: ["FIRST GEN"], x: 781, y: 262, size: 13.5, color: NAME_GOLD, weight: 600, track: 0.08, edged: true },
+  { lines: ["BACHELOR OF SCIENCE  ·  COMPUTER SCIENCE"], x: 933, y: 253.6, size: 15, color: NAME_GOLD, weight: 600, track: 0.06, edged: true },
+  { lines: ["FIRST GEN"], x: 933, y: 277, size: 11.2, color: NAME_GOLD, weight: 600, track: 0.08, edged: true },
   // the three books under the monitor, titles in gilt on their spines
-  { lines: ["COMPUTER SCIENCE"], x: 625, y: 694, size: 15.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
-  { lines: ["DATA STRUCTURES & ALGORITHMS"], x: 625, y: 734, size: 15.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
-  { lines: ["COMPUTER ORGANIZATION"], x: 625, y: 774, size: 15.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
+  { lines: ["COMPUTER SCIENCE"], x: 722.6, y: 745.5, size: 17.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
+  { lines: ["DATA STRUCTURES & ALGORITHMS"], x: 722.6, y: 778.8, size: 17.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
+  { lines: ["COMPUTER ORGANIZATION"], x: 722.6, y: 812.1, size: 17.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
 ];
 const wallTextStyle = (t: WallText): CSSProperties => ({
   left: `${((t.x + (art.textDx ?? 0)) / art.size.width) * 100}%`,
@@ -191,13 +193,11 @@ const wallTextStyle = (t: WallText): CSSProperties => ({
 const spriteSrc = (file: string) => (file.startsWith("/") ? file : `/cinema/${file}`);
 
 /** Back-to-front draw order of the props. */
-const SPRITE_ORDER: PropKey[] = ["plant-pot", "plant-leaves", "steam", "mug"];
+const SPRITE_ORDER: PropKey[] = ["steam", "mug"];
 const SPRITE_LABEL: Record<PropKey, string> = {
   mug: "Knock the coffee mug",
   steam: "",
   note: "Peel off the sticky note",
-  "plant-pot": "Nudge the plant",
-  "plant-leaves": "Rustle the plant",
 };
 
 interface Rect {
@@ -254,8 +254,6 @@ interface World {
   /** Every note peeled off the wall, in the order they came off: falling, landing or lying on the desk. */
   notes: NoteFall[];
   pens: Spring[];
-  /** One per leaf, back to front: each flutters on its own stem. */
-  leaves: Spring[];
   spill: Spill | null;
   last: number;
   raf: number;
@@ -265,8 +263,6 @@ const createWorld = (): World => ({
   mug: { phase: "rest", t: 0, pos: 0, from: 0, to: 0, bumps: 0, nudge: new Spring(420, 9) },
   notes: [],
   pens: [new Spring(170, 4.2), new Spring(150, 3.6), new Spring(190, 4.6)],
-  // a spread of stiffnesses, so the leaves never flutter in step
-  leaves: art.leaves.files.map((_, i) => new Spring(48 + ((i * 37) % 41), 2.1 + (i % 3) * 0.35)),
   spill: null,
   last: 0,
   raf: 0,
@@ -423,8 +419,8 @@ function NoteFace({ index }: { index: number }) {
  * and the LUNA_OS on the glass wakes up to your keys. Standing, the desk is alive: push the mug
  * and it bumps back a little, upright, coffee running down its front; peel the sticky notes, as fast
  * as you like, and they drift down and pile up behind the mug; tap the cat pencil cup and the pens
- * rattle; click the desk lamp to switch it off (the room it lit goes dark with it) and on, the lava lamp too;
- * brush the plant and its leaves rustle while an ant walks out. Seated, ESC, [ STAND UP ] or a click
+ * rock; click the desk lamp to switch it off (the room it lit goes dark with it) and on, the lava lamp too (its wax
+ * sinks as it cools and rises again once it warms); tap the headset's cable and it sways. Seated, ESC, [ STAND UP ] or a click
  * anywhere outside the screen stands you back up.
  */
 export default function CinemaScene() {
@@ -435,7 +431,6 @@ export default function CinemaScene() {
   const [loadedImage, setLoadedImage] = useState<string | null>(null);
   const [hint, setHint] = useState(false);
   const [pendingPopup, setPendingPopup] = useState<LofiPopup>(null);
-  const [antKey, setAntKey] = useState(0);
   const [noteIndex, setNoteIndex] = useState(0);
   /** Every note peeled off so far (which note it was), in order: they stay on the desk until reload. */
   const [fallen, setFallen] = useState<number[]>([]);
@@ -450,7 +445,6 @@ export default function CinemaScene() {
   const elsRef = useRef<Partial<Record<PropKey, HTMLElement | null>>>({});
   const noteRefs = useRef(new Map<number, HTMLDivElement>());
   const penRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const leafRefs = useRef<(HTMLDivElement | null)[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useLayoutEffect(() => {
@@ -636,7 +630,7 @@ export default function CinemaScene() {
         }
       }
 
-      const springs = [...w.pens, ...w.leaves, m.nudge];
+      const springs = [...w.pens, m.nudge];
       for (const sp of springs) sp.step(dt);
 
       const el = elsRef.current;
@@ -647,8 +641,6 @@ export default function CinemaScene() {
       set(el.mug, mugMove);
       set(el.steam, mugMove);
       w.pens.forEach((sp, i) => set(penRefs.current[i], `rotate(${sp.x.toFixed(2)}deg)`));
-      // the pot and stems stay put; each leaf flutters about where it meets its stem
-      w.leaves.forEach((sp, i) => set(leafRefs.current[i], `rotate(${sp.x.toFixed(2)}deg)`));
 
       const idle =
         m.phase !== "pushing" &&
@@ -723,12 +715,6 @@ export default function CinemaScene() {
           }
           break;
         }
-        case "plant-pot":
-        case "plant-leaves":
-          // a gentle rustle: every leaf gets its own small push, this way or that
-          w.leaves.forEach((sp) => sp.kick((Math.random() < 0.5 ? -1 : 1) * (18 + Math.random() * 26)));
-          setAntKey((k) => k + 1);
-          break;
         default:
           break;
       }
@@ -815,17 +801,6 @@ export default function CinemaScene() {
   // never reflows or jumps between font sizes on the way
   const seatScreen = ready ? screenRect(seatedStage(layout, vp.w, vp.h)) : null;
 
-  const antStyle = (): CSSProperties | undefined => {
-    if (!stage) return undefined;
-    const { from, to } = art.antPct;
-    return {
-      left: `${from[0]}%`,
-      top: `${from[1]}%`,
-      "--ant-dx": `${((to[0] - from[0]) / 100) * stage.w}px`,
-      "--ant-dy": `${((to[1] - from[1]) / 100) * stage.h}px`,
-    } as CSSProperties;
-  };
-
   const classes = [
     "cinema",
     `cinema--${pose}`,
@@ -875,18 +850,14 @@ export default function CinemaScene() {
             onLoad={() => setLoadedImage(art.image)}
             onError={() => setLoadedImage(art.image)}
           />
+          {/* The room with the lava lamp's light gone, faded in as it switches off */}
+          <Image src={art.lavaOff.on} alt="" fill unoptimized sizes="100vw" draggable={false} className={`cinema__backdrop cinema__lava-dark${lavaOn ? "" : " is-shown"}`} />
           {/* The same room with the lamp off: the cone on the wall and the beam on the desk gone, the
-              bulb dark, the monitor's green the light that's left */}
-          <Image
-            key={`off-${lampSwitches}`}
-            src={art.lamp.off}
-            alt=""
-            fill
-            unoptimized
-            sizes="100vw"
-            draggable={false}
-            className={`cinema__backdrop ${offClass}`}
-          />
+              bulb dark, the monitor's green (and the lava lamp's pink, while it's on) the light that's left */}
+          <div key={`off-${lampSwitches}`} className={offClass}>
+            <Image src={art.lamp.off} alt="" fill unoptimized sizes="100vw" draggable={false} className="cinema__backdrop" />
+            <Image src={art.lavaOff.off} alt="" fill unoptimized sizes="100vw" draggable={false} className={`cinema__backdrop cinema__lava-dark${lavaOn ? "" : " is-shown"}`} />
+          </div>
 
           {/* The room past the painting's edges, for wide windows, lit and unlit */}
           <div className="cinema__side cinema__side--left" style={{ width: sideWidth, backgroundImage: `url(${art.sides.left})` }} aria-hidden="true">
@@ -963,30 +934,13 @@ export default function CinemaScene() {
             </div>
           )}
 
-          {/* The gaming corner: the console, its controller, the headset on its hook and the headset's cable */}
-          {art.decor?.map((d) => (
-            <div key={d.name} className="cinema__decor" style={{ ...pctBox(d.boxPct), zIndex: d.z }} aria-hidden="true">
-              <Image src={d.file} alt="" fill unoptimized draggable={false} />
-            </div>
-          ))}
+          {/* The headset's cable, from its hook down to the controller: tap it and it sways */}
+          <HeadsetCable cable={art.cable} lampOn={lampOn} tabIndex={standingTab} />
 
           {/* The lava lamp by the PC: click it off and on */}
-          {art.lava.off ? (
-            <button
-              type="button"
-              className="cinema__sprite cinema__lava-pic"
-              style={pctBox(art.lava.boxPct)}
-              onClick={switchLava}
-              tabIndex={standingTab}
-              aria-label={lavaOn ? "Switch the lava lamp off" : "Switch the lava lamp on"}
-            >
-              <Image src={art.lava.off} alt="" fill unoptimized draggable={false} className={lavaOn ? "is-hidden" : ""} />
-            </button>
-          ) : (
-            <LavaLamp on={lavaOn} boxPct={art.lava.boxPct} onToggle={switchLava} tabIndex={standingTab} />
-          )}
+          <LavaLamp on={lavaOn} roomLit={lampOn} boxPct={art.lava.boxPct} onToggle={switchLava} tabIndex={standingTab} />
 
-          {/* The pens in the cat pencil cup under the lamp, each rocking on its own */}
+          {/* The pens in the cat pencil cup beside the lamp, each rocking on its own */}
           {art.pens.files.map((file, i) => (
             <div
               key={file}
@@ -995,7 +949,7 @@ export default function CinemaScene() {
               }}
               className="cinema__pen"
               style={{
-                ...pctBox(art.pens.boxPct),
+                ...pctBox(art.pens.boxes[i]),
                 transformOrigin: `${art.pens.originPct[i][0]}% ${art.pens.originPct[i][1]}%`,
               }}
               aria-hidden="true"
@@ -1051,25 +1005,7 @@ export default function CinemaScene() {
                 tabIndex={standingTab}
                 aria-label={SPRITE_LABEL[k]}
               >
-                {k === "plant-leaves" ? (
-                  <>
-                    <Image src={art.leaves.stems} alt="" fill unoptimized draggable={false} />
-                    {art.leaves.files.map((file, i) => (
-                      <div
-                        key={file}
-                        ref={(node) => {
-                          leafRefs.current[i] = node;
-                        }}
-                        className="cinema__leaf"
-                        style={{ transformOrigin: `${art.leaves.originPct[i][0]}% ${art.leaves.originPct[i][1]}%` }}
-                      >
-                        <Image src={file} alt="" fill unoptimized draggable={false} />
-                      </div>
-                    ))}
-                  </>
-                ) : (
-                  img
-                )}
+                {img}
               </button>
             );
           })}
@@ -1108,29 +1044,10 @@ export default function CinemaScene() {
                   className="cinema__hotspot cinema__hotspot--pens"
                   style={pctBox(art.pens.hitPct)}
                   onClick={rattlePens}
-                  aria-label="Rattle the pencil cup"
+                  aria-label="Jostle the pencils in the cat cup"
                 />
               )}
             </>
-          )}
-
-          {antKey > 0 && (
-            <div
-              key={antKey}
-              className="cinema__ant"
-              style={antStyle()}
-              onAnimationEnd={() => setAntKey(0)}
-              aria-hidden="true"
-            >
-              <Image
-                src="/cinema/sprite-ant.png"
-                alt=""
-                width={28}
-                height={16}
-                unoptimized
-                draggable={false}
-              />
-            </div>
           )}
 
           <div className="cinema__dark" aria-hidden="true" />
