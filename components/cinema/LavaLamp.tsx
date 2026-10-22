@@ -66,7 +66,15 @@ interface Blob {
   /** 0 cold, 1 hot: hot wax is lighter than the liquid and rises. */
   heat: number;
   phase: number;
+  /** Where it's wandering across the glass (-1 left .. 1 right), the spot it's heading for, and when it picks a new one. */
+  wander: number;
+  aim: number;
+  /** How strongly it rises for now: each blob keeps its own random pace, and now and then stalls. */
+  pace: number;
+  next: number;
 }
+
+const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
 const TOP = GLASS[0] + 1;
 const BOTTOM = GLASS[1] - 1;
@@ -79,7 +87,7 @@ const startBlobs = (): Blob[] =>
     [1, 50, 2.6, 0.75],
     [-1.5, 56, 2.2, 0.92],
     [0.5, 58, 3.0, 0.85],
-  ].map(([x, y, r, heat], i) => ({ x: CX + x, y, r, vy: 0, heat, phase: i * 1.7 }));
+  ].map(([x, y, r, heat], i) => ({ x: CX + x, y, r, vy: 0, heat, phase: i * 1.7, wander: 0, aim: rnd(-1, 1), pace: rnd(0.75, 1.25), next: rnd(0, 3) }));
 
 export default function LavaLamp({
   on,
@@ -119,10 +127,17 @@ export default function LavaLamp({
       // while it's hot and sinks once it cools; cold wax is thick, so it sinks slowly
       let still = true;
       for (const b of st.blobs) {
+        // every few seconds a blob picks a new place to drift toward and a new pace, so the lamp never repeats
+        b.next -= dt;
+        if (b.next <= 0) {
+          b.aim = rnd(-1, 1);
+          b.pace = Math.random() < 0.18 ? rnd(0.35, 0.6) : rnd(0.75, 1.35);
+          b.next = rnd(1.8, 5.5);
+        }
         const u = (b.y - TOP) / (BOTTOM - TOP);
         const env = st.heater * (1.25 * u * u) - 0.1;
         b.heat += (env - b.heat) * (0.8 / b.r) * dt;
-        const lift = -(b.heat - 0.5) * 16;
+        const lift = -(b.heat - 0.5) * 16 * (st.on ? b.pace : 1);
         const drag = 1.7 + 3 * (1 - st.heater);
         b.vy += (lift - drag * b.vy) * dt;
         b.y += b.vy * dt;
@@ -136,9 +151,10 @@ export default function LavaLamp({
           b.y = hi;
           b.vy = Math.min(0, b.vy);
         }
-        // a slow drift across, more while it's moving, kept inside the glass
+        // a slow drift across toward wherever it's wandering, more while it's moving, kept inside the glass
+        b.wander += (b.aim - b.wander) * Math.min(1, dt * 0.35);
         const room = Math.max(0, glassR(b.y) - b.r - 1);
-        const want = CX + Math.sin(st.t * 0.23 + b.phase) * room * 0.6 * Math.min(1, Math.abs(b.vy) / 2 + st.heater * 0.3);
+        const want = CX + (b.wander * 0.75 + Math.sin(st.t * 0.23 + b.phase) * 0.15) * room * Math.min(1, Math.abs(b.vy) / 2 + st.heater * 0.3);
         b.x += (want - b.x) * Math.min(1, dt * 0.8);
         if (Math.abs(b.vy) > 0.03 || b.y < hi - 0.05) still = false;
       }

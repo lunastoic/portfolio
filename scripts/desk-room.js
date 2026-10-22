@@ -46,6 +46,8 @@ const SHARED = {
   moonAccent: rampFrom('#e8883a'),
   cork: R(['#5a3a1c', '#8a5a30', '#a8723f', '#c48c54', '#dcaa72']),
   clay: rampFrom('#b07e4c'), cat: R(['#b08a66', '#d2ae86', '#ecca9e', '#f6dcb4', '#fff0d6']),
+  corgiBlack: R(['#0c0a0c', '#1a1618', '#2a2426', '#3c3436', '#504648']), corgiTan: R(['#5a2208', '#843614', '#a8501e', '#c4662a', '#dc8240']),
+  corgiWhite: R(['#a8a098', '#cac2b8', '#e6dfd4', '#f6f0e6', '#ffffff']),
   bookA: rampFrom('#2c6444'), bookB: rampFrom('#284476'), bookC: rampFrom('#8a2c20'),
   sky: R(['#1a1030', '#26183e', '#33204e', '#432a60', '#583878']), hills: rampFrom('#3a8a84'), pine: rampFrom('#1c4a38'), moon: rampFrom('#f0b866'),
   frame: rampFrom('#3a2416'), pad: rampFrom('#202830'), mouse: rampFrom('#22342a'),
@@ -382,7 +384,7 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
     shape([x0, y0, x1, y1], pill(x0, y0, x1, y1), 'deckWood', (x, y) => (y < y0 + 1.4 ? 0.92 : y > y1 - 1.6 ? 0.3 : 0.62));
     shape([x0 + 1.9, y0 + 1.9, x1 - 1.9, y1 - 1.9], pill(x0 + 1.9, y0 + 1.9, x1 - 1.9, y1 - 1.9), face, deckShade(y0 + 1.9, y1 - 1.9, sheen), { outline: false });
     const cy = (y0 + y1) / 2;
-    for (const hx of [x0 + 15, x0 + 20, x1 - 20, x1 - 15]) for (const hy of [cy - 3, cy + 3]) shape([hx - 1.4, hy - 1.4, hx + 1.4, hy + 1.4], ell(hx, hy, 1.05, 1.05), 'ink', 0.2, { outline: false });
+    for (const hx of [x0 + 19, x0 + 24, x1 - 24, x1 - 19]) for (const hy of [cy - 3, cy + 3]) shape([hx - 1.4, hy - 1.4, hx + 1.4, hy + 1.4], ell(hx, hy, 1.05, 1.05), 'ink', 0.2, { outline: false });
   };
   deck(146, 2, 304, 39, 'deckA', 120);
   deck(145, 42, 303, 78.5, 'deckB', 175);
@@ -549,7 +551,19 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   }
   shape([CU0, CUT, CU1, CUB], rect(CU0, CUT, CU1, CUB), 'clay', (x, y) => cyl(CUM, (CU1 - CU0) / 2, 0.5)(x) + (y < CUT + 2 ? 0.25 : 0));
   shape([CU0 + 1, CUT + 1, CU1 - 1, CUT + 2.4], rect(CU0 + 1.2, CUT + 1.2, CU1 - 1.2, CUT + 2.2), 'clay', 0.12, { outline: false }); // the rim's inside
-  pattern(['#.....#', '##...##', '#######', '#k###k#', '###n###', '##k#k##', '.#####.'], pxX(CUM) - 10, px(CUT + 8), 3, { '#': ['cat', 0.7], k: ['ink', 0.5], n: ['btnB', 0.6] });
+  // a tri-colour corgi's face on the cup: black ears and crown, tan inside the ears, over the brows and on the cheeks,
+  // a white blaze down to a white muzzle, black eyes and nose
+  pattern([
+    '.B.......B.',
+    '.BB.....BB.',
+    '.BtB...BtB.',
+    '.BBBBwBBBB.',
+    'BBtBBwBBtBB',
+    'BtkttwttktB',
+    '.ttwwwwwtt.',
+    '..wwwnwww..',
+    '...wwwww...',
+  ], pxX(CUM) - 11, px(CUT + 7), 2, { B: ['corgiBlack', 0.3], t: ['corgiTan', 0.45], w: ['corgiWhite', 0.75], k: ['ink', 0.4], n: ['ink', 0.4] });
   ANC = null;
 
   // ------------------------------------------------ the lamp, in from the left corner so its base stands clear of the side wall
