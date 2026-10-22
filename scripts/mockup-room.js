@@ -55,7 +55,7 @@ function fill(img, mask) {
     for (const i of idx) if (isDesk((i / W) | 0) === zone) for (let c = 0; c < 3; c++) img[i * 3 + c] = n ? s[c] / n : 60;
   }
   const v = Float32Array.from(img);
-  for (let it = 0; it < 900; it++) {
+  for (let it = 0; it < 2500; it++) {
     for (const i of idx) {
       const y = (i / W) | 0, z = isDesk(y);
       for (let c = 0; c < 3; c++) {
@@ -150,7 +150,7 @@ function widen(img) {
  * The mockup's own corner line is painted out; whatever stands in front (the lamp, the notebook, the cable and
  * controller) is kept.
  */
-const CORNERS = [{ side: 'left', old: 176, w: 4, x: 181, y: 758, src: 690 }, { side: 'right', old: 1699, w: 6, x: 1672, y: 768, src: 762 }];
+const CORNERS = [{ side: 'left', old: 176 + LAMP_DX, w: 4, x: 181, y: 758, src: 690 }, { side: 'right', old: 1699, w: 6, x: 1672, y: 768, src: 762 }];
 const SLOPE = 0.12; // the crease's drop per px out from the corner (shallow, so the lamp and lava lamp stand on the desk)
 const SHADE_POLY = [[28 + LX, 383], [213 + LX, 383], [152 + LX, 268], [86 + LX, 268]];
 const NOTEBOOK = [[8, 842], [236, 782], [272, 840], [60, 900], [8, 900]].map(([x, y]) => [x + LAMP_DX, y]);
@@ -160,7 +160,7 @@ function alignCorners(img) {
   const lum = (x, y) => 0.299 * at(x, y, 0) + 0.587 * at(x, y, 1) + 0.114 * at(x, y, 2);
   let src = Buffer.from(img);
   const sl = (x, y) => 0.299 * src[(y * WW + x) * 3] + 0.587 * src[(y * WW + x) * 3 + 1] + 0.114 * src[(y * WW + x) * 3 + 2];
-  const line = [0, 1, 2].map((c) => src[(100 * WW + 176) * 3 + c]);
+  const line = [14, 7, 4]; // the corner's dark line, as the mockup draws it
   // things in front of the walls (art px of the widened room)
   const keep = (x, y) => {
     const mx = (x > 900 ? x - CUTS.left.d - CUTS.right.d : x) / K, my = y / K;
@@ -177,6 +177,25 @@ function alignCorners(img) {
         if (keep(x, y) || sl(x, y) > Math.max(A, B) + 35) continue;
         const t = (x - e0) / (e1 - e0), o = (y * WW + x) * 3;
         for (let c = 0; c < 3; c++) img[o + c] = clamp(Math.round(src[(y * WW + e0) * 3 + c] * (1 - t) + src[(y * WW + e1) * 3 + c] * t), 0, 255);
+      }
+    }
+    // between the new corner and the old one, the wall was the mockup's side wall: up to the back wall's tone
+    if (Math.abs(old - cx) > 3) {
+      const a0 = Math.min(old, cx) + 1, a1 = Math.max(old, cx) + w, inner = cx < old ? 1 : -1;
+      const raw = [];
+      for (let y = 0; y < dy; y++) {
+        const r = [0, 0, 0];
+        for (let c = 0; c < 3; c++) { let bk = 0, sd = 0; for (let k = 0; k < 10; k++) { bk += img[(y * WW + old + inner * (w + 3 + k)) * 3 + c]; sd += img[(y * WW + old - inner * (w + 3 + k)) * 3 + c]; } r[c] = clamp(bk / Math.max(1, sd), 0.9, 1.4); }
+        raw.push(r);
+      }
+      for (let y = 0; y < dy; y++) {
+        const R = [0, 0, 0]; let n = 0;
+        for (let k = Math.max(0, y - 25); k <= Math.min(dy - 1, y + 25); k++) { for (let c = 0; c < 3; c++) R[c] += raw[k][c]; n++; }
+        for (let x = a0; x < a1; x++) {
+          if (keep(x, y) || sl(x, y) > 150) continue;
+          const t = Math.min(1, (x - a0) / 3, (a1 - x) / 6), o = (y * WW + x) * 3; // eased at the far edge
+          for (let c = 0; c < 3; c++) img[o + c] = clamp(Math.round(img[o + c] * (1 + (R[c] / n - 1) * Math.max(0.3, t))), 0, 255);
+        }
       }
     }
     src = Buffer.from(img); // (the old line painted out)
@@ -272,7 +291,8 @@ function shiftLamp(img) {
       const o = (y * W + x) * 3;
       if (x < d) { for (let c = 0; c < 3; c++) img[o + c] = clamp(Math.round(row[c] + hash(x, y, 70 + c) * 4), 0, 255); continue; } // the far left: the room's edge carried in
       let t = 0; // near S, blend back into what was there (only over plain wall or desk) so no seam shows
-      if (x >= S - B && Math.abs(l(row, x - d) - l(row, x)) < 22) t = (x - (S - B)) / B;
+      const b = y < 640 ? 80 : B; // wider over the wall (the lamp's glow), narrow by the pencil cup
+      if (x >= S - b && Math.abs(l(row, x - d) - l(row, x)) < 22) t = (x - (S - b)) / b;
       for (let c = 0; c < 3; c++) img[o + c] = Math.round(row[(x - d) * 3 + c] * (1 - t) + row[x * 3 + c] * t);
     }
   }
