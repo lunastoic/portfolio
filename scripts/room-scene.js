@@ -50,13 +50,50 @@ const MOUNT = ['#081418', '#14282e', '#1e3a40', '#2a4c52', '#386266', '#4e7c7c',
 // drawing helpers
 // ------------------------------------------------------------------------------------------------
 
-/** Paint a canvas into an asset: pixels, which of them glow, where it goes (room pixels). */
+/**
+ * Paint a canvas into an asset: pixels, which of them glow, where it goes (room pixels).
+ * Things in the room are drawn the way the mug, notes and plant were: painted as a chunky draft at half
+ * resolution (4 art px a pixel, so the dither shows as the props' checks and the outline is a full draft
+ * pixel), then doubled with the outer outline thinned to its inner half and graded to the room's warm light,
+ * falling off low and right. The wall and desk (`fine`) are painted straight at full resolution.
+ */
 function asset(name, x, y, cv, opts = {}) {
-  const { px } = paint(cv, name, opts);
-  const glow = new Uint8Array(cv.W * cv.H);
-  for (let i = 0; i < cv.W * cv.H; i++) if (cv.c[i] && cv.c[i].glow) glow[i] = 1;
+  const { px, glow } = opts.fine ? fine(cv, name, opts) : chunky(cv, name, opts);
   writePng(path.join(ASSETS, name + '.png'), cv.W, cv.H, px);
   return { name, x, y, w: cv.W, h: cv.H, px, glow };
+}
+function fine(cv, name, opts) {
+  const { px } = paint(cv, name, opts), glow = new Uint8Array(cv.W * cv.H);
+  for (let i = 0; i < cv.W * cv.H; i++) if (cv.c[i] && cv.c[i].glow) glow[i] = 1;
+  return { px, glow };
+}
+function chunky(cv, name, { warm = [1, 0.92, 0.8], shadow = 0.22, sat = 0.88, ...opts } = {}) {
+  const W2 = Math.ceil(cv.W / 2), H2 = Math.ceil(cv.H / 2), half = new Cv(W2, H2);
+  for (let j = 0; j < H2; j++) for (let i = 0; i < W2; i++) {
+    // the uppermost thing in each 2 x 2 block, so thin lines (leads, cords, rules) survive
+    let c = null;
+    for (const [dx, dy] of [[1, 1], [0, 0], [1, 0], [0, 1]]) { const d = cv.get(2 * i + dx, 2 * j + dy); if (d && (!c || d.z > c.z)) c = d; }
+    if (c) half.c[j * W2 + i] = c;
+  }
+  const { px: hp } = paint(half, name, opts);
+  const W = cv.W, H = cv.H, px = new Uint8Array(W * H * 4), glow = new Uint8Array(W * H);
+  const A = (i, j) => (i < 0 || j < 0 || i >= W2 || j >= H2 ? 0 : hp[(j * W2 + i) * 4 + 3]);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = x >> 1, j = y >> 1, si = (j * W2 + i) * 4, o = (y * W + x) * 4;
+    if (!hp[si + 3]) continue;
+    let r = hp[si], g = hp[si + 1], b = hp[si + 2];
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b, hc = half.c[j * W2 + i];
+    // an outline pixel on the silhouette keeps only its inner half
+    if (lum < 34 && hp[si + 3] > 200) { const ox = x & 1 ? 1 : -1, oy = y & 1 ? 1 : -1; if (A(i + ox, j) < 128 || A(i, j + oy) < 128) continue; }
+    if (hc && hc.glow) glow[y * W + x] = 1;
+    else {
+      const gray = lum; r = gray + (r - gray) * sat; g = gray + (g - gray) * sat; b = gray + (b - gray) * sat;
+      const fall = 1 - shadow * clamp(0.55 * (x / W) + 0.65 * (y / H) - 0.25, 0, 1);
+      r *= warm[0] * fall; g *= warm[1] * fall; b *= warm[2] * fall;
+    }
+    px[o] = clamp(Math.round(r), 0, 255); px[o + 1] = clamp(Math.round(g), 0, 255); px[o + 2] = clamp(Math.round(b), 0, 255); px[o + 3] = hp[si + 3];
+  }
+  return { px, glow };
 }
 const cell = (ramp, v, z, part, extra) => ({ ramp, v, z, part, ...extra });
 /** A rounded rectangle's signed inside distance (px from its edge, negative outside). */
@@ -81,7 +118,7 @@ function wall() {
     for (const sx of SEAMS) { if (rx === sx) v = 0.12; else if (rx === sx + 1) v = 0.62; }
     cv.put(x, y, cell(WALLR, v, 0, 'wall', { noOutline: true }));
   }
-  return asset('wall', -SIDE, 0, cv, { outline: false, dither: 1 });
+  return asset('wall', -SIDE, 0, cv, { outline: false, dither: 1, fine: true });
 }
 
 function desk() {
@@ -102,7 +139,7 @@ function desk() {
     }
     cv.put(x, y, cell(WOOD, v, 0, 'desk', { noOutline: true }));
   }
-  return asset('desk', -SIDE, DESK, cv, { outline: false, dither: 1 });
+  return asset('desk', -SIDE, DESK, cv, { outline: false, dither: 1, fine: true });
 }
 
 function deck(name, x0, y0, x1, y1, face, lift = 0.52) {
@@ -147,7 +184,7 @@ function poster() {
     let c = cell(SKY, 0.5 + 0.35 * t, 1, 'pic', { noOutline: true });
     const moon = Math.hypot(ix - iw * 0.72, iy - ih * 0.2) <= 8 && Math.hypot(ix - iw * 0.72 + 4, iy - ih * 0.2 + 3) > 7;
     if (moon) c = cell(GOLD, 0.82, 1.1, 'moon', { noOutline: true });
-    else if (hash(ix, iy, 77) > 0.985 && t < 0.5) c = cell(GOLD, 0.9, 1.1, 'star', { noOutline: true });
+    else if (hash(ix, iy, 77) > 0.996 && t < 0.5) c = cell(GOLD, 0.9, 1.1, 'star', { noOutline: true });
     const peak = (px, py, w) => py + Math.abs(ix - px) * (ih * 0.42 - py) / w;
     const ridge = Math.min(peak(iw * 0.32, ih * 0.38, iw * 0.4), peak(iw * 0.66, ih * 0.44, iw * 0.38));
     if (iy >= ridge) {
@@ -214,8 +251,8 @@ function cable() {
   const pts = [[1173, 262], [1171, 298], [1164, 324], [1164, 346], [1169, 420], [1173, 482], [1177, 530], [1171, 550], [1150, 557], [1125, 558]];
   for (const [px, py] of spline(pts)) {
     const x = Math.round(px - X), y = Math.round(py - Y);
-    cv.put(x, y, cell(PLASTIC, 0.5, 1, 'cord'));
-    cv.put(x + 1, y, cell(PLASTIC, 0.22, 0.9, 'cord'));
+    cv.put(x, y, cell(PLASTIC, 0.5, 1, 'cord', { noOutline: true }));
+    cv.put(x + 1, y, cell(PLASTIC, 0.3, 0.9, 'cord', { noOutline: true }));
   }
   // the inline remote
   for (let y = 326 - Y; y <= 342 - Y; y++) for (let x = 1161 - X; x <= 1168 - X; x++) cv.put(x, y, cell(PLASTIC, 0.45 - (x - (1161 - X)) * 0.03, 2, 'remote'));
