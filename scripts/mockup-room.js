@@ -77,7 +77,53 @@ function lampOff(img) {
     for (let c = 0; c < 3; c++) out[o + c] = clamp(Math.round((img[o + c] * 0.8 * [0.95, 0.97, 1.08][c]) / (1 + G * tint[c])), 0, 255);
     if (inPoly(mx, my, SHADE)) { const l = 0.3 * img[o] + 0.59 * img[o + 1] + 0.11 * img[o + 2]; out[o] = l * 0.26; out[o + 1] = l * 0.17; out[o + 2] = l * 0.1; }
   }
+  unlightWall(out, SHADE);
   return out;
+}
+
+/**
+ * The glow the mockup paints on the wall round the shade isn't a smooth falloff, so dividing one out leaves
+ * its pool behind. What's left is measured instead: the wall's light in blocks (a median, so the lamp's stem
+ * and the pencil cup don't count), against the plain wall just left of the decks on the same rows, and the
+ * wall (and what stands in front of it) brought down to that, fading out before the decks and the desk.
+ */
+function unlightWall(out, SHADE) {
+  const B = 12, X1 = Math.round(380 * K), XF = Math.round(330 * K), Y1 = Math.round(DESK_Y * K);
+  const gw = Math.ceil(X1 / B), gh = Math.ceil(Y1 / B);
+  const median = (x0, y0, x1, y1) => {
+    const v = [[], [], []];
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+      if (inPoly(x / K, y / K, SHADE)) continue;
+      for (let c = 0; c < 3; c++) v[c].push(out[(y * W + x) * 3 + c]);
+    }
+    return v.map((a) => (a.length ? a.sort((p, q) => p - q)[a.length >> 1] : 0));
+  };
+  // the plain wall per block row, just left of the decks
+  const ref = Array.from({ length: gh }, (_, j) => median(Math.round(362 * K), j * B, X1, Math.min(Y1, (j + 1) * B)));
+  for (let j = 1; j < gh - 1; j++) for (let c = 0; c < 3; c++) ref[j][c] = (ref[j - 1][c] + 2 * ref[j][c] + ref[j + 1][c]) / 4;
+  // each block's darkening (never brighter), smoothed so no block edge shows
+  let g = Array.from({ length: gh }, (_, j) => Array.from({ length: gw }, (_, i) => {
+    const m = median(i * B, j * B, Math.min(X1, (i + 1) * B), Math.min(Y1, (j + 1) * B));
+    return m.map((v, c) => (v ? Math.min(1, (ref[j][c] + 1) / (v + 1)) : 1));
+  }));
+  for (let pass = 0; pass < 4; pass++) {
+    g = g.map((row, j) => row.map((_, i) => [0, 1, 2].map((c) => {
+      let s = 0, n = 0;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const r = g[j + dj]?.[i + di]; if (r) { s += r[c]; n++; } }
+      return s / n;
+    })));
+  }
+  for (let y = 0; y < Y1; y++) for (let x = 0; x < X1; x++) {
+    if (inPoly(x / K, y / K, SHADE)) continue;
+    const fx = clamp(x / B - 0.5, 0, gw - 1), fy = clamp(y / B - 0.5, 0, gh - 1);
+    const i0 = Math.floor(fx), j0 = Math.floor(fy), i1 = Math.min(gw - 1, i0 + 1), j1 = Math.min(gh - 1, j0 + 1), tx = fx - i0, ty = fy - j0;
+    const fade = clamp((X1 - x) / (X1 - XF), 0, 1) * clamp((Y1 - y) / (6 * K), 0, 1);
+    const o = (y * W + x) * 3;
+    for (let c = 0; c < 3; c++) {
+      const v = (g[j0][i0][c] * (1 - tx) + g[j0][i1][c] * tx) * (1 - ty) + (g[j1][i0][c] * (1 - tx) + g[j1][i1][c] * tx) * ty;
+      out[o + c] = clamp(Math.round(out[o + c] * (1 - fade + fade * v)), 0, 255);
+    }
+  }
 }
 
 /**
