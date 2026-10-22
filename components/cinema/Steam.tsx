@@ -32,7 +32,7 @@ const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
 /**
  * The coffee's steam, drawn live on a pixel canvas over the mug: puffs leave the coffee in two or three wisps, rise
- * curling side to side, thin out through the room's checker dither and are gone; it never stops. The box rides the
+ * curling side to side, thin out through the room's checker dither and are gone, over and over without end. The box rides the
  * mug's own transform, so the steam goes where the mug goes. `puffRef` lets the scene make it puff when the mug is
  * knocked.
  */
@@ -94,15 +94,7 @@ export default function Steam({ steam, puffRef }: { steam: SteamArt; puffRef: Re
       }
     };
 
-    // reduced motion: one still frame of steam already risen
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      for (let i = 0; i < 300; i++) step(1 / 60);
-      draw();
-      return () => {
-        puffRef.current = null;
-      };
-    }
-
+    // it loops for everyone, "reduce motion" too: a slow, small drift the size of a few pixels
     for (let i = 0; i < 240; i++) step(1 / 60);
     let raf = 0;
     let last = 0;
