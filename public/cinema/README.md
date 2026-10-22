@@ -1,5 +1,13 @@
 # Lo-fi desk scene (v2) artwork
 
+**The room is the mockup.** `node scripts/mockup-room.js` takes `scripts/art/mockup.png` (the layout: a desk
+fitted wall to wall in a closet, table lamp, decks, monitor on three books, plant, Xbox, lava lamp, headset on
+its hook, controller) as the backdrop, scaled 1.2x to art px, with the deck and spine lettering cleared (the
+scene sets real type) and the mug, sticky note, plant and lava lamp taken out (their sprites stand in their
+places), each region filled from the wall or desk round it. It writes `room.webp`, `desk-off.webp` (lamp off),
+the `side-*` closet walls for very wide windows, and `room.json`. Everything below about the painting
+(`desk.webp`, `cinema-blend.js`) describes the earlier room, kept but unused.
+
 Assets for the pixel-art "v2" room. Nothing here is used by v1.
 
 | File | What it is |

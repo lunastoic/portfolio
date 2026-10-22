@@ -18,59 +18,59 @@
   },
   "image": "room.webp",
   "size": {
-    "width": 1932,
-    "height": 941
+    "width": 1607,
+    "height": 907
   },
   "screenPx": [
-    715,
-    377,
-    1152,
-    693
+    569,
+    355,
+    986,
+    626
   ],
   "screenPct": {
-    "left": 37.008,
-    "top": 40.064,
-    "width": 22.619,
-    "height": 33.581
+    "left": 35.408,
+    "top": 39.14,
+    "width": 25.949,
+    "height": 29.879
   },
   "focalPoint": [
-    48.32,
-    56.85
+    48.38,
+    54.08
   ],
   "monitorPct": {
-    "left": 35.093,
-    "top": 35.919,
-    "width": 26.708,
-    "height": 45.909
+    "left": 32.856,
+    "top": 35.943,
+    "width": 30.492,
+    "height": 36.825
   },
   "decksPct": [
     {
-      "left": 32.195,
-      "top": 0.744,
-      "width": 32.247,
-      "height": 16.047
+      "left": 28.998,
+      "top": 0.772,
+      "width": 39.266,
+      "height": 17.2
     },
     {
-      "left": 32.298,
-      "top": 17.747,
-      "width": 32.143,
-      "height": 16.259
+      "left": 28.811,
+      "top": 17.971,
+      "width": 39.266,
+      "height": 17.2
     }
   ],
   "props": {
     "mug": {
       "file": "/cinema/prop-mug.png",
       "boxPct": {
-        "left": 16.666,
-        "top": 59.83,
-        "width": 11.594,
-        "height": 27.205
+        "left": 14.188,
+        "top": 61.742,
+        "width": 13.939,
+        "height": 28.225
       },
       "boxPx": [
-        322,
-        563,
-        546,
-        819
+        228,
+        560,
+        452,
+        816
       ],
       "originPct": [
         16.96,
@@ -78,10 +78,10 @@
       ],
       "spill": {
         "boxPct": {
-          "left": 12.94,
-          "top": 57.386,
-          "width": 15.27,
-          "height": 29.118
+          "left": 9.708,
+          "top": 59.206,
+          "width": 18.357,
+          "height": 30.209
         },
         "width": 295,
         "height": 274,
@@ -100,16 +100,16 @@
     "steam": {
       "file": "/props/mug-steam.png",
       "boxPct": {
-        "left": 16.666,
-        "top": 59.83,
-        "width": 11.594,
-        "height": 27.205
+        "left": 14.188,
+        "top": 61.742,
+        "width": 13.939,
+        "height": 28.225
       },
       "boxPx": [
-        322,
-        563,
-        546,
-        819
+        228,
+        560,
+        452,
+        816
       ],
       "originPct": [
         50,
@@ -119,16 +119,16 @@
     "note": {
       "file": "/cinema/prop-sticky-1.png",
       "boxPct": {
-        "left": 24.276,
-        "top": 39.107,
-        "width": 8.074,
-        "height": 17.216
+        "left": 20.224,
+        "top": 40.684,
+        "width": 9.708,
+        "height": 17.861
       },
       "boxPx": [
-        388,
-        348,
-        544,
-        510
+        325,
+        369,
+        481,
+        531
       ],
       "originPct": [
         46.15,
@@ -138,16 +138,16 @@
     "plant-pot": {
       "file": "/cinema/prop-plant-pot.png",
       "boxPct": {
-        "left": 77.382,
-        "top": 50.372,
-        "width": 14.907,
-        "height": 35.707
+        "left": 62.103,
+        "top": 54.686,
+        "width": 15.246,
+        "height": 31.533
       },
       "boxPx": [
-        1385,
-        474,
-        1673,
-        810
+        998,
+        496,
+        1243,
+        782
       ],
       "originPct": [
         50,
@@ -157,16 +157,16 @@
     "plant-leaves": {
       "file": "/cinema/prop-plant-leaves.png",
       "boxPct": {
-        "left": 77.382,
-        "top": 50.372,
-        "width": 14.907,
-        "height": 35.707
+        "left": 62.103,
+        "top": 54.686,
+        "width": 15.246,
+        "height": 31.533
       },
       "boxPx": [
-        1385,
-        474,
-        1673,
-        810
+        998,
+        496,
+        1243,
+        782
       ],
       "originPct": [
         50,
@@ -176,12 +176,12 @@
   },
   "antPct": {
     "from": [
-      82.14,
-      84.38
+      70.19,
+      86.22
     ],
     "to": [
-      68.32,
-      85.55
+      64.97,
+      87.87
     ]
   },
   "notes": [
@@ -195,53 +195,27 @@
   ],
   "lamp": {
     "off": "/cinema/desk-off.webp",
-    "front": {
-      "file": "/cinema/lamp-front.png",
-      "boxPct": {
-        "left": 19.462,
-        "top": 35.069,
-        "width": 1.915,
-        "height": 8.183
-      }
-    },
     "hitPct": {
-      "left": 10.663,
-      "top": 26.78,
-      "width": 9.317,
-      "height": 21.679
+      "left": 1.12,
+      "top": 34.62,
+      "width": 14.997,
+      "height": 50.717
     }
   },
   "pens": {
-    "files": [
-      "/cinema/sprite-pen-1.png",
-      "/cinema/sprite-pen-2.png",
-      "/cinema/sprite-pen-3.png"
-    ],
+    "files": [],
     "boxPct": {
-      "left": 15.704,
-      "top": 68.476,
-      "width": 3.317,
-      "height": 5.203
+      "left": 0,
+      "top": 0,
+      "width": 0.062,
+      "height": 0.11
     },
-    "originPct": [
-      [
-        20.22,
-        100
-      ],
-      [
-        47.19,
-        100
-      ],
-      [
-        76.4,
-        100
-      ]
-    ],
+    "originPct": [],
     "hitPct": {
-      "left": 14.855,
-      "top": 68.331,
-      "width": 3.675,
-      "height": 14.24
+      "left": 0,
+      "top": 0,
+      "width": 0.062,
+      "height": 0.11
     }
   },
   "leaves": {
@@ -333,111 +307,21 @@
   },
   "lava": {
     "boxPct": {
-      "left": 64.183,
-      "top": 60.149,
-      "width": 5.383,
-      "height": 22.104
+      "left": 91.537,
+      "top": 61.521,
+      "width": 6.845,
+      "height": 24.256
     }
   },
   "sides": {
-    "px": 900,
+    "px": 540,
     "left": "/cinema/side-left.png",
     "right": "/cinema/side-right.png",
     "leftOff": "/cinema/side-left-off.png",
     "rightOff": "/cinema/side-right-off.png"
   },
-  "widen": {
-    "left": {
-      "d": 130,
-      "path": [
-        [
-          0,
-          322,
-          450
-        ],
-        [
-          322,
-          346,
-          450,
-          536
-        ],
-        [
-          346,
-          772,
-          536
-        ],
-        [
-          772,
-          808,
-          495
-        ],
-        [
-          808,
-          941,
-          486
-        ]
-      ]
-    },
-    "right": {
-      "d": 130,
-      "path": [
-        [
-          0,
-          772,
-          1440
-        ],
-        [
-          772,
-          941,
-          1412
-        ]
-      ]
-    }
-  },
-  "decor": [
-    {
-      "name": "headset-cable",
-      "file": "/cinema/prop-headset-cable.png",
-      "boxPct": {
-        "left": 86.957,
-        "top": 47.184,
-        "width": 3.106,
-        "height": 40.383
-      },
-      "z": 3
-    },
-    {
-      "name": "headset",
-      "file": "/cinema/prop-headset.png",
-      "boxPct": {
-        "left": 83.437,
-        "top": 26.78,
-        "width": 6.625,
-        "height": 21.679
-      },
-      "z": 3
-    },
-    {
-      "name": "xbox",
-      "file": "/cinema/prop-xbox.png",
-      "boxPct": {
-        "left": 69.979,
-        "top": 74.176,
-        "width": 12.836,
-        "height": 10.202
-      },
-      "z": 3
-    },
-    {
-      "name": "controller",
-      "file": "/cinema/prop-controller.png",
-      "boxPct": {
-        "left": 82.402,
-        "top": 85.654,
-        "width": 7.66,
-        "height": 8.077
-      },
-      "z": 6
-    }
-  ]
+  "noteLand": {
+    "dx": -78,
+    "dy": 386
+  }
 }

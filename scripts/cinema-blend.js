@@ -10,7 +10,7 @@
 //   under the lamp in place of the plain pencil cup there (its spot by the PC is the lava lamp's now)
 // - swaps the lettered poster for the night-mountain pixel poster
 // - cuts the shade's right edge to sit over the sticky notes
-// - last, scripts/cinema-room.js: the painting with the lamp switched off, and the room past its edges
+// (the scene's room is now scripts/mockup-room.js, built from the mockup; this painting is kept, unused)
 const fs = require('fs'), path = require('path'), sharp = require('sharp');
 
 const ROOT = path.join(__dirname, '..'), CIN = path.join(ROOT, 'public/cinema');
@@ -448,9 +448,6 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   // where the decks hang now (the seated view keeps them out of frame)
   m.decksPct = DECK_BOXES.map(([x0, y0, x1, y1]) => pct([x0, y0, x1 + 1, y1 + 1]));
   fs.writeFileSync(mf, JSON.stringify(m, null, 2) + '\n');
-
-  // ---- the painting with the lamp off, and the room past its edges (adds its own manifest entries) ----
-  await require('./cinema-room').run(img);
 
   if (REVIEW) {
     await sharp(img, { raw: { width: W, height: H, channels: 3 } }).png().toFile(path.join(REVIEW, 'desk-fixed.png'));

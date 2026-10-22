@@ -56,18 +56,17 @@ interface Manifest {
     /** The whole painting again with the lamp switched off, laid over the lit one. */
     off: string;
     /** The shade's right edge, over the sticky notes on the wall behind it. */
-    front: { file: string; boxPct: PctBox };
+    front?: { file: string; boxPct: PctBox };
     hitPct: PctBox;
   };
   /** The room past the painting's edges (wall, desk, the things the edge cuts), lit and unlit. */
   sides: { px: number; left: string; right: string; leftOff: string; rightOff: string };
-  /** Where strips of wall and desk were cut into the painting (scripts/cinema-room.js): per side, rows
-   *  [y0, y1) and the painting column the cut runs down them, and the px put in. */
-  widen: Record<"left" | "right", { d: number; path: number[][] }>;
   lava: { boxPct: PctBox };
   pens: { files: string[]; boxPct: PctBox; originPct: number[][]; hitPct: PctBox };
   leaves: { stems: string; files: string[]; originPct: number[][] };
   antPct: { from: number[]; to: number[] };
+  /** Where a peeled note comes to rest, art px from where it hangs: on the desk behind the mug. */
+  noteLand: { dx: number; dy: number };
   /** Sprites that just sit in the room (the console, controller, headset and its cable), back to front. */
   decor?: { name: string; file: string; boxPct: PctBox; z: number }[];
   colors: { coffee: { dark: string; mid: string; hi: string } };
@@ -75,18 +74,6 @@ interface Manifest {
 
 const art = manifestJson as unknown as Manifest;
 
-/** A painting column's place in the widened room the scene shows (art px), on row y. */
-const mapX = (x: number, y: number) => {
-  let out = x;
-  for (const side of ["left", "right"] as const) {
-    const leg = art.widen[side].path.find(([y0, y1]) => y >= y0 && y < y1);
-    if (!leg) continue;
-    const [y0, y1, x0, x1] = leg; // a leg slants from x0 to x1 down its rows, or runs straight at x0
-    const cut = x1 == null ? x0 : x0 + ((x1 - x0) * (y - y0)) / (y1 - y0);
-    if (x >= cut) out += art.widen[side].d;
-  }
-  return out;
-};
 
 const SIT_MS = 1700;
 const STAND_MS = 1400;
@@ -124,8 +111,8 @@ const NOTE_GRAVITY = 900; // art px / s²
 const NOTE_DRAG = 5.2; // 1/s, so it falls at about 170 art px/s
 const NOTE_SWAY = 34; // art px
 const NOTE_SWAY_W = 5.2; // rad/s
-const NOTE_LAND_Y = 403; // art px below the wall spot: its top edge on the desk's back edge, behind the mug
-const NOTE_LAND_X = -128; // art px it glides left on the way down: its middle behind the mug's body
+const NOTE_LAND_Y = art.noteLand.dy; // art px below the wall spot: its top edge on the desk's back edge, behind the mug
+const NOTE_LAND_X = art.noteLand.dx; // art px it glides across on the way down: its middle behind the mug's body
 const NOTE_SCATTER = [10, 3, 14]; // a landed note's spread: ± art px across, ± art px deep, ± degrees
 /** The eye's distance for the note's tilt, art px: far, so a note lying on the desk is a strip, not a wedge. */
 const NOTE_EYE = 1600;
@@ -167,25 +154,26 @@ interface WallText {
 const CSU_BURGUNDY = "#7e012d";
 const DH_GOLD = "#fcbe11";
 const NAME_GOLD = "#f6bb5c";
+// art px = mockup px x 1.2 (scripts/mockup-room.js)
+const SPINE = "#d9b77a";
 const WALL_TEXT: WallText[] = [
-  { lines: ["CHRISTOPHER LUNA"], x: 803, y: 68, size: 40, color: NAME_GOLD, weight: 700, track: 0.06 },
-  { lines: ["LUNA_CHRISTOPHER98@HOTMAIL.COM"], x: 803, y: 102, size: 15, color: "#e9b468", weight: 500, track: 0.06 },
-  { lines: ["ANAHEIM, CA 92806  ·  (714) 800-3264"], x: 803, y: 122, size: 11.5, color: "#e9b468", weight: 500, track: 0.08 },
-  // the school in its colours, CSU burgundy and DH gold, then the degree in the name's colour, sized like
-  // the email and the line under it
+  { lines: ["CHRISTOPHER LUNA"], x: 781, y: 61, size: 44, color: NAME_GOLD, weight: 700, track: 0.06 },
+  { lines: ["LUNA_CHRISTOPHER98@HOTMAIL.COM"], x: 781, y: 99, size: 19, color: "#e9b468", weight: 500, track: 0.06 },
+  { lines: ["ANAHEIM, CA 92806  ·  (714) 800-3264"], x: 781, y: 120, size: 14.5, color: "#e9b468", weight: 500, track: 0.08 },
+  // the school in its colours, CSU burgundy and DH gold, then the degree in the name's colour
   {
     lines: [[{ text: "CALIFORNIA STATE UNIVERSITY, ", color: CSU_BURGUNDY }, { text: "DOMINGUEZ HILLS", color: DH_GOLD }]],
-    x: 803, y: 216, size: 18, color: CSU_BURGUNDY, weight: 700, track: 0.07,
+    x: 781, y: 210, size: 22, color: CSU_BURGUNDY, weight: 700, track: 0.07,
   },
-  { lines: ["BACHELOR OF SCIENCE  ·  COMPUTER SCIENCE"], x: 803, y: 247, size: 15, color: NAME_GOLD, weight: 600, track: 0.06, edged: true },
-  { lines: ["FIRST GEN"], x: 803, y: 268, size: 11.5, color: NAME_GOLD, weight: 600, track: 0.08, edged: true },
-  { lines: ["ALGORITHMS"], x: 66, y: 637, size: 15, color: "#e7a256", align: "left", rotate: -2.2, track: 0.14, weight: 600 },
-  { lines: ["TYPESCRIPT"], x: 68, y: 677, size: 15, color: "#e7a256", align: "left", rotate: -2.7, track: 0.14, weight: 600 },
-  { lines: ["SYSTEM DESIGN"], x: 70, y: 719, size: 15.5, color: "#e7a256", align: "left", rotate: -4.8, track: 0.14, weight: 600 },
-  { lines: ["NETWORKS"], x: 72, y: 760, size: 16, color: "#f6cf93", align: "left", rotate: -4.6, track: 0.16, weight: 600 },
+  { lines: ["BACHELOR OF SCIENCE  ·  COMPUTER SCIENCE"], x: 781, y: 239, size: 18, color: NAME_GOLD, weight: 600, track: 0.06, edged: true },
+  { lines: ["FIRST GEN"], x: 781, y: 262, size: 13.5, color: NAME_GOLD, weight: 600, track: 0.08, edged: true },
+  // the three books under the monitor, titles in gilt on their spines
+  { lines: ["COMPUTER SCIENCE"], x: 625, y: 693, size: 15.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
+  { lines: ["DATA STRUCTURES & ALGORITHMS"], x: 625, y: 730, size: 15.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
+  { lines: ["COMPUTER ORGANIZATION"], x: 625, y: 766, size: 15.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
 ];
 const wallTextStyle = (t: WallText): CSSProperties => ({
-  left: `${(mapX(t.x, t.y) / art.size.width) * 100}%`,
+  left: `${(t.x / art.size.width) * 100}%`,
   top: `${(t.y / art.size.height) * 100}%`,
   fontSize: `${(t.size / art.size.width) * 100}cqw`,
   color: t.color,
@@ -966,9 +954,11 @@ export default function CinemaScene() {
           )}
 
           {/* The lamp's head is in front of the notes on the wall: the shade's edge over them */}
-          <div className="cinema__lamp-front" style={pctBox(art.lamp.front.boxPct)} aria-hidden="true">
-            <Image src={art.lamp.front.file} alt="" fill unoptimized draggable={false} />
-          </div>
+          {art.lamp.front && (
+            <div className="cinema__lamp-front" style={pctBox(art.lamp.front.boxPct)} aria-hidden="true">
+              <Image src={art.lamp.front.file} alt="" fill unoptimized draggable={false} />
+            </div>
+          )}
 
           {/* The gaming corner: the console, its controller, the headset on its hook and the headset's cable */}
           {art.decor?.map((d) => (
@@ -1096,13 +1086,15 @@ export default function CinemaScene() {
                 onClick={switchLamp}
                 aria-label={lampOn ? "Switch the desk lamp off" : "Switch the desk lamp on"}
               />
-              <button
-                type="button"
-                className="cinema__hotspot cinema__hotspot--pens"
-                style={pctBox(art.pens.hitPct)}
-                onClick={rattlePens}
-                aria-label="Rattle the pencil cup"
-              />
+              {art.pens.files.length > 0 && (
+                <button
+                  type="button"
+                  className="cinema__hotspot cinema__hotspot--pens"
+                  style={pctBox(art.pens.hitPct)}
+                  onClick={rattlePens}
+                  aria-label="Rattle the pencil cup"
+                />
+              )}
             </>
           )}
 
