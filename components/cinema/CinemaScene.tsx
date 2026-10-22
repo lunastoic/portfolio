@@ -88,7 +88,7 @@ const art = manifestJson as unknown as Manifest;
 const SIT_MS = 1700;
 const STAND_MS = 1400;
 /** Seated, the painted screen stands this tall relative to the viewport. */
-const SEAT_FRACTION: Record<LayoutKey, number> = { desktop: 0.6, mobile: 0.55 };
+const SEAT_FRACTION: Record<LayoutKey, number> = { desktop: 0.78, mobile: 0.72 };
 /** Seated, the crop starts at least this far (art px) below the decks, so they stay out of view. */
 const DECK_CLEARANCE = 12; // clears the brackets under the deck too
 const HINT_DELAY_MS = 2200;
