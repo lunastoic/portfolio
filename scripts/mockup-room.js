@@ -314,6 +314,18 @@ function coaster(img, lit) {
   return img;
 }
 
+/**
+ * The room drawn as pixel art, like the props: sharpened, brought down to a chunky grid (PIX art px a pixel),
+ * held to a limited palette with a light dither, and blown back up with hard edges, so the mockup's airbrushed
+ * gradients and smeared edges become clean stepped pixels.
+ */
+const PIX = 3;
+async function pixelize(buf, w) {
+  const gw = Math.round(w / PIX), gh = Math.round(H / PIX);
+  const small = await sharp(buf, { raw: { width: w, height: H, channels: 3 } }).sharpen({ sigma: 1.1, m1: 0.6, m2: 1.4 }).resize(gw, gh, { kernel: 'lanczos3' }).png({ palette: true, colours: 200, dither: 0.35 }).toBuffer();
+  return sharp(small).removeAlpha().resize(w, H, { kernel: 'nearest' }).raw().toBuffer();
+}
+
 const saveWebp = async (buf, w, file) => { await sharp(buf, { raw: { width: w, height: H, channels: 3 } }).webp({ lossless: true, effort: 6 }).toFile(file + '.tmp'); fs.renameSync(file + '.tmp', file); };
 const savePng = (buf, w, file) => sharp(buf, { raw: { width: w, height: H, channels: 3 } }).png({ palette: true, colours: 128, dither: 0 }).toFile(file);
 
@@ -327,12 +339,13 @@ const savePng = (buf, w, file) => sharp(buf, { raw: { width: w, height: H, chann
   shiftLamp(img);
   const off0 = lampOff(img);
   const room = alignCorners(coaster(widen(img), 1)), off = alignCorners(coaster(widen(off0), 0.55));
-  await saveWebp(room, WW, path.join(CIN, 'room.webp'));
-  await saveWebp(off, WW, path.join(CIN, 'desk-off.webp'));
-  await savePng(side(room, true), SW, path.join(CIN, 'side-left.png'));
-  await savePng(side(room, false), SW, path.join(CIN, 'side-right.png'));
-  await savePng(side(off, true), SW, path.join(CIN, 'side-left-off.png'));
-  await savePng(side(off, false), SW, path.join(CIN, 'side-right-off.png'));
+  const roomP = await pixelize(room, WW), offP = await pixelize(off, WW);
+  await saveWebp(roomP, WW, path.join(CIN, 'room.webp'));
+  await saveWebp(offP, WW, path.join(CIN, 'desk-off.webp'));
+  await savePng(await pixelize(side(room, true), SW), SW, path.join(CIN, 'side-left.png'));
+  await savePng(await pixelize(side(room, false), SW), SW, path.join(CIN, 'side-right.png'));
+  await savePng(await pixelize(side(off, true), SW), SW, path.join(CIN, 'side-left-off.png'));
+  await savePng(await pixelize(side(off, false), SW), SW, path.join(CIN, 'side-right-off.png'));
 
   // ---- room.json: every box in art px (mockup px x K) ----
   const A = (v) => Math.round(v * K);
