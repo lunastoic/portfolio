@@ -112,6 +112,8 @@ const BOOKS = { x1: 262, y0: 602 };
 const KEEP = [[541, 338, 1064, 762], [660, 755, 960, 785], [490, DESK, 1130, 870], [155, 545, 230, 612]];
 const BLEND_ROWS = 10;
 const CUP = { box: [292, 666, 372, 756], down: 20 };
+/** The patch the painting's old note left on the wall (painting px, inclusive). */
+const OLD_NOTE = [407, 370, 518, 493];
 /** Room px the sticky notes' wall spot moves by: the paper ends up as far from the shade's rim as from the monitor's bezel. */
 const NOTE_MOVE = { dx: 81, dy: 20 };
 function flatten(img) {
@@ -167,6 +169,23 @@ function flatten(img) {
       if (keep(x, y)) continue;
       const a = amb(y), f = Math.exp(-(y - t) / T[x]), o = idx(x, y), w = ss((y - t + 1) / BLEND_ROWS);
       for (let c = 0; c < 3; c++) out[o + c] = clamp(Math.round(lerp(img[o + c], a[c] + extra[c] * f + hash(x, y, 11 + c) * 4, w)), 0, 255);
+    }
+  }
+  // where the notes used to hang (left of the monitor, below the shade): the painting's old note left a
+  // darker patch, a stray line and a curled corner. Rebuilt from the wall round it, blended in from all
+  // four sides (so the lamp's glow carries across), with the wall's grain.
+  {
+    const [x0, y0, x1, y1] = OLD_NOTE, at = (x, y) => [0, 1, 2].map((c) => out[idx(x, y) + c]);
+    const T = [], B = [], L = [], R = [];
+    for (let x = x0; x <= x1; x++) { T[x] = avg(out, Math.max(x0, x - 2), Math.min(x1, x + 2), y0 - 3, y0 - 1); B[x] = avg(out, Math.max(x0, x - 2), Math.min(x1, x + 2), y1 + 1, y1 + 3); }
+    for (let y = y0; y <= y1; y++) { L[y] = avg(out, x0 - 3, x0 - 1, Math.max(y0, y - 2), Math.min(y1, y + 2)); R[y] = avg(out, x1 + 1, x1 + 3, Math.max(y0, y - 2), Math.min(y1, y + 2)); }
+    const TL = at(x0 - 1, y0 - 1), TR = at(x1 + 1, y0 - 1), BL = at(x0 - 1, y1 + 1), BR = at(x1 + 1, y1 + 1);
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      const u = (x - x0 + 1) / (x1 - x0 + 2), v = (y - y0 + 1) / (y1 - y0 + 2), o = idx(x, y);
+      for (let c = 0; c < 3; c++) {
+        const p = (1 - v) * T[x][c] + v * B[x][c] + (1 - u) * L[y][c] + u * R[y][c] - ((1 - u) * (1 - v) * TL[c] + u * (1 - v) * TR[c] + (1 - u) * v * BL[c] + u * v * BR[c]);
+        out[o + c] = clamp(Math.round(p + hash(x, y, 31 + c) * 4), 0, 255);
+      }
     }
   }
   // the cat cup, down onto the desk

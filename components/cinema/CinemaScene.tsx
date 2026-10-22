@@ -122,9 +122,9 @@ const NOTE_GRAVITY = 900; // art px / s²
 const NOTE_DRAG = 5.2; // 1/s, so it falls at about 170 art px/s
 const NOTE_SWAY = 34; // art px
 const NOTE_SWAY_W = 5.2; // rad/s
-const NOTE_LAND_Y = 410; // art px below the wall spot: its top edge just onto the desk's far edge, behind the mug
-const NOTE_LAND_X = -105; // art px it glides left on the way down, to end up behind the mug
-const NOTE_SCATTER = [14, 4, 22]; // a landed note's spread: ± art px across, ± art px deep, ± degrees
+const NOTE_LAND_Y = 403; // art px below the wall spot: its top edge on the desk's back edge, behind the mug
+const NOTE_LAND_X = -128; // art px it glides left on the way down: its middle behind the mug's body
+const NOTE_SCATTER = [10, 3, 14]; // a landed note's spread: ± art px across, ± art px deep, ± degrees
 /** The eye's distance for the note's tilt, art px: far, so a note lying on the desk is a strip, not a wedge. */
 const NOTE_EYE = 1600;
 const NOTE_SETTLE = 80; // art px above its landing spot where it starts to lie down
