@@ -42,24 +42,73 @@
   opacity: 1;
 }
 
-/* the plain wall and desk carried on past the painting, 900 art px each side */
+/* the room carried on past the painting, 900 art px each side, as crisp as the painting */
 .cinema__side {
   position: absolute;
   top: 0;
   width: calc(900 / 1672 * 100%);
   height: 100%;
   background-size: 100% 100%;
+  image-rendering: pixelated;
   pointer-events: none;
 }
 
 .cinema__side--left {
   right: 100%;
-  background-image: url("/cinema/side-left.png");
 }
 
 .cinema__side--right {
   left: 100%;
-  background-image: url("/cinema/side-right.png");
+}
+
+/* the room with the lamp off: the whole painting again, unlit, over the lit one (the sides' too) */
+.cinema__off {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0;
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.cinema__off.is-off {
+  opacity: 1;
+}
+
+/* what stood in the lamp's light goes dark with it: the mug and its steam, the coffee down its side,
+   the notes, the pens, the shade's edge, the words on the spines; the decks and the plant less so */
+.cinema__sprite,
+.cinema__pen,
+.cinema__spill,
+.cinema__lamp-front,
+.cinema__wall-text {
+  transition: filter 0.5s ease;
+}
+
+.cinema--lamp-off .cinema__sprite--mug,
+.cinema--lamp-off .cinema__sprite--steam,
+.cinema--lamp-off .cinema__sprite--note,
+.cinema--lamp-off .cinema__pen,
+.cinema--lamp-off .cinema__spill {
+  filter: brightness(0.5) saturate(0.85);
+}
+
+.cinema--lamp-off .cinema__lamp-front {
+  filter: brightness(0.35);
+}
+
+.cinema--lamp-off .cinema__wall-text {
+  filter: brightness(0.75);
+}
+
+.cinema--lamp-off .cinema__wall-text--desk {
+  filter: brightness(0.5) saturate(0.85);
+}
+
+.cinema--lamp-off .cinema__sprite--plant-pot,
+.cinema--lamp-off .cinema__sprite--plant-leaves {
+  filter: brightness(0.78);
 }
 
 .cinema--seated .cinema__stage {
@@ -112,7 +161,7 @@
 .cinema__sprite--steam {
   z-index: 5;
   pointer-events: none;
-  transition: opacity 0.15s linear;
+  transition: opacity 0.15s linear, filter 0.5s ease;
 }
 
 .cinema__sprite--plant-leaves {
@@ -225,19 +274,7 @@
   image-rendering: pixelated;
 }
 
-/* the desk lamp switched off: its bulb goes dark and the wall and desk it lit fall into shadow */
-.cinema__lamp-off,
-.cinema__lamp-shade {
-  position: absolute;
-  pointer-events: none;
-  opacity: 0;
-}
-
-/* the lamp's head is in front of the sticky notes (z 4) */
-.cinema__lamp-off {
-  z-index: 5;
-}
-
+/* the shade's edge is in front of the sticky notes (z 4) */
 .cinema__lamp-front {
   position: absolute;
   z-index: 5;
@@ -266,22 +303,6 @@
   background:
     radial-gradient(ellipse 40% 44% at 50% 38%, rgba(255, 72, 168, 0.62), rgba(255, 72, 168, 0.24) 55%, transparent 100%),
     radial-gradient(ellipse 36% 9% at 50% 90%, rgba(255, 130, 150, 0.55), transparent 100%);
-}
-
-.cinema__lamp-off img {
-  image-rendering: pixelated;
-}
-
-.cinema__lamp-shade {
-  inset: 0;
-  z-index: 6;
-  background-size: 100% 100%;
-  mix-blend-mode: multiply;
-}
-
-.cinema__lamp-off.is-off,
-.cinema__lamp-shade.is-off {
-  opacity: 1;
 }
 
 /* off: the filament catches once or twice before it dies; on: it stutters awake */

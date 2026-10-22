@@ -9,7 +9,8 @@
 // - cuts the three pens out of the cat pencil cup and fills the wall behind them, then moves the cup
 //   under the lamp in place of the plain pencil cup there (its spot by the PC is the lava lamp's now)
 // - swaps the lettered poster for the night-mountain pixel poster
-// - writes the lamp head with its bulb out, and the shadow the lamp leaves when it's off
+// - cuts the shade's right edge to sit over the sticky notes
+// - last, scripts/cinema-room.js: the painting with the lamp switched off, and the room past its edges
 const fs = require('fs'), path = require('path'), sharp = require('sharp');
 
 const ROOT = path.join(__dirname, '..'), CIN = path.join(ROOT, 'public/cinema');
@@ -367,56 +368,6 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   await sharp(quant).webp({ lossless: true, effort: 6 }).toFile(path.join(CIN, 'desk.webp.tmp'));
   fs.renameSync(path.join(CIN, 'desk.webp.tmp'), path.join(CIN, 'desk.webp'));
 
-  // ---- the room past the painting's edges, for wide windows: plain wall down to the desk, the desk
-  //      top, its front edge; sampled from clean stretches of each, graded darker away from the painting,
-  //      and blended out of the painting's own edge over the first few dozen pixels ----
-  {
-    const SW = 900, SEAM = 36, DESK = 772, FRONT = 890;
-    const avg = (x0, x1, y0, y1) => { const a = [0, 0, 0]; let n = 0; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = (y * W + x) * 3; a[0] += img[i]; a[1] += img[i + 1]; a[2] += img[i + 2]; n++; } return a.map(v => v / n); };
-    const ss = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
-    // the wall's fall-off from ceiling to desk, from a clean column right of the poster
-    const wallAt = (y) => avg(1300, 1340, Math.min(y, 600), Math.min(y, 600) + 2).map(v => v * (y > 600 ? 1 - 0.18 * ss((y - 600) / 172) : 1));
-    for (const side of ['left', 'right']) {
-      const out = Buffer.alloc(SW * H * 3);
-      // left of the lamp the wall is lit warmer than on the right
-      const lift = side === 'left' ? avg(262, 330, 20, 110).map((v, c) => v / avg(1300, 1340, 20, 110)[c]) : [1, 1, 1];
-      const deskSrc = side === 'left' ? [2, 20] : [1460, 1480];
-      const edgeX = side === 'left' ? 0 : W - 1;
-      for (let y = 0; y < H; y++) {
-        let base;
-        if (y < DESK) base = wallAt(y).map((v, c) => v * lift[c]);
-        else if (y < FRONT) base = avg(deskSrc[0], deskSrc[1], y, y);
-        else base = avg(side === 'left' ? 2 : W - 21, side === 'left' ? 20 : W - 3, y, y);
-        // the painting's edge, softened up and down
-        const edge = avg(edgeX, edgeX, Math.max(0, y - 6), Math.min(H - 1, y + 6));
-        for (let k = 0; k < SW; k++) {
-          // k counts out from the painting
-          const t = ss(k / SEAM), dim = 1 - 0.5 * ss((k - SEAM) / (SW - SEAM));
-          const g = ((Math.imul((y * SW + k) * 3 + (side === 'left' ? 1 : 7), 2654435761) >>> 24) / 255 - 0.5) * 5;
-          const x = side === 'left' ? SW - 1 - k : k, o = (y * SW + x) * 3;
-          for (let c = 0; c < 3; c++) out[o + c] = Math.max(0, Math.min(255, Math.round((edge[c] * (1 - t) + base[c] * t) * dim + g)));
-        }
-      }
-      await sharp(out, { raw: { width: SW, height: H, channels: 3 } }).png({ palette: true, colours: 96, dither: 0.6 }).toFile(path.join(CIN, `side-${side}.png`));
-    }
-  }
-
-  // ---- the lamp with its bulb out: the head crop, bright warm pixels pulled down ----
-  const HB = [204, 250, 408, 462], hw = HB[2] - HB[0] + 1, hh = HB[3] - HB[1] + 1;
-  const off = Buffer.alloc(hw * hh * 4);
-  for (let y = HB[1]; y <= HB[3]; y++) for (let x = HB[0]; x <= HB[2]; x++) {
-    const i = y * W + x, o = ((y - HB[1]) * hw + (x - HB[0])) * 4, L = lum(img, i);
-    // inside the shade's mouth: an ellipse round the bulb and lit rim
-    const ex = (x - 306) / 96, ey = (y - 404) / 38, inMouth = ex * ex + ey * ey <= 1;
-    if (!inMouth || L < 110) continue;
-    const k = Math.min(1, (L - 110) / 120);
-    const r = img[i * 3], g = img[i * 3 + 1], b = img[i * 3 + 2];
-    const dim = 0.32 + 0.3 * (1 - k);
-    off[o] = Math.round(r * dim * 0.9); off[o + 1] = Math.round(g * dim * 0.82); off[o + 2] = Math.round(b * dim * 0.9 + 6);
-    off[o + 3] = Math.round(255 * Math.min(1, 0.4 + k));
-  }
-  await savePng(off, hw, hh, 4, path.join(CIN, 'lamp-off.png'));
-
   // ---- the shade's right edge, cut out to sit over the sticky notes (they're on the wall behind it) ----
   // per row: up to the shade's dark outline, or on the rows under it, to the end of the lit rim
   const FRONT = [376, 330, 412, 406], fw = FRONT[2] - FRONT[0] + 1, fh = FRONT[3] - FRONT[1] + 1;
@@ -431,22 +382,6 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
     }
   }
   await savePng(front, fw, fh, 4, path.join(CIN, 'lamp-front.png'));
-
-  // ---- the shade the room falls into with the lamp off (quarter res, scaled up smooth) ----
-  const q = 4, sw = W / q | 0, sh = Math.ceil(H / q), shade = Buffer.alloc(sw * sh * 4);
-  for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) {
-    const X = x * q, Y = y * q;
-    const bulb = Math.max(0, 1 - Math.hypot((X - 306) / 330, (Y - 400) / 300));
-    // the beam: down and right from the mouth, onto the books, mug and desk
-    const bx = (X - 360) / 300, by = (Y - 640) / 210, beam = Math.max(0, 1 - Math.hypot(bx, by));
-    // the monitor makes its own light: leave its glass alone
-    const [gx0, gy0, gx1, gy1] = SCREEN, gd = Math.min(X - gx0, gx1 - X, Y - gy0, gy1 - Y);
-    const glass = gd > 0 ? Math.min(1, gd / 24) : 0;
-    const a = Math.min(1, 1.15 * Math.pow(bulb, 0.9) + 0.9 * Math.pow(beam, 1.1)) * (1 - glass);
-    const o = (y * sw + x) * 4;
-    shade[o] = 22; shade[o + 1] = 14; shade[o + 2] = 26; shade[o + 3] = Math.round(255 * a * 0.62);
-  }
-  await savePng(shade, sw, sh, 4, path.join(CIN, 'lamp-shade.png'));
 
   // ---- the pixel props, brought into the painting's hand ----
   // drawn at 2× (2 art px per pixel instead of 4), the outer outline thinned to one pixel
@@ -498,9 +433,7 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   m.props.note.file = '/cinema/prop-sticky-1.png';
   m.notes = Array.from({ length: 7 }, (_, i) => `/cinema/prop-sticky-${i + 1}.png`);
   m.lamp = {
-    off: { file: '/cinema/lamp-off.png', boxPct: pct([HB[0], HB[1], HB[2] + 1, HB[3] + 1]) },
     front: { file: '/cinema/lamp-front.png', boxPct: pct([FRONT[0], FRONT[1], FRONT[2] + 1, FRONT[3] + 1]) },
-    shade: '/cinema/lamp-shade.png',
     hitPct: pct([206, 252, 386, 456]),
   };
   // the pens ride the cat cup to its new spot under the lamp (the hit box stops short of the mug)
@@ -515,6 +448,9 @@ const savePng = (buf, w, h, ch, file) => sharp(buf, { raw: { width: w, height: h
   // where the decks hang now (the seated view keeps them out of frame)
   m.decksPct = DECK_BOXES.map(([x0, y0, x1, y1]) => pct([x0, y0, x1 + 1, y1 + 1]));
   fs.writeFileSync(mf, JSON.stringify(m, null, 2) + '\n');
+
+  // ---- the painting with the lamp off, and the room past its edges (adds its own manifest entries) ----
+  await require('./cinema-room').run(img);
 
   if (REVIEW) {
     await sharp(img, { raw: { width: W, height: H, channels: 3 } }).png().toFile(path.join(REVIEW, 'desk-fixed.png'));

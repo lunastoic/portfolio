@@ -53,12 +53,14 @@ interface Manifest {
   props: Partial<Record<PropKey, Prop>>;
   notes: string[];
   lamp: {
-    off: { file: string; boxPct: PctBox };
+    /** The whole painting again with the lamp switched off, laid over the lit one. */
+    off: string;
     /** The shade's right edge, over the sticky notes on the wall behind it. */
     front: { file: string; boxPct: PctBox };
-    shade: string;
     hitPct: PctBox;
   };
+  /** The room past the painting's edges (wall, desk, the things the edge cuts), lit and unlit. */
+  sides: { px: number; left: string; right: string; leftOff: string; rightOff: string };
   lava: { boxPct: PctBox };
   pens: { files: string[]; boxPct: PctBox; originPct: number[][]; hitPct: PctBox };
   leaves: { stems: string; files: string[]; originPct: number[][] };
@@ -264,8 +266,8 @@ const mugOrigin = () => {
 const pickLayout = (vw: number, vh: number): LayoutKey =>
   vw > 0 && (vw < 900 || vh > vw * 1.15) ? "mobile" : "desktop";
 
-/** Art px of plain wall and desk painted on past each side of the painting (public/cinema/side-*.png). */
-const SIDE_PX = 900;
+/** Art px of room painted on past each side of the painting (public/cinema/side-*.png). */
+const SIDE_PX = art.sides.px;
 
 /**
  * Standing back from the desk: the painting's full height always fits, so both decks and the
@@ -395,7 +397,7 @@ function NoteFace({ index }: { index: number }) {
  * and the LUNA_OS on the glass wakes up to your keys. Standing, the desk is alive: push the mug
  * and it bumps back a little, upright, coffee running down its front; peel the sticky notes, as fast
  * as you like, and they drift down and pile up behind the mug; tap the cat pencil cup and the pens
- * rattle; click the desk lamp or the lava lamp to switch it off and on;
+ * rattle; click the desk lamp to switch it off (the room it lit goes dark with it) and on, the lava lamp too;
  * brush the plant and its leaves rustle while an ant walks out. Seated, ESC, [ STAND UP ] or a click
  * anywhere outside the screen stands you back up.
  */
@@ -797,6 +799,7 @@ export default function CinemaScene() {
     "cinema",
     `cinema--${pose}`,
     ready && loaded ? "cinema--ready" : "",
+    lampOn ? "" : "cinema--lamp-off",
   ]
     .filter(Boolean)
     .join(" ");
@@ -809,6 +812,8 @@ export default function CinemaScene() {
           transform: `translateY(${cam.dy.toFixed(1)}px) scale(${cam.zoom.toFixed(4)})`,
         };
   const standingTab = pose === "standing" ? 0 : -1;
+  // the unlit room fades in over the lit one as the lamp goes off (with a flicker, restarted by the key)
+  const offClass = `cinema__off${lampOn ? "" : " is-off"}${lampSwitches ? " is-switching" : ""}`;
 
   return (
     <div className={classes} data-layout={layout}>
@@ -838,16 +843,32 @@ export default function CinemaScene() {
             onLoad={() => setLoadedImage(art.image)}
             onError={() => setLoadedImage(art.image)}
           />
+          {/* The same room with the lamp off: the cone on the wall and the beam on the desk gone, the
+              bulb dark, the monitor's green the light that's left */}
+          <Image
+            key={`off-${lampSwitches}`}
+            src={art.lamp.off}
+            alt=""
+            fill
+            unoptimized
+            sizes="100vw"
+            draggable={false}
+            className={`cinema__backdrop ${offClass}`}
+          />
 
-          {/* Plain wall and desk past the painting's edges, for wide windows */}
-          <div className="cinema__side cinema__side--left" aria-hidden="true" />
-          <div className="cinema__side cinema__side--right" aria-hidden="true" />
+          {/* The room past the painting's edges, for wide windows, lit and unlit */}
+          <div className="cinema__side cinema__side--left" style={{ backgroundImage: `url(${art.sides.left})` }} aria-hidden="true">
+            <div key={`side-l-${lampSwitches}`} className={offClass} style={{ backgroundImage: `url(${art.sides.leftOff})` }} />
+          </div>
+          <div className="cinema__side cinema__side--right" style={{ backgroundImage: `url(${art.sides.right})` }} aria-hidden="true">
+            <div key={`side-r-${lampSwitches}`} className={offClass} style={{ backgroundImage: `url(${art.sides.rightOff})` }} />
+          </div>
 
           {/* The words on the decks and the book spines */}
           {WALL_TEXT.map((t) => (
             <p
               key={t.lines.map((l) => (typeof l === "string" ? l : l.map((r) => r.text).join(""))).join(" ")}
-              className={`cinema__wall-text${t.edged ? " cinema__wall-gold" : ""}`}
+              className={`cinema__wall-text${t.edged ? " cinema__wall-gold" : ""}${t.y > 500 ? " cinema__wall-text--desk" : ""}`}
               style={wallTextStyle(t)}
             >
               {t.lines.map((line, i) => (
@@ -903,18 +924,9 @@ export default function CinemaScene() {
             </>
           )}
 
-          {/* The lamp's head is in front of the notes on the wall: the shade's edge over them, and
-              the head with the bulb out over that */}
+          {/* The lamp's head is in front of the notes on the wall: the shade's edge over them */}
           <div className="cinema__lamp-front" style={pctBox(art.lamp.front.boxPct)} aria-hidden="true">
             <Image src={art.lamp.front.file} alt="" fill unoptimized draggable={false} />
-          </div>
-          <div
-            key={`head-${lampSwitches}`}
-            className={`cinema__lamp-off${lampOn ? "" : " is-off"}${lampSwitches ? " is-switching" : ""}`}
-            style={pctBox(art.lamp.off.boxPct)}
-            aria-hidden="true"
-          >
-            <Image src={art.lamp.off.file} alt="" fill unoptimized draggable={false} />
           </div>
 
           {/* The lava lamp by the PC: click it off and on */}
@@ -1019,14 +1031,6 @@ export default function CinemaScene() {
               aria-hidden="true"
             />
           )}
-
-          {/* With the lamp off, the wall and desk it lit fall into shadow */}
-          <div
-            key={`shade-${lampSwitches}`}
-            className={`cinema__lamp-shade${lampOn ? "" : " is-off"}${lampSwitches ? " is-switching" : ""}`}
-            style={{ backgroundImage: `url(${art.lamp.shade})` }}
-            aria-hidden="true"
-          />
 
           {pose === "standing" && (
             <>

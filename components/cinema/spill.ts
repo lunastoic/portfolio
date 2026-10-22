@@ -62,6 +62,8 @@ const DIFFUSE = 0.12;
 const SOAK_DELAY = 3; // s after the last drop lands
 const SOAK_RATE = 0.75; // 1/s
 const SPREAD_S = 1.5; // s the puddle keeps spreading after the last drop lands
+/** How wide a run down the mug's face is, art px: coffee runs down a cup in an even band. */
+const RUN_W = 6;
 
 export class Spill {
   active = false;
@@ -335,31 +337,33 @@ export class Spill {
     }
     if (vol > 0.5) this.lobed(ctx, mx / vol, landY + 2, 3 + Math.sqrt(vol) * 3, 1.2 + Math.sqrt(vol) * 0.9, this.leftWobble);
 
-    // the runs down the mug's front: a thin trail (fuller at the lip, wavering a little) and a bead
-    // at its head; they ride the mug when it's bumped again
+    // the runs down the mug's front: each one a run of even width (a wider tongue where it comes over
+    // the lip), dark along both edges, a sheen down its left, and a fat bead at its head; they ride
+    // the mug when it's bumped again
     for (const r of this.rivulets) {
       for (let y = Math.floor(r.top); y <= r.y; y++) {
-        const k = y - r.top, wave = Math.round(Math.sin(k * 0.3 + r.phase) * 0.8);
+        const k = y - r.top, wave = Math.round(Math.sin(k * 0.3 + r.phase) * 0.6);
         const [x, Y] = this.onMug(r.x + wave, y);
-        const X = Math.round(x), YY = Math.round(Y), wide = k < 4 ? 4 : 3;
+        const wide = k < 3 ? RUN_W + 2 : RUN_W;
+        const X = Math.round(x) - (wide >> 1), YY = Math.round(Y);
         ctx.fillStyle = dark;
         ctx.fillRect(X, YY, wide, 1);
         ctx.fillStyle = mid;
-        ctx.fillRect(X, YY, wide - 1, 1);
-        if (k % 9 === 3) {
+        ctx.fillRect(X + 1, YY, wide - 2, 1);
+        if (k % 2 === 0) {
           ctx.fillStyle = hi;
-          ctx.fillRect(X, YY, 1, 1);
+          ctx.fillRect(X + 1, YY, 1, 1);
         }
       }
       if (!r.done) {
-        const [x, y] = this.onMug(r.x + Math.round(Math.sin((r.y - r.top) * 0.3 + r.phase) * 0.8), r.y);
-        const X = Math.round(x), Y = Math.round(y);
+        const [x, y] = this.onMug(r.x + Math.round(Math.sin((r.y - r.top) * 0.3 + r.phase) * 0.6), r.y);
+        const X = Math.round(x) - (RUN_W >> 1) - 1, Y = Math.round(y);
         ctx.fillStyle = dark;
-        ctx.fillRect(X - 1, Y, 4, 3);
+        ctx.fillRect(X, Y, RUN_W + 2, 4);
         ctx.fillStyle = mid;
-        ctx.fillRect(X, Y, 2, 2);
+        ctx.fillRect(X + 1, Y, RUN_W, 3);
         ctx.fillStyle = hi;
-        ctx.fillRect(X, Y, 1, 1);
+        ctx.fillRect(X + 1, Y, 2, 1);
       }
     }
 
