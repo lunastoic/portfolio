@@ -11,7 +11,7 @@ soft contact shadows, stepped in a dithered pattern) and writes `room.webp` (lam
 off), `side-left/right(-off).png` (the wall and desk carried on for very wide windows) and `room.json`, which
 the scene reads: every box and hit area in art px, where a peeled note lands, and where the words go. The
 words themselves (the decks, the three book titles) are real type set by the scene, never baked into art.
-The mug, steam, sticky notes and plant are the `prop-*` sprites below; the lava lamp draws itself live.
+The console (`xbox`), `controller`, `headset` and `keyboard` are lifted from the mockup itself (`scripts/art/mockup.png`): cut along hand-traced outlines, scaled to the grid as a chunky draft and doubled with the outline thinned, like the other props, and kept as the mockup lit them. The mug, steam, sticky notes and plant are the `prop-*` sprites below; the lava lamp draws itself live.
 
 Everything below describes the painting the scene used before; it and its scripts are kept, unused.
 

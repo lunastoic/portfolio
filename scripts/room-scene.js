@@ -234,7 +234,7 @@ function spline(pts) {
 
 function cable() {
   const X = 1120, Y = 255, cv = new Cv(80, 310);
-  const pts = [[1173, 262], [1171, 298], [1164, 324], [1164, 346], [1169, 420], [1173, 482], [1177, 530], [1171, 550], [1150, 557], [1125, 558]];
+  const pts = [[1161, 268], [1163, 298], [1164, 324], [1164, 346], [1169, 420], [1173, 482], [1177, 530], [1171, 550], [1150, 557], [1125, 558]];
   for (const [px, py] of spline(pts)) {
     const x = Math.round(px - X), y = Math.round(py - Y);
     cv.put(x, y, cell(PLASTIC, 0.5, 1, 'cord', { noOutline: true }));
@@ -465,198 +465,44 @@ function mouse() {
   return asset('mouse', X, Y, cv);
 }
 
-function xbox() {
-  const [X, Y] = [916, 480], W = 218, H = 77, cv = new Cv(W, H), split = 132, TOP = 10;
+/**
+ * Objects lifted from the mockup (scripts/art/mockup.png, 1339 x 756), drawn there as the real things: cut out
+ * along outlines traced by hand (below, in mockup px), scaled onto the room's grid as a chunky
+ * draft, then doubled with the outer outline kept to its inner half, like every other prop. They come lit.
+ */
+const MOCKUP = path.join(ROOT, 'scripts/art/mockup.png');
+const ell = (x, y, cx, cy, rx, ry) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
+const inPoly = (x, y, pts) => { let c = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c; } return c; };
+async function fromMockup(name, [mx0, my0, mx1, my1], inside) {
+  const w = mx1 - mx0, h = my1 - my0;
+  const src = await sharp(MOCKUP).removeAlpha().extract({ left: mx0, top: my0, width: w, height: h }).raw().toBuffer();
+  // the object's outline, traced by hand in mockup px
+  const bg = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) bg[y * w + x] = inside(mx0 + x + 0.5, my0 + y + 0.5) ? 0 : 1;
+  const rgba = Buffer.alloc(w * h * 4);
+  for (let i = 0; i < w * h; i++) { rgba[i * 4] = src[i * 3]; rgba[i * 4 + 1] = src[i * 3 + 1]; rgba[i * 4 + 2] = src[i * 3 + 2]; rgba[i * 4 + 3] = bg[i] ? 0 : 255; }
+  // the draft: half the room's grid
+  const dw = Math.round((w * 0.8425) / 2), dh = Math.round((h * 0.8425) / 2);
+  const d = await sharp(rgba, { raw: { width: w, height: h, channels: 4 } }).resize(dw, dh, { kernel: 'lanczos3' }).raw().toBuffer();
+  const A = (i, j) => (i < 0 || j < 0 || i >= dw || j >= dh ? 0 : d[(j * dw + i) * 4 + 3] >= 128);
+  const W = dw * 2, H = dh * 2, px = new Uint8Array(W * H * 4), glow = new Uint8Array(W * H);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    if (rrect(x, y, 0, 0, W - 1, H - 1, 2) < 0) continue;
-    let c;
-    if (y < TOP) {
-      if (x < split) c = cell(PLASTIC, 0.3 + (Math.abs(x - 2.2 * y - 40) < 6 ? 0.16 : 0), 1.1, 'top-gloss');
-      else c = cell(PLASTIC, (x + 2 * y) % 4 < 2 ? 0.12 : 0.34, 1.1, 'top-vent', { noOutline: true });
-      if (y === TOP - 1) c = cell(PLASTIC, 0.55, 1.15, 'edge', { noOutline: true });
-    } else if (x < split) {
-      c = cell(PLASTIC, 0.22 + 0.02 * (hash(x, y, 5) - 0.5) - 0.04 * ((y - TOP) / H), 1, 'front-matte');
-      // the disc slot, a port and the eject button
-      if (y === 46 && x > 10 && x < 96) c = cell(PLASTIC, 0.02, 1.2, 'slot', { noOutline: true });
-      if (y === 47 && x > 10 && x < 96) c = cell(PLASTIC, 0.38, 1.2, 'slot', { noOutline: true });
-      if (y >= 58 && y <= 61 && x >= 12 && x <= 18) c = cell(PLASTIC, y === 58 ? 0.4 : 0.06, 1.2, 'usb', { noOutline: true });
-      if (Math.hypot(x - 104, y - 46) < 1.6) c = cell(PLASTIC, 0.45, 1.2, 'eject', { noOutline: true });
-    } else {
-      const gloss = Math.abs((x - split) - (y - TOP) * 0.9 - 10) < 7 ? 0.14 : 0;
-      c = cell(PLASTIC, 0.15 + gloss, 1, 'front-gloss');
+    const i = x >> 1, j = y >> 1, si = (j * dw + i) * 4, o = (y * W + x) * 4;
+    if (!A(i, j)) continue;
+    let r = d[si], g = d[si + 1], b = d[si + 2];
+    // the silhouette's draft pixels become its dark outline, kept to their inner half
+    const edge = !A(i + 1, j) || !A(i - 1, j) || !A(i, j + 1) || !A(i, j - 1);
+    if (edge) {
+      const ox = x & 1 ? 1 : -1, oy = y & 1 ? 1 : -1;
+      if (!A(i + ox, j) || !A(i, j + oy)) continue;
+      r *= 0.35; g *= 0.3; b *= 0.3;
     }
-    if (x === split && y >= TOP) c = cell(PLASTIC, 0.04, 1.2, 'seam', { noOutline: true });
-    if (y >= H - 2) c = cell(PLASTIC, 0.08, 1.2, 'foot');
-    const lr = Math.hypot(x - 178, y - 44);
-    if (lr <= 5.5) c = { col: Math.abs(Math.abs(x - 178) - Math.abs(y - 44)) <= 0.7 && lr < 4.6 ? '#8c9290' : '#f2f4f0', z: 2, part: 'logo', glow: true };
-    cv.put(x, y, c);
+    px[o] = Math.round(r); px[o + 1] = Math.round(g); px[o + 2] = Math.round(b); px[o + 3] = 255;
+    glow[y * W + x] = 2;
   }
-  return asset('xbox', X, Y, cv);
-}
-
-function controller() {
-  const [X, Y] = [1043, 548], W = 142, H = 68, cv = new Cv(W, H);
-  const e = (x, y, cx, cy, rx, ry) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2;
-  const inside = (x, y) => {
-    const top = e(x, y, 71, 25, 57, 19) <= 1, gl = e(x, y, 31, 43, 23, 22) <= 1, gr = e(x, y, 111, 43, 23, 22) <= 1;
-    return (top && e(x, y, 71, 64, 30, 21) > 1) || gl || gr;
-  };
-  const { n } = dome(W, H, inside, 8);
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    if (!inside(x, y)) continue;
-    let c = cell(PLASTIC, light(n(x, y), { spec: 0.9, shin: 20 }) * 1.12, 1, 'body');
-    // the bumpers along the top edge
-    if (y < 11 && (x < 55 || x > 87) && !inside(x, y - 3)) c = cell(PLASTIC, 0.46 - y * 0.02, 1.4, x < 71 ? 'lb' : 'rb');
-    // the thumbsticks: a dark well, a concave cap with a grip ring
-    for (const [sx, sy] of [[43, 24], [89, 41]]) {
-      const r = Math.hypot(x - sx, y - sy);
-      if (r <= 8.5) c = r > 6.5 ? cell(PLASTIC, 0.04, 1.5, 'well' + sx, { noOutline: true })
-        : cell(PLASTIC, (r > 5 ? 0.42 : 0.24 + 0.1 * ((x - sx) + (y - sy)) / 6) + (r > 5 && r < 5.8 ? 0.1 : 0), 1.6, 'stick' + sx);
-    }
-    // the d-pad in its round well
-    const dx = x - 56, dy = y - 41, dr = Math.hypot(dx, dy);
-    if (dr <= 7.5) c = cell(PLASTIC, 0.08, 1.5, 'dwell', { noOutline: true });
-    if ((Math.abs(dx) <= 1.6 && Math.abs(dy) <= 6) || (Math.abs(dy) <= 1.6 && Math.abs(dx) <= 6)) c = cell(PLASTIC, 0.36 - (dx + dy) * 0.02, 1.6, 'dpad');
-    // A B X Y: dark caps with their coloured letters
-    for (const [bx, by, col] of [[105, 17, '#e8c43a'], [98, 24, '#3a7ae0'], [112, 24, '#e04a3a'], [105, 31, '#4ac85a']]) {
-      const r = Math.hypot(x - bx, y - by);
-      if (r <= 3.2) c = r <= 1.4 ? { col, z: 1.8, part: 'btn' + bx + by, glow: true } : cell(PLASTIC, 0.2 + (y < by ? 0.15 : 0), 1.7, 'btn' + bx + by);
-    }
-    // view and menu
-    for (const bx of [63, 79]) if (Math.hypot(x - bx, y - 25) <= 1.7) c = cell(PLASTIC, 0.5, 1.6, 'vm' + bx);
-    // the guide button, lit
-    const gr = Math.hypot(x - 71, y - 13);
-    if (gr <= 5) c = gr > 4 ? cell(CHROME, 0.4, 1.7, 'guide-ring') : { col: Math.abs(Math.abs(x - 71) - Math.abs(y - 13)) <= 0.7 && gr < 3.4 ? '#8c9290' : '#f2f4f0', z: 1.8, part: 'guide', glow: true };
-    cv.put(x, y, c);
-  }
-  return asset('controller', X, Y, cv);
-}
-
-/** A full-size keyboard: a low case lit along its back edge, every keycap a lighter top face over a darker
- *  skirt, all on even pixels so each key stays crisp in the chunky draft. */
-function keyboard() {
-  const [X, Y] = [411, 559], W = 414, H = 66, cv = new Cv(W, H);
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const d = rrect(x, y, 0, 0, W - 1, H - 1, 6);
-    if (d < 0) continue;
-    cv.put(x, y, cell(PLASTIC, y >= H - 4 ? 0.12 : y < 2 ? 0.55 : 0.24, 1, 'case'));
-  }
-  const key = (x0, y0, w, mod) => {
-    for (let y = 0; y < 10; y++) for (let x = 0; x < w; x++) {
-      let v;
-      if (y < 6) v = (y < 2 ? 0.72 : 0.54) - (mod ? 0.1 : 0) - (x >= w - 2 ? 0.12 : 0) + (x < 2 ? 0.05 : 0);
-      else v = 0.24 - (y - 6) * 0.03;
-      cv.put(x0 + x, y0 + y, cell(GLAZE.forest, v, 2, 'k' + x0 + '-' + y0));
-    }
-  };
-  const rows = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2], [1.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.5],
-    [1.75, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.25], [2.25, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.75], [1.25, 1.25, 1.25, 6.25, 1.25, 1.25, 1.25, 1.25]];
-  const U = 20, ex = (c) => 8 + Math.round((c * U) / 2) * 2;
-  rows.forEach((r, j) => { let c = 0; for (const w of r) { key(ex(c), 4 + j * 12, ex(c + w) - ex(c) - 2, w !== 1 && w < 6); c += w; } });
-  for (let j = 0; j < 5; j++) for (let i = 0; i < 4; i++) key(320 + i * 20, 4 + j * 12, 18, i === 3);
-  return asset('keyboard', X, Y, cv);
-}
-
-/** An Xbox One: the glossy top on the left and the vented one on the right, a matte front with the slot-loading
- *  disc drive, and the glossy power panel with its lit logo. */
-function xbox() {
-  const [X, Y] = [916, 476], W = 218, H = 81, cv = new Cv(W, H), split = 140, TOP = 14;
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    if (rrect(x, y, 0, 0, W - 1, H - 1, 3) < 0) continue;
-    let c;
-    if (y < TOP) {
-      if (x < split) c = cell(PLASTIC, 0.32 + (Math.abs(x - 3 * y - 30) < 10 ? 0.2 : 0) + (Math.abs(x - 3 * y - 70) < 3 ? 0.12 : 0), 1.1, 'top-gloss', { noOutline: true });
-      else c = cell(PLASTIC, (x + 2 * y) % 4 < 2 ? 0.06 : 0.44, 1.1, 'top-vent', { noOutline: true });
-      if (y >= TOP - 2) c = cell(PLASTIC, 0.66, 1.15, 'bevel', { noOutline: true });
-    } else if (x < split) {
-      c = cell(PLASTIC, 0.38 - 0.08 * ((y - TOP) / (H - TOP)) + 0.03 * (hash(x, y, 5) - 0.5), 1, 'front', { noOutline: true });
-      if (y >= 40 && y <= 41 && x > 12 && x < 106) c = cell(PLASTIC, 0.02, 1.2, 'slot', { noOutline: true });
-      if (y >= 42 && y <= 43 && x > 12 && x < 106) c = cell(PLASTIC, 0.66, 1.2, 'lip', { noOutline: true });
-      if (Math.hypot(x - 116, y - 41) < 2) c = cell(PLASTIC, 0.5, 1.2, 'eject', { noOutline: true });
-      if (y >= 58 && y <= 62 && x >= 14 && x <= 23) c = cell(PLASTIC, y === 58 ? 0.48 : 0.04, 1.2, 'usb', { noOutline: true });
-      if (Math.hypot(x - 32, y - 60) < 2) c = cell(PLASTIC, 0.45, 1.2, 'sync', { noOutline: true });
-    } else {
-      const s = (x - split) - 0.8 * (y - TOP);
-      c = cell(PLASTIC, 0.16 + (Math.abs(s - 16) < 9 ? 0.26 : 0) + (Math.abs(s - 38) < 3 ? 0.12 : 0), 1, 'gloss', { noOutline: true });
-    }
-    if (y >= TOP && x >= split && x < split + 2) c = cell(PLASTIC, 0.02, 1.2, 'seam', { noOutline: true });
-    if (y >= H - 3) c = cell(PLASTIC, 0.06, 1.2, 'foot');
-    const lr = Math.hypot(x - 182, y - 44);
-    if (lr <= 5) c = { col: Math.abs(Math.abs(x - 182) - Math.abs(y - 44)) <= 0.8 && lr < 4 ? '#8c9290' : '#f2f4f0', z: 2, part: 'logo', glow: true };
-    cv.put(x, y, c);
-  }
-  return asset('xbox', X, Y, cv);
-}
-
-/** An Xbox One controller: a wide top with its bumpers and two grips angled out and down, the left stick high
- *  and the right one low in their wells, the d-pad, A B X Y, view and menu, and the lit guide button. */
-function controller() {
-  const [X, Y] = [1043, 548], W = 142, H = 68, cv = new Cv(W, H);
-  const ell = (x, y, cx, cy, rx, ry, a) => { const dx = x - cx, dy = y - cy, c = Math.cos(a), s = Math.sin(a), u = dx * c + dy * s, v = -dx * s + dy * c; return (u / rx) ** 2 + (v / ry) ** 2; };
-  const inside = (x, y) => {
-    const top = ell(x, y, 71, 25, 55, 18, 0) <= 1, gl = ell(x, y, 33, 42, 18, 24, 0.5) <= 1, gr = ell(x, y, 109, 42, 18, 24, -0.5) <= 1;
-    return (top && ell(x, y, 71, 62, 25, 20, 0) > 1) || gl || gr;
-  };
-  const { n } = dome(W, H, inside, 9);
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    if (!inside(x, y)) continue;
-    let c = cell(PLASTIC, light(n(x, y), { spec: 1.1, shin: 26 }) * 1.0, 1, 'body');
-    if (y < 14 && ((x > 18 && x < 58) || (x > 84 && x < 124)) && !inside(x, y - 4)) c = cell(PLASTIC, 0.5 - y * 0.015, 1.4, x < 71 ? 'lb' : 'rb');
-    for (const [sx, sy] of [[44, 22], [89, 38]]) {
-      const r = Math.hypot(x - sx, y - sy);
-      if (r <= 7) c = r > 5.5 ? cell(PLASTIC, 0.04, 1.5, 'well' + sx, { noOutline: true })
-        : cell(PLASTIC, r > 4.3 ? 0.5 : 0.22 + 0.06 * ((x - sx) + (y - sy)) / 4, 1.6, 'stick' + sx);
-    }
-    const dx = x - 57, dy = y - 38;
-    if (Math.hypot(dx, dy) <= 6.5) c = cell(PLASTIC, 0.06, 1.5, 'dwell', { noOutline: true });
-    if ((Math.abs(dx) <= 1.6 && Math.abs(dy) <= 5) || (Math.abs(dy) <= 1.6 && Math.abs(dx) <= 5)) c = cell(PLASTIC, 0.4 - (dx + dy) * 0.02, 1.6, 'dpad');
-    for (const [bx, by, col] of [[105, 15, '#d8b630'], [99, 21, '#3a6ed0'], [111, 21, '#d0443a'], [105, 27, '#46b456']]) {
-      const r = Math.hypot(x - bx, y - by);
-      if (r <= 2.8) c = r <= 1.3 ? { col, z: 1.8, part: 'btn' + bx + by, glow: true } : cell(PLASTIC, y < by ? 0.4 : 0.14, 1.7, 'btn' + bx + by);
-    }
-    for (const bx of [64, 78]) if (Math.hypot(x - bx, y - 24) <= 1.6) c = cell(PLASTIC, 0.12, 1.6, 'vm' + bx);
-    const gr = Math.hypot(x - 71, y - 11);
-    if (gr <= 4.6) c = { col: Math.abs(Math.abs(x - 71) - Math.abs(y - 11)) <= 0.7 && gr < 3.2 ? '#8c9290' : '#f2f4f0', z: 1.8, part: 'guide', glow: true };
-    cv.put(x, y, c);
-  }
-  return asset('controller', X, Y, cv);
-}
-
-/** A wireless headset hanging on its wall hook: a padded band over the prong, metal sliders, round cups with
- *  their cushions peeking out on the inner side, the logo lit on the right cup. */
-function headset() {
-  const X = 1088, Y = 96, W = 110, H = 172, cv = new Cv(W, H), cx = 55;
-  for (let y = 2; y <= 20; y++) for (let x = 47; x <= 63; x++) cv.put(x, y, cell(PLASTIC, y < 4 || x < 49 ? 0.55 : 0.3, 1, 'plate'));
-  for (let y = 20; y <= 30; y++) for (let x = 51; x <= 59; x++) cv.put(x, y, cell(PLASTIC, 0.42 - (y - 20) * 0.02, 3.5, 'prong'));
-  const bcy = 102, rx = 40, ry = 76;
-  for (let y = 0; y <= bcy - 6; y++) for (let x = 0; x < W; x++) {
-    const e = Math.hypot((x - cx) / rx, (y - bcy) / ry), th = 0.1 + 0.06 * clamp((bcy - y) / ry - 0.5, 0, 1) * 2;
-    if (e > 1 || e < 1 - th) continue;
-    const k = (e - (1 - th)) / th;
-    if (k < 0.35) cv.put(x, y, cell(LEATHER.black, 0.5 + 0.1 * Math.sin(y * 0.6), 2.1, 'pad'));
-    else { const nn = norm([(x - cx) / rx, (y - bcy) / ry, 0.3 + Math.sin(Math.PI * k)]); cv.put(x, y, cell(PLASTIC, light(nn, { spec: 0.9, shin: 20 }) * 1.05, 2.2, 'band')); }
-  }
-  for (const s of [-1, 1]) {
-    const bx = cx + s * (rx - 4);
-    for (let y = bcy - 12; y <= bcy + 8; y++) for (let x = bx - 2; x <= bx + 2; x++) cv.put(x, y, cell(CHROME, 0.62 - s * (x - bx) * 0.08, 2.3, 'slider' + s));
-    const ux = cx + s * 33, uy = 136;
-    // the cushion, peeking out toward the middle
-    for (let y = uy - 30; y <= uy + 30; y++) for (let x = ux - 26; x <= ux + 26; x++) {
-      if (((x - (ux - s * 7)) / 15) ** 2 + ((y - uy) / 27) ** 2 > 1) continue;
-      cv.put(x, y, cell(LEATHER.black, 0.42 + 0.08 * Math.sin(y * 0.5), 2.4, 'cushion' + s));
-    }
-    // the cup's shell, with its rim ring
-    for (let y = uy - 30; y <= uy + 30; y++) for (let x = ux - 22; x <= ux + 22; x++) {
-      const ex = (x - ux) / 19, ey = (y - uy) / 26, e = ex * ex + ey * ey;
-      if (e > 1) continue;
-      const nn = norm([ex, ey, Math.sqrt(1 - e) + 0.2]);
-      const ring = e > 0.72 && e < 0.84;
-      let c = cell(PLASTIC, ring ? 0.5 : light(nn, { spec: 1, shin: 24 }) * 1.0, 2.6, 'cup' + s);
-      if (s > 0 && Math.hypot(x - ux, y - uy) <= 4.5) c = { col: Math.abs(Math.abs(x - ux) - Math.abs(y - uy)) <= 0.8 && Math.hypot(x - ux, y - uy) < 3.4 ? '#14401c' : '#46c454', z: 3, part: 'logo', glow: true };
-      cv.put(x, y, c);
-    }
-  }
-  return asset('headset', X, Y, cv);
+  writePng(path.join(ASSETS, name + '.png'), W, H, px);
+  const [x, y] = M(mx0, my0);
+  return { name, x, y, w: W, h: H, px, glow };
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -672,10 +518,10 @@ const wallLayer = wall(), deskLayer = desk();
 const wallItems = [
   deck('deck-green', d1x0, d1y0, d1x1, d1y1, GLAZE.forest, 0.56), deck('deck-rose', d2x0, d2y0, d2x1, d2y1, ROSE, 0.74),
   ...[533, 731].flatMap((bx, i) => [bracket('bracket-' + (2 * i + 1), bx - 8, d1y1 + 1), bracket('bracket-' + (2 * i + 2), bx - 8, d2y1 + 1)]),
-  poster(), headset(),
+  poster(),
 ];
-const deskBack = [cable(), catCup(), monitorStand(), monitor(), ...books.map(([a, b, c, d, r], i) => book('book-' + (i + 1), a, b, c, d, r)), coaster(MUG_BODY_X, MUG_BASE_Y), xbox()];
-const deskFront = [ipad(), keyboard(), mousepad(), mouse(), controller()];
+const deskBack = [cable(), catCup(), monitorStand(), monitor(), ...books.map(([a, b, c, d, r], i) => book('book-' + (i + 1), a, b, c, d, r)), coaster(MUG_BODY_X, MUG_BASE_Y)];
+const deskFront = [ipad(), mousepad(), mouse()];
 const penSprites = pens();
 
 /** Soft shadows: the contact shadows under things on the desk, and what the wall items cast (light from the lamp, upper left). */
@@ -741,6 +587,7 @@ function compose(on) {
   const occ = occlusion(), img = Buffer.alloc(EW * GH * 3);
   for (let y = 0; y < GH; y++) for (let X = 0; X < EW; X++) {
     const i = y * EW + X, o = i * 3;
+    if (glow[i] === 2) { const k = on ? [1, 1, 1] : [0.5, 0.52, 0.62]; for (let c = 0; c < 3; c++) img[o + c] = clamp(Math.round(out[o + c] * k[c] * (0.6 + 0.4 * occ[i])), 0, 255); continue; }
     if (glow[i]) { for (let c = 0; c < 3; c++) img[o + c] = clamp(Math.round(out[o + c]), 0, 255); continue; }
     let L = lightAt(X - SIDE, y, on, shaded[i] ? 0.3 : 1);
     if (neutral[i]) { const m = (L[0] + L[1] + L[2]) / 3; L = [m * 1.04, m, m * 0.95]; }
@@ -760,6 +607,15 @@ const save = async (buf, w, file) => {
 };
 
 (async () => {
+  // the console, the controller, the headset and the keyboard, as the mockup draws them
+  wallItems.push(await fromMockup('headset', [1192, 114, 1322, 322], (x, y) =>
+    (x >= 1248 && x <= 1270 && y >= 118 && y <= 152) || // the hook
+    (y < 230 && ell(x, y, 1262, 216, 47, 73) && !ell(x, y, 1262, 222, 30, 66)) || // the band
+    ell(x, y, 1229, 261, 33, 39.5) || ell(x, y, 1287, 262, 32, 40) || // the cups
+    (x >= 1269 && x <= 1278 && y >= 296 && y <= 320))); // the cable leaving the right cup
+  deskBack.push(await fromMockup('xbox', [996, 564, 1246, 660], (x, y) => inPoly(x, y, [[999, 600], [1012, 574], [1150, 573], [1222, 590], [1242, 599], [1242, 657], [999, 657]])));
+  deskFront.splice(1, 0, await fromMockup('keyboard', [382, 658, 882, 732], (x, y) => inPoly(x, y, [[406, 662], [849, 662], [876, 716], [874, 728], [390, 728], [388, 716]])));
+  deskFront.push(await fromMockup('controller', [1128, 648, 1302, 738], (x, y) => inPoly(x, y, [[1152, 668], [1166, 659], [1185, 654], [1200, 657], [1215, 661], [1245, 661], [1262, 656], [1279, 661], [1289, 673], [1295, 690], [1297, 710], [1295, 724], [1288, 731], [1275, 733], [1263, 726], [1250, 709], [1232, 701], [1205, 700], [1186, 703], [1171, 713], [1157, 727], [1146, 731], [1137, 728], [1134, 715], [1136, 696], [1143, 681]])));
   for (const on of [true, false]) {
     const img = compose(on), sfx = on ? '' : '-off';
     await save(crop(img, SIDE, GW), GW, path.join(CIN, on ? 'room.webp' : 'desk-off.webp'));
