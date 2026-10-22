@@ -139,47 +139,68 @@ function widen(img) {
  * tone (row by row, as measured either side of the old line), and the line is drawn at the new corner, behind
  * whatever stands in front of it.
  */
-const CORNERS = [{ from: 176, half: 2, to: 50, deskY: 758 }, { from: 1695, half: 8, to: 1796, deskY: 768 }];
-/** Things that stand in front of the closet's corners (mockup px): the lamp's stem and base, the headset. */
-const keep = (x, y) => (y > 383 && Math.abs(x - 117) < 30) || ell(x, y, 122, 625, 92, 48) ||
-  ell(x, y, 1229, 261, 35, 42) || ell(x, y, 1287, 262, 34, 42) || (y < 232 && ell(x, y, 1262, 216, 50, 76) && !ell(x, y, 1262, 222, 27, 63)) || (x >= 1246 && x <= 1272 && y >= 116 && y <= 154);
+/**
+ * The closet: the back wall's inside corners (widened-room art px) at the middle of the lamp on the left and
+ * past the lava lamp on the right. Outside each corner is the side wall, a shade darker than the back wall, and
+ * the desk, fitted wall to wall, meets it along a crease running from the corner forward and out to the frame.
+ * The mockup's own corner line is painted out; whatever stands in front (the lamp, the notebook, the cable and
+ * controller) is kept.
+ */
+const CORNERS = [{ side: 'left', old: 176, w: 4, x: 140, y: 758, src: 690 }, { side: 'right', old: 1695, w: 12, x: 1800, y: 768, src: 762 }];
+const SLOPE = 0.45; // the crease's drop per px out from the corner
+const SHADE_POLY = [[28, 383], [213, 383], [152, 268], [86, 268]];
+const NOTEBOOK = [[8, 842], [236, 782], [272, 840], [60, 900], [8, 900]];
+const HEADSET = (x, y) => ell(x, y, 1229, 261, 35, 42) || ell(x, y, 1287, 262, 34, 42) || (y < 232 && ell(x, y, 1262, 216, 50, 76) && !ell(x, y, 1262, 222, 27, 63)) || (x >= 1246 && x <= 1272 && y >= 116 && y <= 154);
 function alignCorners(img) {
   const at = (x, y, c) => img[(y * WW + x) * 3 + c];
   const lum = (x, y) => 0.299 * at(x, y, 0) + 0.587 * at(x, y, 1) + 0.114 * at(x, y, 2);
-  const SHADE = [[28, 383], [213, 383], [152, 268], [86, 268]];
-  for (const { from, half, to, deskY } of CORNERS) {
-    const dir = to < from ? -1 : 1; // which way the side wall is
-    const line = [0, 1, 2].map((c) => at(176, 100, c));
-    // the back wall's tone over the side wall's, per row (read clear of the corner's shading), smoothed
-    const raw = [];
-    for (let y = 0; y < deskY; y++) {
-      const r = [0, 0, 0];
-      for (let c = 0; c < 3; c++) { let bw = 0, sw = 0; for (let k = half + 4; k < half + 16; k++) { bw += at(from - dir * k, y, c); sw += at(from + dir * k, y, c); } r[c] = clamp(bw / Math.max(1, sw), 0.75, 1.3); }
-      raw.push(r);
-    }
-    const ratio = raw.map((_, y) => { const s = [0, 0, 0]; let n = 0; for (let k = Math.max(0, y - 20); k <= Math.min(deskY - 1, y + 20); k++) { for (let c = 0; c < 3; c++) s[c] += raw[k][c]; n++; } return s.map((v) => v / n); });
-    const lo = Math.min(from, to), hi = Math.max(from, to);
-    for (let y = 0; y < deskY; y++) {
-      // the strip takes the back wall's tone (bright lamp pixels left as they are)
-      for (let x = lo; x <= hi; x++) { if (Math.abs(x - from) <= half + 1) continue; const o = (y * WW + x) * 3; if (lum(x, y) > 170) continue; for (let c = 0; c < 3; c++) img[o + c] = clamp(Math.round(img[o + c] * ratio[y][c]), 0, 255); }
-      // then the old corner and its shading painted out, between the plain wall either side of it
-      const e0 = from - half - 2, e1 = from + half + 2, a = lum(e0, y), b = lum(e1, y);
-      // pixel by pixel, keeping anything in front of the corner (the lamp, its chain, the headset)
-      if (Math.abs(a - b) < 40) for (let x = e0 + 1; x < e1; x++) {
-        const mx = (x - (x > 900 ? CUTS.left.d + CUTS.right.d : 0)) / K, my = y / K, l = lum(x, y);
-        if (keep(mx, my) || l > Math.max(a, b) + 35) continue;
+  const src = Buffer.from(img);
+  const sl = (x, y) => 0.299 * src[(y * WW + x) * 3] + 0.587 * src[(y * WW + x) * 3 + 1] + 0.114 * src[(y * WW + x) * 3 + 2];
+  const line = [0, 1, 2].map((c) => src[(100 * WW + 176) * 3 + c]);
+  // things in front of the walls (art px of the widened room)
+  const keep = (x, y) => {
+    const mx = (x > 900 ? x - CUTS.left.d - CUTS.right.d : x) / K, my = y / K;
+    return inPoly(mx, my, SHADE_POLY) || (my > 383 && my < 600 && Math.abs(mx - 117) < 26) || ell(mx, my, 122, 625, 92, 48) || inPoly(x, y, NOTEBOOK) || HEADSET(mx, my);
+  };
+  for (const { side, old, w, x: cx, y: dy, src: sy } of CORNERS) {
+    const out = side === 'left' ? -1 : 1;
+    const crease = (x) => dy + Math.abs(x - cx) * SLOPE;
+    // paint the mockup's own corner line out (where it isn't the new corner)
+    if (Math.abs(old - cx) > 3) for (let y = 0; y < dy; y++) {
+      const e0 = old - w, e1 = old + w, A = sl(e0, y), B = sl(e1, y);
+      if (Math.abs(A - B) > 40) continue;
+      for (let x = e0 + 1; x < e1; x++) {
+        if (keep(x, y) || sl(x, y) > Math.max(A, B) + 35) continue;
         const t = (x - e0) / (e1 - e0), o = (y * WW + x) * 3;
-        for (let c = 0; c < 3; c++) img[o + c] = clamp(Math.round(at(e0, y, c) * (1 - t) + at(e1, y, c) * t + hash(x, y, 40 + c) * 3), 0, 255);
+        for (let c = 0; c < 3; c++) img[o + c] = clamp(Math.round(src[(y * WW + e0) * 3 + c] * (1 - t) + src[(y * WW + e1) * 3 + c] * t), 0, 255);
       }
     }
-    // the new corner line, behind the lamp and anything else in front of the wall
-    for (let y = 0; y < deskY; y++) {
-      const mx = to / K, my = y / K;
-      if (inPoly(mx, my, SHADE) || ell(mx, my, 122, 625, 92, 48)) continue;
-      const L = lum(to, y);
-      if (Math.abs(L - lum(to - 8, y)) > 30 || Math.abs(L - lum(to + 8, y)) > 30) continue;
-      const o = (y * WW + to) * 3;
-      for (let c = 0; c < 3; c++) img[o + c] = line[c];
+    // the side wall: the wall that's there, a shade darker (its light kept), and below the desk's back edge,
+    // down to the crease, the wall carried on from the row above the desk
+    const x0 = side === 'left' ? 0 : cx + 1, x1 = side === 'left' ? cx - 1 : WW - 1;
+    for (let x = x0; x <= x1; x++) {
+      const yEnd = Math.min(H - 1, Math.floor(crease(x)));
+      const fall = 0.82 - 0.08 * Math.min(1, Math.abs(x - cx) / 180);
+      for (let y = 0; y <= yEnd; y++) {
+        if (keep(x, y)) continue;
+        const o = (y * WW + x) * 3, l = sl(x, y);
+        if (y >= dy - 2) {
+          if (side === 'right' && l < 45) continue; // the cable and controller
+          const k = y - (dy - 2), so = ((sy - (k % 4)) * WW + x) * 3;
+          for (let c = 0; c < 3; c++) img[o + c] = clamp(Math.round(src[so + c] * fall * (1 - 0.15 * Math.min(1, k / 60))), 0, 255);
+          continue;
+        }
+        if (l > 175) continue; // the lamp's lit shade
+        for (let c = 0; c < 3; c++) img[o + c] = clamp(Math.round(src[o + c] * fall), 0, 255);
+      }
+      // the crease where the desk meets the side wall
+      const yc = Math.round(crease(x));
+      if (yc < H && !keep(x, yc) && !(side === 'right' && sl(x, yc) < 45)) for (let c = 0; c < 3; c++) { img[(yc * WW + x) * 3 + c] = line[c]; }
+    }
+    // the corner itself, from the ceiling down to the desk, behind anything in front of it
+    for (let y = 0; y < dy; y++) {
+      if (keep(cx, y) || sl(cx, y) > 175) continue;
+      for (let c = 0; c < 3; c++) img[(y * WW + cx) * 3 + c] = line[c];
     }
   }
   return img;
