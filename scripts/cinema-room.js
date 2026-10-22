@@ -1,7 +1,9 @@
 // Dresses the finished v2 painting (public/cinema/desk.webp + manifest.json) into the room the scene shows.
 // usage: node scripts/cinema-room.js        (cinema-blend.js runs this last, on the painting it just wrote)
 //
-// - room.webp, room.json: the painting widened by WIDEN.left.d + WIDEN.right.d px of plain wall and desk, so
+// - room.webp, room.json: the painting with the wall behind the desk made plain (the painting's ledge along
+//   it, the box behind the pencil cup and the old mug's steam go, so the desk stands against a flat wall),
+//   then widened by WIDEN.left.d + WIDEN.right.d px of plain wall and desk, so
 //   that a full-screen browser is covered by the painting itself and the shelf and the bookcase sit at its
 //   edges. Each strip is cut in along a path that threads between the things in the room (left: between the
 //   lamp, the notes and the mug and the monitor, then between the coaster and the keyboard; right: between
@@ -40,8 +42,8 @@ const cutAt = (side, y) => {
 };
 /** A painting column's place in the widened frame, on row y. */
 const mapX = (x, y) => x + (x >= cutAt('left', y) ? WIDEN.left.d : 0) + (x >= cutAt('right', y) ? WIDEN.right.d : 0);
-/** From these rows down, what the cut runs through goes straight across (the ledge, the desk, its front). */
-const FLAT_FROM = { left: 556, right: 500 };
+/** From these rows down, what the cut runs through goes straight across (the desk and its front). */
+const FLAT_FROM = { left: DESK, right: DESK };
 /** A clean stretch of bare desk, right of the mousepad and short of the book by the tower. */
 const DESK_REF = [1416, 1470];
 
@@ -68,7 +70,7 @@ function ambient(img, w = W, cols = REF_COLS) {
   const raw = new Float32Array(H * 3);
   for (let y = 0; y < H; y++) {
     let c;
-    if (y < DESK) { const yy = Math.min(y, 556); c = avg(img, cols.wall[0], cols.wall[1], yy, yy + 2, w).map((v) => v * (y > 556 ? 1 - 0.18 * ss((y - 556) / 216) : 1)); }
+    if (y < DESK) { const yy = Math.min(y, 556); c = avg(img, cols.wall[0], cols.wall[1], yy, yy + 2, w).map((v) => v * (y > 600 ? 1 - 0.1 * ss((y - 600) / 172) : 1)); }
     else if (y < 790) c = avg(img, cols.deskBack[0], cols.deskBack[1], y, y, w);
     else c = avg(img, cols.desk[0], cols.desk[1], y, y, w);
     raw[y * 3] = c[0]; raw[y * 3 + 1] = c[1]; raw[y * 3 + 2] = c[2];
@@ -80,6 +82,95 @@ function ambient(img, w = W, cols = REF_COLS) {
     for (let c = 0; c < 3; c++) { let s = 0; for (let k = y0; k <= y1; k++) s += raw[k * 3 + c]; ref[y * 3 + c] = s / (y1 - y0 + 1); }
   }
   return ref;
+}
+
+/* ------------------------------------------------------------------------------------------------
+   The wall behind the desk
+   ------------------------------------------------------------------------------------------------ */
+
+/** The lamp's arm: two segments, base joint to elbow to the head's joint. */
+const ARM = [[190, 560, 145, 435], [145, 435, 255, 300]];
+const segDist = (px, py, x0, y0, x1, y1) => {
+  const dx = x1 - x0, dy = y1 - y0, t = clamp(((px - x0) * dx + (py - y0) * dy) / (dx * dx + dy * dy), 0, 1);
+  return Math.hypot(px - x0 - t * dx, py - y0 - t * dy);
+};
+
+/**
+ * The painting put a two-step ledge along the wall behind the desk, a box behind the pencil cup and the old
+ * mug's steam; the desk should stand against a plain wall. From the book stack to the tower, the band from
+ * `top` down to the desk becomes wall: the room's ambient wall, plus whatever extra light the wall just
+ * above the band has (the lamp's, on the left), dying away down the band at the rate it dies away above
+ * it, column by column (smoothed across, bridged across the poster's foot and the monitor). The monitor,
+ * its foot and the keyboard stay; what the lava lamp hides goes with the rest; the cat cup, which sat on
+ * the box, is set down onto the desk.
+ */
+const BACK = { x0: 60, x1: 1482, top: (x) => (x < 541 ? 548 : x < 1240 ? 566 : 492) };
+/** Columns the old mug's steam drifts up (too faint to be caught as a thing): they take their neighbours. */
+const STEAM = [395, 475];
+/** The book stack: the band starts right of it on the rows it covers. */
+const BOOKS = { x1: 262, y0: 602 };
+const KEEP = [[541, 338, 1064, 762], [660, 755, 960, 785], [490, DESK, 1130, 870], [155, 545, 230, 612]];
+const BLEND_ROWS = 10;
+const CUP = { box: [292, 666, 372, 756], down: 20 };
+function flatten(img) {
+  const out = Buffer.from(img);
+  const ref = ambient(img), amb = (y) => [ref[y * 3], ref[y * 3 + 1], ref[y * 3 + 2]];
+  const lumAt = (x, y) => 0.299 * img[idx(x, y)] + 0.587 * img[idx(x, y) + 1] + 0.114 * img[idx(x, y) + 2];
+  // per column: the wall's colour just above the band and its slope down the rows (a straight-line fit over
+  // the 28 rows above), where those rows are plain wall
+  const N = 28, above = new Array(W), slope = new Array(W), ok = new Uint8Array(W);
+  for (let x = BACK.x0; x < BACK.x1; x++) {
+    const t = BACK.top(x), y0 = t - 3 - N;
+    let lo = 1e9, hi = -1e9;
+    for (let y = y0; y < t - 3; y++) { const l = lumAt(x, y); if (l < lo) lo = l; if (l > hi) hi = l; }
+    const poster = x >= 1085 && x < 1240, monitor = x >= 541 && x < 1064, steam = x >= STEAM[0] && x < STEAM[1];
+    ok[x] = !poster && !monitor && !steam && hi - lo < 40 ? 1 : 0;
+    // least squares over the window, per channel: value at the band's top and change per row
+    const my = (N - 1) / 2; let sxx = 0;
+    for (let k = 0; k < N; k++) sxx += (k - my) * (k - my);
+    above[x] = [0, 0, 0]; slope[x] = [0, 0, 0];
+    for (let c = 0; c < 3; c++) {
+      let sum = 0, sxy = 0;
+      for (let k = 0; k < N; k++) { const v = img[idx(x, y0 + k) + c]; sum += v; sxy += (k - my) * v; }
+      const m = sxy / sxx, b = sum / N;
+      slope[x][c] = m; above[x][c] = b + m * (N - 1 - my + 3); // carried to the band's top row
+    }
+  }
+  // (across a wide gap, the monitor and the poster, each column takes its nearer plain neighbour rather
+  //  than a blend of the lamp-lit wall on the left with the plain wall on the right)
+  const bridge = (arr) => { for (let x = BACK.x0; x < BACK.x1; x++) if (!ok[x]) {
+    let a = x, b = x; while (a > BACK.x0 && !ok[a]) a--; while (b < BACK.x1 - 1 && !ok[b]) b++;
+    const wide = b - a > 120;
+    const clear = (e, dir) => { const s = [0, 0, 0]; let n = 0; for (let k = e + dir * 12; n < 16 && k >= BACK.x0 && k < BACK.x1; k += dir) if (ok[k]) { for (let c = 0; c < 3; c++) s[c] += arr[k][c]; n++; } return n ? s.map((v) => v / n) : arr[e]; };
+    const ca = ok[a] ? (wide ? clear(a, -1) : arr[a]) : arr[b], cb = ok[b] ? (wide ? clear(b, 1) : arr[b]) : arr[a];
+    const t = !(ok[a] && ok[b] && b > a) ? (ok[a] ? 0 : 1) : wide ? (x - a < b - x ? 0 : 1) : (x - a) / (b - a);
+    arr[x] = ca.map((v, c) => lerp(v, cb[c], t));
+  } };
+  bridge(above); bridge(slope);
+  const smooth = (arr) => { const o = arr.slice(); for (let x = BACK.x0; x < BACK.x1; x++) { const s = [0, 0, 0]; let n = 0; for (let k = Math.max(BACK.x0, x - 16); k <= Math.min(BACK.x1 - 1, x + 16); k++) { for (let c = 0; c < 3; c++) s[c] += arr[k][c]; n++; } o[x] = s.map((v) => v / n); } return o; };
+  const A = smooth(above), S = smooth(slope);
+  const keep = (x, y) => KEEP.some(([x0, y0, x1, y1]) => x >= x0 && x < x1 && y >= y0 && y < y1) || (x < BOOKS.x1 && y >= BOOKS.y0) || ARM.some(([x0, y0, x1, y1]) => segDist(x, y, x0, y0, x1, y1) < 16);
+  // the extra light over the ambient dies away at the rate the slope says (never faster than over 80 rows),
+  // the rate smoothed across the columns
+  const tau = new Array(W).fill(600);
+  for (let x = BACK.x0; x < BACK.x1; x++) {
+    const a0 = amb(BACK.top(x)), extra = A[x].map((v, c) => v - a0[c]);
+    const eLum = 0.299 * extra[0] + 0.587 * extra[1] + 0.114 * extra[2], sLum = 0.299 * S[x][0] + 0.587 * S[x][1] + 0.114 * S[x][2];
+    tau[x] = eLum > 2 && sLum < -0.02 ? clamp(eLum / -sLum, 80, 600) : 600;
+  }
+  const T = tau.slice(); for (let x = BACK.x0; x < BACK.x1; x++) { let s = 0, n = 0; for (let k = Math.max(BACK.x0, x - 20); k <= Math.min(BACK.x1 - 1, x + 20); k++) { s += tau[k]; n++; } T[x] = s / n; }
+  for (let x = BACK.x0; x < BACK.x1; x++) {
+    const t = BACK.top(x), a0 = amb(t), extra = A[x].map((v, c) => v - a0[c]);
+    for (let y = t; y < DESK; y++) {
+      if (keep(x, y)) continue;
+      const a = amb(y), f = Math.exp(-(y - t) / T[x]), o = idx(x, y), w = ss((y - t + 1) / BLEND_ROWS);
+      for (let c = 0; c < 3; c++) out[o + c] = clamp(Math.round(lerp(img[o + c], a[c] + extra[c] * f + hash(x, y, 11 + c) * 4, w)), 0, 255);
+    }
+  }
+  // the cat cup, down onto the desk
+  const [cx0, cy0, cx1, cy1] = CUP.box;
+  for (let y = cy1 - 1; y >= cy0; y--) img.copy(out, idx(cx0, y + CUP.down), idx(cx0, y), idx(cx1, y));
+  return out;
 }
 
 /* ------------------------------------------------------------------------------------------------
@@ -104,14 +195,7 @@ const THINGS = [
   [1550, 790, 1672, 850], // the book on the desk
   [700, 740, 900, 780], // the monitor's foot
   [1110, 566, 1214, 774], // the lava lamp's spot
-  [440, 560, 1480, 700], // the ledge along the wall behind the desk
 ];
-/** The lamp's arm: two segments, base joint to elbow to the head's joint. */
-const ARM = [[190, 560, 145, 435], [145, 435, 255, 300]];
-const segDist = (px, py, x0, y0, x1, y1) => {
-  const dx = x1 - x0, dy = y1 - y0, t = clamp(((px - x0) * dx + (py - y0) * dy) / (dx * dx + dy * dy), 0, 1);
-  return Math.hypot(px - x0 - t * dx, py - y0 - t * dy);
-};
 
 /**
  * Solve for a smooth field over the cells that have no reading, holding the cells that do: a coarse
@@ -208,7 +292,7 @@ function relight(img, screen, debug) {
   const DIM = [0.74, 0.71, 0.78], GLOW = [4, 30, 13];
   // the shade's brass and the cat cup are painted lit from the bulb, which the wall round them doesn't
   // show: each is what its outline closes off inside its box (the wall floods in from the box's edge)
-  const LIT = [[204, 250, 412, 462, 0.6], [290, 640, 370, 780, 0.55]];
+  const LIT = [[204, 250, 412, 462, 0.6], [290, 660, 370, 800, 0.55]];
   const litBy = new Float32Array(W * H).fill(1);
   for (const [x0, y0, x1, y1, f] of LIT) {
     const bw = x1 - x0, bh = y1 - y0, wall = new Uint8Array(bw * bh), stack = [];
@@ -298,8 +382,12 @@ function widen(src) {
       };
       const range = (x0, x1) => { let lo = 1e9, hi = -1e9; for (let x = x0; x <= x1; x++) { const l = lumAt(x); if (l < lo) lo = l; if (l > hi) hi = l; } return hi - lo; };
       const useRight = !one && range(cut, cut + P - 1) < range(cut - P, cut - 1);
-      const gx0 = useRight ? cut : cut - P, gMean = cleanAvg(gx0, gx0 + P - 1);
-      const grainAt = (k) => { const m = k % (2 * P), j = m < P ? m : 2 * P - 1 - m; return px(useRight ? gx0 + j : gx0 + P - 1 - j).map((v, i) => clamp(v - gMean[i], -14, 14)); };
+      const gx0 = useRight ? cut : cut - P;
+      // the dither is what's left after a straight-line fit across the sample columns is taken off (a slope in
+      // the wall's colour would otherwise tile into stripes)
+      const fit = [0, 1, 2].map((c) => { let sy = 0, sxy = 0; const mx = (P - 1) / 2; let sxx = 0; for (let j = 0; j < P; j++) { const v = px(gx0 + j)[c]; sy += v; sxy += (j - mx) * v; sxx += (j - mx) * (j - mx); } return [sy / P, sxy / sxx, mx]; });
+      const plainWall = range(gx0, gx0 + P - 1) < 8; // flat wall has no dither worth tiling: plain noise instead
+      const grainAt = (k) => { if (plainWall) return [0, 1, 2].map((i) => hash(k + cut, y, 21 + i) * 5); const m = k % (2 * P), j = m < P ? m : 2 * P - 1 - m, x = useRight ? gx0 + j : gx0 + P - 1 - j; return px(x).map((v, i) => clamp(v - (fit[i][0] + fit[i][1] * (x - gx0 - fit[i][2])), -14, 14)); };
       const L = cleanAvg(cut - 8, cut - 1), R = one ? null : cleanAvg(cut, cut + 7);
       for (let k = 0; k < d; k++) {
         const s = k / (d - 1), g = grainAt(k), n = hash(k + cut, y, 5) * 1.5;
@@ -339,6 +427,8 @@ function roomManifest(m) {
     return v;
   };
   const r = walk(m, '');
+  // the pens stand in the cat cup, which flatten() set down onto the desk
+  for (const k of ['boxPct', 'hitPct']) r.pens[k] = { ...r.pens[k], top: +(r.pens[k].top + (CUP.down / H) * 100).toFixed(3) };
   r.image = 'room.webp';
   r.size = { width: WIDE_W, height: H };
   r.widen = WIDEN;
@@ -426,8 +516,9 @@ const saveWebp = async (buf, w, file) => {
 /** Everything, from the finished painting (a raw RGB buffer, W×H) and manifest.json; writes room.json. */
 async function run(img) {
   const m = JSON.parse(fs.readFileSync(path.join(CIN, 'manifest.json'), 'utf8'));
-  const off = relight(img, m.screenPx);
-  const room = widen(img), roomOff = widen(off);
+  const flat = flatten(img);
+  const off = relight(flat, m.screenPx);
+  const room = widen(flat), roomOff = widen(off);
   await saveWebp(room, WIDE_W, path.join(CIN, 'room.webp'));
   await saveWebp(roomOff, WIDE_W, path.join(CIN, 'desk-off.webp'));
   for (const [src, suffix] of [[room, ''], [roomOff, '-off']]) {
@@ -441,7 +532,7 @@ async function run(img) {
   fs.writeFileSync(path.join(CIN, 'room.json'), JSON.stringify(r, null, 2) + '\n');
 }
 
-module.exports = { run, relight, widen, sides, WIDEN, WIDE_W };
+module.exports = { run, flatten, relight, widen, sides, WIDEN, WIDE_W };
 
 if (require.main === module) {
   (async () => {
