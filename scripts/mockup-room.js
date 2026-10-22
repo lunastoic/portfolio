@@ -146,21 +146,21 @@ function widen(img) {
  * The mockup's own corner line is painted out; whatever stands in front (the lamp, the notebook, the cable and
  * controller) is kept.
  */
-const CORNERS = [{ side: 'left', old: 176, w: 4, x: 140, y: 758, src: 690 }, { side: 'right', old: 1695, w: 12, x: 1800, y: 768, src: 762 }];
-const SLOPE = 0.45; // the crease's drop per px out from the corner
+const CORNERS = [{ side: 'left', old: 176, w: 4, x: 181, y: 758, src: 690 }, { side: 'right', old: 1699, w: 6, x: 1672, y: 768, src: 762 }];
+const SLOPE = 0.12; // the crease's drop per px out from the corner (shallow, so the lamp and lava lamp stand on the desk)
 const SHADE_POLY = [[28, 383], [213, 383], [152, 268], [86, 268]];
 const NOTEBOOK = [[8, 842], [236, 782], [272, 840], [60, 900], [8, 900]];
 const HEADSET = (x, y) => ell(x, y, 1229, 261, 35, 42) || ell(x, y, 1287, 262, 34, 42) || (y < 232 && ell(x, y, 1262, 216, 50, 76) && !ell(x, y, 1262, 222, 27, 63)) || (x >= 1246 && x <= 1272 && y >= 116 && y <= 154);
 function alignCorners(img) {
   const at = (x, y, c) => img[(y * WW + x) * 3 + c];
   const lum = (x, y) => 0.299 * at(x, y, 0) + 0.587 * at(x, y, 1) + 0.114 * at(x, y, 2);
-  const src = Buffer.from(img);
+  let src = Buffer.from(img);
   const sl = (x, y) => 0.299 * src[(y * WW + x) * 3] + 0.587 * src[(y * WW + x) * 3 + 1] + 0.114 * src[(y * WW + x) * 3 + 2];
   const line = [0, 1, 2].map((c) => src[(100 * WW + 176) * 3 + c]);
   // things in front of the walls (art px of the widened room)
   const keep = (x, y) => {
     const mx = (x > 900 ? x - CUTS.left.d - CUTS.right.d : x) / K, my = y / K;
-    return inPoly(mx, my, SHADE_POLY) || (my > 383 && my < 600 && Math.abs(mx - 117) < 26) || ell(mx, my, 122, 625, 92, 48) || inPoly(x, y, NOTEBOOK) || HEADSET(mx, my);
+    return inPoly(mx, my, SHADE_POLY) || (my > 383 && my < 600 && Math.abs(mx - 117) < 26) || ell(mx, my, 122, 625, 92, 48) || inPoly(x, y, NOTEBOOK) || HEADSET(mx, my) || (x > 900 && inPoly(mx, my, XBOX));
   };
   for (const { side, old, w, x: cx, y: dy, src: sy } of CORNERS) {
     const out = side === 'left' ? -1 : 1;
@@ -175,6 +175,7 @@ function alignCorners(img) {
         for (let c = 0; c < 3; c++) img[o + c] = clamp(Math.round(src[(y * WW + e0) * 3 + c] * (1 - t) + src[(y * WW + e1) * 3 + c] * t), 0, 255);
       }
     }
+    src = Buffer.from(img); // (the old line painted out)
     // the side wall: the wall that's there, a shade darker (its light kept), and below the desk's back edge,
     // down to the crease, the wall carried on from the row above the desk
     const x0 = side === 'left' ? 0 : cx + 1, x1 = side === 'left' ? cx - 1 : WW - 1;
