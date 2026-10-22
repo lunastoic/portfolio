@@ -799,7 +799,21 @@ export default function CinemaScene() {
   const screen = stage ? screenRect(stage) : null;
   // the live screen is laid out at its seated size and only scaled as you sit and stand, so the text
   // never reflows or jumps between font sizes on the way
-  const seatScreen = ready ? screenRect(seatedStage(layout, vp.w, vp.h)) : null;
+  const seatStage = ready ? seatedStage(layout, vp.w, vp.h) : null;
+  const seatScreen = seatStage ? screenRect(seatStage) : null;
+  // the room too: laid out once at its seated size and only moved and scaled on the way, so the words on the decks
+  // and spines and the notes' text (sized in the stage's cqw) hold their size instead of snapping every frame
+  const stageStyle: CSSProperties | undefined =
+    stage && seatStage
+      ? {
+          left: 0,
+          top: 0,
+          width: seatStage.w,
+          height: seatStage.h,
+          transform: `translate(${stage.x}px, ${stage.y}px) scale(${stage.w / seatStage.w})`,
+          transformOrigin: "0 0",
+        }
+      : undefined;
 
   const classes = [
     "cinema",
@@ -830,11 +844,7 @@ export default function CinemaScene() {
             outside the live screen stands you up. ESC and [ STAND UP ] cover keyboard users. */}
         <div
           className="cinema__stage"
-          style={
-            stage
-              ? { left: stage.x, top: stage.y, width: stage.w, height: stage.h }
-              : undefined
-          }
+          style={stageStyle}
           onClick={pose === "seated" ? standUp : undefined}
         >
           <Image
