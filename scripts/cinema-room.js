@@ -112,6 +112,8 @@ const BOOKS = { x1: 262, y0: 602 };
 const KEEP = [[541, 338, 1064, 762], [660, 755, 960, 785], [490, DESK, 1130, 870], [155, 545, 230, 612]];
 const BLEND_ROWS = 10;
 const CUP = { box: [292, 666, 372, 756], down: 20 };
+/** Room px the sticky notes' wall spot moves by: the paper ends up as far from the shade's rim as from the monitor's bezel. */
+const NOTE_MOVE = { dx: 81, dy: 20 };
 function flatten(img) {
   const out = Buffer.from(img);
   const ref = ambient(img), amb = (y) => [ref[y * 3], ref[y * 3 + 1], ref[y * 3 + 2]];
@@ -429,6 +431,8 @@ function roomManifest(m) {
   const r = walk(m, '');
   // the pens stand in the cat cup, which flatten() set down onto the desk
   for (const k of ['boxPct', 'hitPct']) r.pens[k] = { ...r.pens[k], top: +(r.pens[k].top + (CUP.down / H) * 100).toFixed(3) };
+  // the sticky notes hang midway between the lamp's shade and the monitor, a little lower
+  r.props.note.boxPct = { ...r.props.note.boxPct, left: +(r.props.note.boxPct.left + (NOTE_MOVE.dx / WIDE_W) * 100).toFixed(3), top: +(r.props.note.boxPct.top + (NOTE_MOVE.dy / H) * 100).toFixed(3) };
   r.image = 'room.webp';
   r.size = { width: WIDE_W, height: H };
   r.widen = WIDEN;
