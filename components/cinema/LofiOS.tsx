@@ -25,7 +25,7 @@ const formatClock = () =>
 
 /**
  * LUNA_OS as drawn in the lo-fi art: header bar with my name and degree,
- * the moon-and-mountains illustration beside a numbered menu, and the
+ * a numbered menu with the moon-and-mountains illustration on its right, and the
  * prompt beside a live clock. Opening an item swaps the body for the
  * same .EXE windows v1 uses. Arrow keys, Enter and 1–4 drive the menu.
  */
@@ -91,15 +91,6 @@ export default function LofiOS({
       {activeApp === null ? (
         <>
           <div className="lofi__body">
-            <Image
-              src={`/cinema/${screenArt.file}`}
-              alt=""
-              width={screenArt.width}
-              height={screenArt.height}
-              unoptimized
-              draggable={false}
-              className="lofi__art"
-            />
             <nav aria-label="Portfolio sections" aria-hidden={!interactive || undefined}>
               <ul className="lofi__menu">
                 {ITEMS.map((item, i) => (
@@ -124,6 +115,15 @@ export default function LofiOS({
                 ))}
               </ul>
             </nav>
+            <Image
+              src={`/cinema/${screenArt.file}`}
+              alt=""
+              width={screenArt.width}
+              height={screenArt.height}
+              unoptimized
+              draggable={false}
+              className="lofi__art"
+            />
           </div>
         </>
       ) : (
