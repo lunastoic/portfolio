@@ -39,7 +39,7 @@ const CLEAR = [
   // the sticky note, the mug and its steam, the plant, the lava lamp
   { name: 'note', inside: (x, y) => rect(x, y, 272, 316, 390, 428) },
   { name: 'mug', split: true, inside: (x, y) => rect(x, y, 224, 450, 352, 674) || rect(x, y, 206, 450, 224, 560) || ell(x, y, 276, 656, 58, 17) || ell(x, y, 336, 602, 26, 46) || rect(x, y, 240, 462, 310, 542) },
-  { name: 'plant', split: true, inside: (x, y) => inPoly(x, y, [[858, 440], [896, 362], [962, 356], [1012, 404], [1050, 468], [1052, 562], [1012, 640], [994, 658], [902, 658], [866, 622], [852, 560]]) && !inPoly(x, y, XBOX) && !rect(x, y, 948, 278, 1074, 440) },
+  { name: 'plant', split: true, inside: (x, y) => inPoly(x, y, [[858, 440], [896, 362], [962, 356], [1012, 404], [1050, 468], [1052, 562], [1012, 640], [994, 658], [902, 658], [866, 622], [852, 560]]) && !(inPoly(x, y, XBOX) && !ell(x, y, 1002, 573, 32, 17)) && !rect(x, y, 948, 278, 1074, 440) },
   { name: 'lava', split: true, inside: (x, y) => rect(x, y, 1224, 434, 1298, 650) && !inPoly(x, y, XBOX) },
 ];
 
@@ -322,8 +322,18 @@ function coaster(img, lit) {
 const PIX = 3;
 async function pixelize(buf, w) {
   const gw = Math.round(w / PIX), gh = Math.round(H / PIX);
-  const small = await sharp(buf, { raw: { width: w, height: H, channels: 3 } }).sharpen({ sigma: 1.1, m1: 0.6, m2: 1.4 }).resize(gw, gh, { kernel: 'lanczos3' }).png({ palette: true, colours: 200, dither: 0.35 }).toBuffer();
-  return sharp(small).removeAlpha().resize(w, H, { kernel: 'nearest' }).raw().toBuffer();
+  const small = await sharp(buf, { raw: { width: w, height: H, channels: 3 } }).sharpen({ sigma: 1.4, m1: 0.8, m2: 2.2 }).resize(gw, gh, { kernel: 'lanczos3' }).raw().toBuffer();
+  // light in clean bands, as pixel art shades it: each pixel's brightness stepped to one of LEVELS, the steps
+  // dithered in a fixed 4 x 4 checker (never noise), its hue kept
+  const LEVELS = 16, B4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+    const o = (y * gw + x) * 3, r = small[o], g = small[o + 1], b = small[o + 2];
+    const L = Math.max(1, 0.299 * r + 0.587 * g + 0.114 * b), t = (B4[(y & 3) * 4 + (x & 3)] + 0.5) / 16;
+    const q = Math.min(LEVELS, Math.floor((L / 255) * LEVELS + t)), Lq = Math.max(4, (q / LEVELS) * 255), k = Lq / L;
+    small[o] = clamp(Math.round(r * k), 0, 255); small[o + 1] = clamp(Math.round(g * k), 0, 255); small[o + 2] = clamp(Math.round(b * k), 0, 255);
+  }
+  const pal = await sharp(small, { raw: { width: gw, height: gh, channels: 3 } }).png({ palette: true, colours: 160, dither: 0 }).toBuffer();
+  return sharp(pal).removeAlpha().resize(w, H, { kernel: 'nearest' }).raw().toBuffer();
 }
 
 const saveWebp = async (buf, w, file) => { await sharp(buf, { raw: { width: w, height: H, channels: 3 } }).webp({ lossless: true, effort: 6 }).toFile(file + '.tmp'); fs.renameSync(file + '.tmp', file); };
@@ -334,7 +344,18 @@ const savePng = (buf, w, file) => sharp(buf, { raw: { width: w, height: H, chann
   for (const r of CLEAR) {
     const mask = new Uint8Array(W * H);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (r.inside((x + 0.5) / K, (y + 0.5) / K)) mask[y * W + x] = 1;
-    fill(img, mask);
+    // grown 4 px (the thing's own soft edge and shadow go with it), not into the Xbox
+    const grown = Uint8Array.from(mask);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (!mask[y * W + x]) continue;
+      for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+        const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= W || Y >= H) continue;
+        if (r.split && inPoly((X + 0.5) / K, (Y + 0.5) / K, XBOX) && !ell((X + 0.5) / K, (Y + 0.5) / K, 1002, 573, 32, 17)) continue;
+        if (r.name.startsWith('deck') || r.name.startsWith('book')) continue;
+        grown[Y * W + X] = 1;
+      }
+    }
+    fill(img, grown);
   }
   shiftLamp(img);
   const off0 = lampOff(img);
