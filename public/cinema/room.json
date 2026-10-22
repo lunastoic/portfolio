@@ -62,19 +62,19 @@
       "file": "/cinema/cut-mug.png",
       "boxPx": [
         423,
-        600,
+        699,
         603,
         900
       ],
       "boxPct": {
         "left": 22.031,
-        "top": 63.291,
+        "top": 73.734,
         "width": 9.375,
-        "height": 31.646
+        "height": 21.203
       },
       "originPct": [
         50,
-        91.53
+        87.36
       ],
       "spill": {
         "boxPct": {
@@ -98,22 +98,38 @@
       }
     },
     "steam": {
-      "file": "/cinema/cut-empty.png",
+      "file": "",
       "boxPx": [
-        423,
-        600,
-        603,
-        900
+        417,
+        474,
+        591,
+        720
       ],
       "boxPct": {
-        "left": 22.031,
-        "top": 63.291,
-        "width": 9.375,
-        "height": 31.646
+        "left": 21.719,
+        "top": 50,
+        "width": 9.063,
+        "height": 25.949
       },
       "originPct": [
-        50,
-        100
+        55.17,
+        162.85
+      ],
+      "width": 58,
+      "height": 82,
+      "sources": [
+        [
+          22,
+          78
+        ],
+        [
+          29,
+          77
+        ],
+        [
+          35,
+          78
+        ]
       ]
     },
     "note": {

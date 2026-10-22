@@ -622,7 +622,8 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   shape([106, 151 + MY, 136, 196 + MY], any(rect(106, 155 + MY, 136, 194 + MY), ell(121, 155 + MY, 15, 3.2), ell(121, 194 + MY, 15, 2.6)), 'mug', (x) => cyl(121, 15, 0.45)(x));
   shape([108.4, 152.6 + MY, 133.6, 157.6 + MY], ell(121, 155 + MY, 12.6, 2.1), 'coffee', (x) => (x < 116 ? 0.3 : 0.6), { outline: false });
   shape([113, 167 + MY, 127, 183 + MY], (x, y) => ell(120, 175 + MY, 5.6, 6.8)(x, y) && !ell(122.6, 173 + MY, 4.8, 5.9)(x, y), 'moonAccent', 0.6, { outline: false });
-  for (const [x0, ph] of [[116, 0], [125, 2]]) for (let y = 128 + MY; y < 150 + MY; y += 0.6) {
+  info.steam = { sources: [[116, 154 + MY], [121, 153.5 + MY], [125.5, 154 + MY]], box: [100, 98 + MY, 142, 157 + MY] }; // off the coffee (its top at 153 + MY), up the wall
+  if (!skip.has('steam')) for (const [x0, ph] of [[116, 0], [125, 2]]) for (let y = 128 + MY; y < 150 + MY; y += 0.6) {
     const X = pxX(x0 + Math.sin(y / 4 + ph) * 2.2), Y = px(y);
     if ((X - OX + Y) % 2 === 0 && hash(X - OX, Y, 5) > (y - 128 - MY) / 26) put(X, Y, 'steam', 0.7);
   }

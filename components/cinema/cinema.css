@@ -86,7 +86,6 @@
 }
 
 .cinema--lamp-off .cinema__sprite--mug,
-.cinema--lamp-off .cinema__sprite--steam,
 .cinema--lamp-off .cinema__sprite--note,
 .cinema--lamp-off .cinema__pen,
 .cinema--lamp-off .cinema__decor,
@@ -157,6 +156,13 @@
   z-index: 5;
   pointer-events: none;
   transition: opacity 0.15s linear, filter 0.5s ease;
+}
+
+.cinema__sprite--steam canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
 }
 
 /* the words on the decks, the poster and the book spines, in the room's typeface */

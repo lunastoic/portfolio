@@ -13,6 +13,7 @@ import manifestJson from "../../public/cinema/room.json";
 import HeadsetCable from "./HeadsetCable";
 import LavaLamp from "./LavaLamp";
 import LofiOS, { type LofiPopup } from "./LofiOS";
+import Steam, { type SteamArt } from "./Steam";
 import { Spring, clamp01, easeOutCubic } from "./physics";
 import { Spill } from "./spill";
 import "./cinema.css";
@@ -33,6 +34,10 @@ interface Prop {
   boxPct: PctBox;
   boxPx: number[];
   originPct: number[];
+  /** The steam's live canvas. */
+  width?: number;
+  height?: number;
+  sources?: number[][];
   spill?: {
     boxPct: PctBox;
     width: number;
@@ -442,6 +447,7 @@ export default function CinemaScene() {
   const rafRef = useRef(0);
   const fallbackRef = useRef(0);
   const worldRef = useRef<World | null>(null);
+  const steamPuff = useRef<(() => void) | null>(null);
   const elsRef = useRef<Partial<Record<PropKey, HTMLElement | null>>>({});
   const noteRefs = useRef(new Map<number, HTMLDivElement>());
   const penRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -673,6 +679,7 @@ export default function CinemaScene() {
       switch (key) {
         case "mug": {
           if (w.mug.phase === "pushing") break;
+          steamPuff.current?.();
           if (w.mug.bumps >= PUSH_MAX) {
             // as far back as it goes: it just shivers where it stands
             w.mug.nudge.kick(w.mug.nudge.v >= 0 ? -60 : 60);
@@ -975,7 +982,7 @@ export default function CinemaScene() {
             // the mug and its steam shrink together toward the middle of the mug's base as it slides back
             const mugBase = art.props.mug?.originPct[1];
             const origin =
-              (k === "mug" || k === "steam") && mugBase != null
+              k === "mug" && mugBase != null
                 ? `50% ${mugBase}%`
                 : `${p.originPct[0]}% ${p.originPct[1]}%`;
             const style: CSSProperties = { ...pctBox(p.boxPct), transformOrigin: origin };
@@ -992,6 +999,8 @@ export default function CinemaScene() {
               elsRef.current[k] = node;
             };
             if (k === "steam") {
+              if (!p.width || !p.height || !p.sources) return null;
+              const steam: SteamArt = { width: p.width, height: p.height, sources: p.sources };
               return (
                 <div
                   key={k}
@@ -1000,7 +1009,7 @@ export default function CinemaScene() {
                   style={style}
                   aria-hidden="true"
                 >
-                  {img}
+                  <Steam steam={steam} puffRef={steamPuff} />
                 </div>
               );
             }

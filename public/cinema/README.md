@@ -5,8 +5,8 @@ renderer (`scripts/desk-room.js`): the room laid out on its 461 x 227 u grid, dr
 the lamps' light picked from material ramps through a 4 x 4 dither, and some things modelled in 3D and shaded as
 pixel art (the headset, the lamp's foot, the iPad, the mouse, the controller). Each pixel becomes 3 x 3 art px, so the
 room is 1920 x 948. The things that move are left out of the backdrop and cut out on their own (the pixels where the
-room with the thing differs from the room without it): `cut-mug.png` (with its steam), `cut-note-1…7.png` (the
-sticky note in seven colours) and `cut-pen-1…3.png` (each pen in the cat cup). The lava lamp
+room with the thing differs from the room without it): `cut-mug.png`, `cut-note-1…7.png` (the
+sticky note in seven colours) and `cut-pen-1…3.png` (each pen in the cat cup). The coffee's steam (`Steam.tsx`), the lava lamp
 (`components/cinema/LavaLamp.tsx`) and the headset's cable (`HeadsetCable.tsx`) are drawn live on the page, so
 `room.json` only says where they go. The backdrops: `room.png` and `desk-off.png` (desk lamp on / off) and
 `room-lava-off.png` and `desk-off-lava-off.png` (the lava lamp's light gone as well), and the `side-*` strips for very

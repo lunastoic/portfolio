@@ -1,7 +1,7 @@
 // The portfolio's room, drawn by the desk-room renderer (scripts/desk-room.js, the Ember study from the Desk Room
 // Studies) and cut into what the scene needs. The renderer draws on a 640 x 316 pixel grid over the room's 461 x 227
 // u; each pixel becomes 3 x 3 px of the site's art (1920 x 948), with the room carried on past each edge for wide
-// windows. The things that move are left out of the backdrop and cut out on their own: the mug (with its steam), the
+// windows. The things that move are left out of the backdrop and cut out on their own: the mug, the
 // sticky note (in seven colours), each pen in the cat cup; the lava lamp and the headset's cable are drawn live on the
 // page, so only where they go is written down.
 // Writes room.png and desk-off.png (desk lamp on / off) and room-lava-off.png and desk-off-lava-off.png (the lava
@@ -27,7 +27,7 @@ const theme = { ...ember, ramps: { ...noteRamps, ...ember.ramps } };
 const NOTE_COLOURS = ['noteGreen', 'noteOrange', 'noteYellow', 'notePink', 'noteCream', 'noteCoral', 'noteGreen'];
 
 // the things that move, left out of the backdrop
-const MOVING = ['mug', 'note', 'lava', 'pens', 'cable'];
+const MOVING = ['mug', 'note', 'lava', 'pens', 'cable', 'steam']; // the steam is drawn live, never in the art
 const info = {};
 const cache = new Map();
 const render = (on, lava, skip, extra = {}) => {
@@ -93,6 +93,11 @@ async function cut(withIt, withoutIt, file) {
   const body0 = u(106), rimY = u(155 + MY), baseY = u(194 + MY);
   const spillX = Math.round(body0 - 110), spillY = Math.round(rimY - 79);
   const mugBase = (baseY - mugBox[1]) / (mugBox[3] - mugBox[1]);
+  // the steam's canvas (one pixel of the drawing a pixel) from above the coffee up the wall; it scales about the same
+  // point as the mug, so the two move as one
+  const steamPx = [info.steam.box[0] * K, info.steam.box[1] * K, info.steam.box[2] * K, info.steam.box[3] * K].map(Math.round);
+  const steamBox = steamPx.map(p);
+  const steamOrigin = [+((((mugBox[0] + mugBox[2]) / 2 - steamBox[0]) / (steamBox[2] - steamBox[0])) * 100).toFixed(2), +(((baseY - steamBox[1]) / (steamBox[3] - steamBox[1])) * 100).toFixed(2)];
 
   // the pens: each in its own box, rocking about where it leaves the cup
   const penBoxes = PENS.map((b) => b.map(p));
@@ -159,7 +164,11 @@ async function cut(withIt, withoutIt, file) {
       file: '/cinema/cut-mug.png', boxPx: mugBox, boxPct: pct(mugBox), originPct: [50, +(mugBase * 100).toFixed(2)],
       spill: { boxPct: pct([spillX, spillY, spillX + 295, spillY + 274]), width: 295, height: 274, pivot: [110, Math.round(baseY - spillY)], rim: [108, 79], landY: Math.round(baseY - spillY) - 2, mugLeft: 110 },
     },
-    steam: { file: '/cinema/cut-empty.png', boxPx: mugBox, boxPct: pct(mugBox), originPct: [50, 100] },
+    steam: {
+      file: '', boxPx: steamBox, boxPct: pct(steamBox), originPct: steamOrigin,
+      width: steamPx[2] - steamPx[0], height: steamPx[3] - steamPx[1],
+      sources: info.steam.sources.map(([x, y]) => [Math.round(x * K) - steamPx[0], Math.round(y * K) - steamPx[1]]),
+    },
     note: { file: '/cinema/cut-note-1.png', boxPx: NOTE.map(p), boxPct: pct(NOTE.map(p)), originPct: [50, 3] },
   };
   fs.writeFileSync(path.join(CIN, 'room.json'), JSON.stringify(m, null, 2) + '\n');
