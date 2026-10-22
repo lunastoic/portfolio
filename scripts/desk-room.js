@@ -294,7 +294,7 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   // seated eye at the monitor's middle. The desk's top is the plane y = DESK.
   const CAM = [230, 118.6, 400];
   const toScreen = ([x, y, z]) => { const k = CAM[2] / (CAM[2] - z); return [CAM[0] + (x - CAM[0]) * k, CAM[1] + (y - CAM[1]) * k]; };
-  const LAMP = [72.8, 116, 20], LAVA = [308.4, 163.1, 8], MON = [223, 120, 4]; // the bulb, the lava lamp's glass, the screen
+  const LAMP = [72.8, 144, 20], LAVA = [308.4, 163.1, 8], MON = [223, 120, 4]; // the bulb, the lava lamp's glass, the screen
   /** How lit a modelled surface is: each light that's on (diffuse and a highlight), the room's fill and the monitor's glow. */
   const lightAt = (P, n, V, gloss, near = 0.62) => {
     let sh = 0.1 + Math.max(0, dot(n, V)) * 0.14 + 0.12 * Math.max(0, dot(n, norm(sub3(MON, P))));
@@ -481,8 +481,8 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   ANC = [222.5, 170]; // lit as one object, from where it stands
   // its tilt-and-swivel stand on the top book: an oval base and a neck (the books are slim so the stand can stand
   // tall while the monitor keeps its place under the decks)
-  shape([191, 169, 254, 175.6], ell(222.5, 172.4, 30, 3.1), 'bezel', (x, y) => (y < 171.4 ? 0.85 : cyl(222.5, 30, 0.3)(x)));
-  shape([210, 158, 235, 172], any(rect(211.5, 158, 233.5, 170), ell(222.5, 170, 11, 1.3)), 'bezel', (x, y) => cyl(222.5, 11, 0.35)(x) + (Math.abs(y - 164) < 0.6 ? -0.25 : 0));
+  shape([192, 170, 253, 175], rect(193, 170.6, 252, 174.6), 'bezel', (x, y) => (y < 171.8 ? 0.85 : y > 173.6 ? 0.18 : cyl(222.5, 29.5, 0.3)(x)));
+  shape([210, 158, 235, 172], rect(211.5, 158, 233.5, 171), 'bezel', (x, y) => cyl(222.5, 11, 0.35)(x) + (Math.abs(y - 164) < 0.6 ? -0.25 : 0));
   shape([161, 81, 284, 160], rect(161, 81, 284, 160), 'bezel', (x, y) => (x < 163.2 || y < 83.2 ? 0.9 : x > 281.8 || y > 157.8 ? 0.14 : 0.5 - (y - 83) * 0.002));
   shape([165, 84.5, 280.5, 156], (x, y) => rect(165, 84.5, 280.5, 156)(x, y) && !rect(167.5, 86.4, 278, 154)(x, y), 'bezelRim', (x, y) => (x < 166.5 || y < 85.8 ? 0.85 : 0.35), { outline: false });
   const SX0 = pxX(170), SY0 = px(87), SX1 = pxX(277), SY1 = px(153);
@@ -553,9 +553,12 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   ANC = null;
 
   // ------------------------------------------------ the lamp, in from the left corner so its base stands clear of the side wall
-  ANC = [64.5, 140]; // lit as one object: from partway up its stand, right under the bulb
+  ANC = [64.5, 168]; // lit as one object: from partway up its stand, right under the bulb
   const LAMP_DX = 18, lampAt = moved(LAMP_DX);
-  const half = (y) => {
+  // the stand, 40% shorter than it was: its turned profile (laid out for 115..184.5) squeezed into 143..184.5
+  const LIFT = 28, squeeze = (y) => 184.5 - (184.5 - y) / 0.6;
+  const half = (Y) => {
+    const y = squeeze(Y);
     if (y < 115 || y > 184.5) return -1;
     if (y < 119) return 2; if (y < 124) return 3.2; if (y < 127) return 2.2;
     if (y < 145) return 2.2 + Math.sin(((y - 127) / 18) * Math.PI / 2) * 5;
@@ -580,23 +583,23 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
       look: (nm, p, n, P, V) => ['bronze', lightAt(P, n, V, 0.6, 0.8) + (nm === 'plinth' ? -0.05 : 0.05), 2],
     });
   }
-  lampAt([36, 114, 58, 188], (x, y) => { const h = half(y); return h >= 0 && Math.abs(x - 46.5) <= h; }, 'bronze', (x, y) => cyl(46.5, Math.max(1, half(y)), 0.42)(x) + ((y > 123 && y < 124.5) || (y > 162.5 && y < 164) ? -0.2 : 0));
-  for (let y = 116; y < 140; y += 1.6) put(pxX(63 + LAMP_DX), px(y), 'silver', 0.7);
-  lampAt([60.5, 139.5, 65.5, 145], ell(63, 142.2, 2.1, 2.3), 'silver', (x) => cyl(63, 2.1, 0.5)(x));
-  if (on) lampAt([38, 113, 55, 119], ell(46.5, 116, 6.5, 2.2), 'white', 1, { outline: false, emit: true });
-  const shade = [[35, 80], [58, 80], [75, 115.5], [18, 115.5]];
-  lampAt([18, 80, 75, 115.5], poly(shade), (x, y) => {
-    const t = (y - 80) / 35.5, w = 11.5 + t * 17, u = (x - 46.5) / w;
+  lampAt([36, 114 + LIFT, 58, 188], (x, y) => { const h = half(y); return h >= 0 && Math.abs(x - 46.5) <= h; }, 'bronze', (x, y) => { const yy = squeeze(y); return cyl(46.5, Math.max(1, half(y)), 0.42)(x) + ((yy > 123 && yy < 124.5) || (yy > 162.5 && yy < 164) ? -0.2 : 0); });
+  for (let y = 116 + LIFT; y < 140 + LIFT; y += 1.6) put(pxX(63 + LAMP_DX), px(y), 'silver', 0.7);
+  lampAt([60.5, 139.5 + LIFT, 65.5, 145 + LIFT], ell(63, 142.2 + LIFT, 2.1, 2.3), 'silver', (x) => cyl(63, 2.1, 0.5)(x));
+  if (on) lampAt([38, 113 + LIFT, 55, 119 + LIFT], ell(46.5, 116 + LIFT, 6.5, 2.2), 'white', 1, { outline: false, emit: true });
+  const shade = [[35, 80 + LIFT], [58, 80 + LIFT], [75, 115.5 + LIFT], [18, 115.5 + LIFT]];
+  lampAt([18, 80 + LIFT, 75, 115.5 + LIFT], poly(shade), (x, Y) => {
+    const y = Y - LIFT, t = (y - 80) / 35.5, w = 11.5 + t * 17, u = (x - 46.5) / w;
     if (Math.abs(y - 108.5) < 0.7 || Math.abs(y - 112) < 0.7) return 'lead';
     for (const k of [-0.62, -0.2, 0.2, 0.62]) if (Math.abs(u - k) * w < 0.55) return 'lead';
     return on ? 'glassOn' : 'glassOff';
-  }, (x, y) => {
-    const t = (y - 80) / 35.5, w = 11.5 + t * 17, u = (x - 46.5) / w;
+  }, (x, Y) => {
+    const y = Y - LIFT, t = (y - 80) / 35.5, w = 11.5 + t * 17, u = (x - 46.5) / w;
     const pane = Math.floor((u + 1) * 2.5) % 2; // alternating panes, like stained glass
     const base = on ? 0.45 + t * 0.35 : 0.55 - Math.abs(u + 0.3) * 0.4;
     return clamp(base + (pane ? 0.12 : -0.05) - (u > 0.65 ? 0.15 : 0) + (y > 112.5 ? 0.15 : 0), 0, 1);
-  }, { emit: (x, y) => on && !(Math.abs(y - 108.5) < 0.7 || Math.abs(y - 112) < 0.7) });
-  lampAt([44, 75.5, 49, 80.5], rect(44, 75.5, 49, 80.5), 'bronze', (x) => cyl(46.5, 2.5, 0.5)(x));
+  }, { emit: (x, Y) => on && !(Math.abs(Y - LIFT - 108.5) < 0.7 || Math.abs(Y - LIFT - 112) < 0.7) });
+  lampAt([44, 75.5 + LIFT, 49, 80.5 + LIFT], rect(44, 75.5 + LIFT, 49, 80.5 + LIFT), 'bronze', (x) => cyl(46.5, 2.5, 0.5)(x));
   ANC = null;
 
   // ------------------------------------------------ the sticky notes
@@ -741,7 +744,7 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
     // the lamp: a pool on the wall round the shade (taller below it), one on the desk under it
     let lamp = 0;
     if (on) {
-      if (onWall(x, y)) { const dy = y - 106; lamp = Math.exp(-((Math.hypot((x - 64.5) / 1.2, dy / (dy < 0 ? 0.7 : 1.05)) / 56) ** 2)); }
+      if (onWall(x, y)) { const dy = y - 134; lamp = Math.exp(-((Math.hypot((x - 64.5) / 1.2, dy / (dy < 0 ? 0.7 : 1.05)) / 56) ** 2)); }
       else lamp = Math.exp(-((Math.hypot((x - 68) / 2.5, (y - 199) / 0.75) / 42) ** 2));
     }
     const dxs = Math.max(170 - x, 0, x - 277), dys = Math.max(87 - y, 0, y - 153);

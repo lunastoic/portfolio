@@ -130,7 +130,7 @@ async function cut(withIt, withoutIt, file) {
     screenPx: GLASS,
     monitorPct: pct([u(161), u(81), u(284), u(160)]),
     decksPct: [pct([u(146), u(2), u(304), u(39)]), pct([u(145), u(42), u(303), u(78.5)])],
-    lamp: { off: '/cinema/desk-off.png', hitPct: pct([u(34), u(74), u(95), u(197)]) },
+    lamp: { off: '/cinema/desk-off.png', hitPct: pct([u(34), u(102), u(95), u(197)]) },
     lavaOff: { on: '/cinema/room-lava-off.png', off: '/cinema/desk-off-lava-off.png' },
     lava: { boxPct: pct([p(lavaX), p(lavaY), p(lavaX + 30), p(lavaY + 90)]) },
     sides: { ...m.sides, px: SIDE * S },
