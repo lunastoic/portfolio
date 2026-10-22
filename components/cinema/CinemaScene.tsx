@@ -116,6 +116,8 @@ const DRIP_X = [118, 216];
 
 /** The sticky note: peel off the wall, drift down like paper, land flat on the desk, fade. */
 const PEEL_S = 0.24;
+/** Lying on the desk, how far over the note lies (degrees from the wall): flat as the desk is seen. */
+const NOTE_FLAT = 80;
 const NOTE_GRAVITY = 900; // art px / s²
 const NOTE_DRAG = 5.2; // 1/s, so it falls at about 170 art px/s
 const NOTE_SWAY = 34; // art px
@@ -227,8 +229,12 @@ interface NoteFall {
   x: number;
   y: number;
   vy: number;
+  /** Its bank in the air (a turn in the screen's plane), gone by the time it lands. */
   rot: number;
+  /** How far it has tipped over, from flat on the wall (0) toward flat on the desk (NOTE_FLAT). */
   tilt: number;
+  /** Its turn in its own plane, so it lies on the desk askew rather than standing askew. */
+  yaw: number;
   side: number;
   /** Where it ends up: a little off the others, so they pile up scattered. */
   landY: number;
@@ -609,8 +615,9 @@ export default function CinemaScene() {
           // down past the mug's base (it lands behind the mug, it shouldn't flash in front of it)
           const near = easeOutCubic(clamp01((n.y - (n.landY - NOTE_SETTLE)) / NOTE_SETTLE));
           n.x *= 1 - 0.6 * near;
-          n.rot = lerp(5 * n.side * (1 - grow) + 16 * grow * Math.cos(ph) * n.side, n.landRot, near);
-          n.tilt = lerp(30 + 24 * grow * Math.sin(2 * ph + 0.6), 78, near);
+          n.rot = (5 * n.side * (1 - grow) + 16 * grow * Math.cos(ph) * n.side) * (1 - near);
+          n.yaw = n.landRot * near;
+          n.tilt = lerp(30 + 24 * grow * Math.sin(2 * ph + 0.6), NOTE_FLAT, near);
           if (n.y >= n.landY) {
             n.y = n.landY;
             n.phase = "land";
@@ -619,14 +626,16 @@ export default function CinemaScene() {
         } else {
           // flat on the desk: it slides the last bit and settles at its own angle, and stays
           const k = easeOutCubic(n.t / 0.32);
-          n.tilt = lerp(n.tilt, 78, k);
-          n.rot = lerp(n.rot, n.landRot, k);
+          n.tilt = lerp(n.tilt, NOTE_FLAT, k);
+          n.rot = lerp(n.rot, 0, k);
+          n.yaw = lerp(n.yaw, n.landRot, k);
           n.x = lerp(n.x, n.landDx, k * 0.25);
           if (n.t >= 0.32) n.phase = "rest";
         }
         const f = noteRefs.current.get(n.id);
         if (f) {
-          f.style.transform = `translate(${cq(n.x)}, ${cq(n.y)}) perspective(${cq(600)}) rotateZ(${n.rot.toFixed(2)}deg) rotateX(${n.tilt.toFixed(2)}deg)`;
+          // the turn in its own plane goes on before it tips over, so a note lying askew is still foreshortened flat
+          f.style.transform = `translate(${cq(n.x)}, ${cq(n.y)}) perspective(${cq(600)}) rotateZ(${n.rot.toFixed(2)}deg) rotateX(${n.tilt.toFixed(2)}deg) rotateZ(${n.yaw.toFixed(2)}deg)`;
         }
       }
 
@@ -746,6 +755,7 @@ export default function CinemaScene() {
         vy: 0,
         rot: 0,
         tilt: 0,
+        yaw: 0,
         side: Math.random() < 0.5 ? -1 : 1,
         landY: NOTE_LAND_Y + r() * NOTE_SCATTER[1],
         landRot: r() * NOTE_SCATTER[2],
