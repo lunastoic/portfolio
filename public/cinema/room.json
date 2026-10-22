@@ -18,42 +18,42 @@
   },
   "image": "room.webp",
   "size": {
-    "width": 1607,
+    "width": 1843,
     "height": 907
   },
   "screenPx": [
-    569,
+    687,
     355,
-    986,
+    1104,
     626
   ],
   "screenPct": {
-    "left": 35.408,
+    "left": 37.276,
     "top": 39.14,
-    "width": 25.949,
+    "width": 22.626,
     "height": 29.879
   },
   "focalPoint": [
-    48.38,
+    50,
     54.08
   ],
   "monitorPct": {
-    "left": 32.856,
+    "left": 35.052,
     "top": 35.943,
-    "width": 30.492,
+    "width": 26.587,
     "height": 36.825
   },
   "decksPct": [
     {
-      "left": 28.998,
+      "left": 31.687,
       "top": 0.772,
-      "width": 39.266,
+      "width": 34.238,
       "height": 17.2
     },
     {
-      "left": 28.811,
+      "left": 31.525,
       "top": 17.971,
-      "width": 39.266,
+      "width": 34.238,
       "height": 17.2
     }
   ],
@@ -61,9 +61,9 @@
     "mug": {
       "file": "/cinema/prop-mug.png",
       "boxPct": {
-        "left": 14.188,
+        "left": 12.371,
         "top": 61.742,
-        "width": 13.939,
+        "width": 12.154,
         "height": 28.225
       },
       "boxPx": [
@@ -78,9 +78,9 @@
       ],
       "spill": {
         "boxPct": {
-          "left": 9.708,
+          "left": 8.464,
           "top": 59.206,
-          "width": 18.357,
+          "width": 16.007,
           "height": 30.209
         },
         "width": 295,
@@ -100,9 +100,9 @@
     "steam": {
       "file": "/props/mug-steam.png",
       "boxPct": {
-        "left": 14.188,
+        "left": 12.371,
         "top": 61.742,
-        "width": 13.939,
+        "width": 12.154,
         "height": 28.225
       },
       "boxPx": [
@@ -119,9 +119,9 @@
     "note": {
       "file": "/cinema/prop-sticky-1.png",
       "boxPct": {
-        "left": 20.224,
+        "left": 17.634,
         "top": 40.684,
-        "width": 9.708,
+        "width": 8.464,
         "height": 17.861
       },
       "boxPx": [
@@ -138,15 +138,15 @@
     "plant-pot": {
       "file": "/cinema/prop-plant-pot.png",
       "boxPct": {
-        "left": 62.103,
+        "left": 60.553,
         "top": 54.686,
-        "width": 15.246,
+        "width": 13.294,
         "height": 31.533
       },
       "boxPx": [
-        998,
+        1116,
         496,
-        1243,
+        1361,
         782
       ],
       "originPct": [
@@ -157,15 +157,15 @@
     "plant-leaves": {
       "file": "/cinema/prop-plant-leaves.png",
       "boxPct": {
-        "left": 62.103,
+        "left": 60.553,
         "top": 54.686,
-        "width": 15.246,
+        "width": 13.294,
         "height": 31.533
       },
       "boxPx": [
-        998,
+        1116,
         496,
-        1243,
+        1361,
         782
       ],
       "originPct": [
@@ -176,11 +176,11 @@
   },
   "antPct": {
     "from": [
-      70.19,
+      74.01,
       86.22
     ],
     "to": [
-      64.97,
+      63.05,
       87.87
     ]
   },
@@ -196,9 +196,9 @@
   "lamp": {
     "off": "/cinema/desk-off.webp",
     "hitPct": {
-      "left": 1.12,
+      "left": 0.977,
       "top": 34.62,
-      "width": 14.997,
+      "width": 13.077,
       "height": 50.717
     }
   },
@@ -207,14 +207,14 @@
     "boxPct": {
       "left": 0,
       "top": 0,
-      "width": 0.062,
+      "width": 0.054,
       "height": 0.11
     },
     "originPct": [],
     "hitPct": {
       "left": 0,
       "top": 0,
-      "width": 0.062,
+      "width": 0.054,
       "height": 0.11
     }
   },
@@ -307,9 +307,9 @@
   },
   "lava": {
     "boxPct": {
-      "left": 91.537,
+      "left": 92.621,
       "top": 61.521,
-      "width": 6.845,
+      "width": 5.969,
       "height": 24.256
     }
   },
@@ -323,5 +323,6 @@
   "noteLand": {
     "dx": -78,
     "dy": 386
-  }
+  },
+  "textDx": 118
 }

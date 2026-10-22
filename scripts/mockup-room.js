@@ -78,11 +78,67 @@ function lampOff(img) {
 }
 
 /**
+ * The room widened so a full-screen window is covered by the room itself (no side walls painted on): strips
+ * of plain wall and desk put in along paths that thread between things (mockup px, rows [y0, y1) at column x).
+ * Left: between the sticky note and the decks, the note and the monitor, the coaster and the keyboard. Right:
+ * between the decks and the poster, the monitor and the plant, the keyboard and the mousepad.
+ */
+const CUTS = {
+  left: { d: 118, path: [[0, 598, 372], [598, 655, 415], [655, MH, 345]] },
+  right: { d: 118, path: [[0, 660, 930], [660, MH, 876]] },
+};
+const WW = W + CUTS.left.d + CUTS.right.d;
+const cutAt = (side, yArt) => { const my = yArt / K; return Math.round(CUTS[side].path.find(([a, b]) => my >= a && my < b)[2] * K); };
+/** An art-px column of the mockup room to its place in the widened room, on art-px row y. */
+const mapX = (x, y) => x + (x >= cutAt('left', y) ? CUTS.left.d : 0) + (x >= cutAt('right', y) ? CUTS.right.d : 0);
+
+function widen(img) {
+  const out = Buffer.alloc(WW * H * 3), deskY = Math.round(DESK_Y * K);
+  const px = (x, y, c) => img[(clamp(y, 0, H - 1) * W + clamp(x, 0, W - 1)) * 3 + c];
+  for (const side of ['left', 'right']) {
+    // each side of the cut's colour per row, smoothed down the rows (wall and desk apart) so no row's dither
+    // becomes a streak; and the cut's own texture (each pixel less its local mean), mirrored across the strip
+    // on the desk, only desk-coloured pixels (lit orange wood) count, searching outward past any object's edge
+    const desky = (x, y) => { const r = px(x, y, 0), g = px(x, y, 1), b = px(x, y, 2); return r > 70 && r > g * 1.3 && g > b; };
+    const col = (dx) => Array.from({ length: H }, (_, y) => {
+      const s = [0, 0, 0]; let n = 0;
+      for (let k = 0; k < 60 && n < 4; k++) {
+        const x = cutAt(side, y) + dx + (dx < 0 ? -k : k);
+        if (y >= deskY && !desky(x, y)) continue;
+        for (let c = 0; c < 3; c++) s[c] += px(x, y, c); n++;
+      }
+      return n ? s.map((v) => v / n) : [px(cutAt(side, y) + dx, y, 0), px(cutAt(side, y) + dx, y, 1), px(cutAt(side, y) + dx, y, 2)];
+    });
+    // the wall is smoothed down the rows (no streaks); the desk keeps its planks, lightly
+    const sm = (a) => a.map((_, y) => { const r = y < deskY ? 6 : 1, s = [0, 0, 0]; let n = 0; for (let k = y - r; k <= y + r; k++) { if (k < 0 || k >= H || (k < deskY) !== (y < deskY)) continue; for (let c = 0; c < 3; c++) s[c] += a[k][c]; n++; } return s.map((v) => v / n); });
+    CUTS[side].L = sm(col(-1)); CUTS[side].R = sm(col(0));
+  }
+  for (let y = 0; y < H; y++) {
+    let o = y * WW * 3, x = 0;
+    for (const side of ['left', 'right']) {
+      const cut = cutAt(side, y), d = CUTS[side].d, L = CUTS[side].L[y], R = CUTS[side].R[y];
+      img.copy(out, o, (y * W + x) * 3, (y * W + cut) * 3); o += (cut - x) * 3; x = cut;
+      for (let k = 0; k < d; k++) {
+        const t = k / (d - 1), m = k % 24, j = m < 12 ? m : 23 - m, gx = cut - 12 + j;
+        for (let c = 0; c < 3; c++) {
+          let mean = 0; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) mean += px(gx + dx, y + dy, c) / 25;
+          const grain = y < deskY ? clamp(px(gx, y, c) - mean, -10, 10) : 0;
+          out[o + c] = clamp(Math.round(L[c] * (1 - t) + R[c] * t + grain * 0.7 + hash(k + cut, y, 3 + c) * 2), 0, 255);
+        }
+        o += 3;
+      }
+    }
+    img.copy(out, o, (y * W + x) * 3, (y * W + W) * 3);
+  }
+  return out;
+}
+
+/**
  * The closet's side walls and the desk carried on past the edges, without smearing: each row's colour at the
  * edge, smoothed down the rows (so no row's dither turns into a stripe), darkening outward, with real 2D grain
  * from a clean patch of the left side wall laid over it (its fine texture only, the patch's light taken off).
  */
-function side(img, left) {
+function side(img, left, W = WW) {
   const out = Buffer.alloc(SW * H * 3), deskY = Math.round(DESK_Y * K);
   const at = (x, y, c) => img[(clamp(y, 0, H - 1) * W + clamp(x, 0, W - 1)) * 3 + c];
   // the edge colour per row
@@ -146,20 +202,23 @@ const savePng = (buf, w, file) => sharp(buf, { raw: { width: w, height: H, chann
       if (wallish) for (let c = 0; c < 3; c++) img[o + c] = Math.round(lc[c] * (0.6 + 0.4 * Math.min(1, img[o - 9 + c] / 120)));
     }
   }
-  const off = lampOff(img);
-  await saveWebp(img, W, path.join(CIN, 'room.webp'));
-  await saveWebp(off, W, path.join(CIN, 'desk-off.webp'));
-  await savePng(side(img, true), SW, path.join(CIN, 'side-left.png'));
-  await savePng(side(img, false), SW, path.join(CIN, 'side-right.png'));
+  const off0 = lampOff(img);
+  const room = widen(img), off = widen(off0);
+  await saveWebp(room, WW, path.join(CIN, 'room.webp'));
+  await saveWebp(off, WW, path.join(CIN, 'desk-off.webp'));
+  await savePng(side(room, true), SW, path.join(CIN, 'side-left.png'));
+  await savePng(side(room, false), SW, path.join(CIN, 'side-right.png'));
   await savePng(side(off, true), SW, path.join(CIN, 'side-left-off.png'));
   await savePng(side(off, false), SW, path.join(CIN, 'side-right-off.png'));
 
   // ---- room.json: every box in art px (mockup px x K) ----
   const A = (v) => Math.round(v * K);
-  const pct = ([x0, y0, x1, y1]) => ({ left: +((x0 / W) * 100).toFixed(3), top: +((y0 / H) * 100).toFixed(3), width: +(((x1 - x0) / W) * 100).toFixed(3), height: +(((y1 - y0) / H) * 100).toFixed(3) });
+  // boxes are worked out in the mockup room's art px, then moved into the widened room (by their middle row)
+  const mv = ([x0, y0, x1, y1]) => { const d = mapX(x0, (y0 + y1) / 2) - x0; return [x0 + d, y0, x1 + d, y1]; };
+  const pct = (b) => { const [x0, y0, x1, y1] = mv(b); return { left: +((x0 / WW) * 100).toFixed(3), top: +((y0 / H) * 100).toFixed(3), width: +(((x1 - x0) / WW) * 100).toFixed(3), height: +(((y1 - y0) / H) * 100).toFixed(3) }; };
   const box = (x, y, w, h) => [x, y, x + w, y + h];
   const old = JSON.parse(fs.readFileSync(path.join(CIN, 'room.json'), 'utf8'));
-  const glass = [A(474), A(296), A(822), A(522)];
+  const glass = mv([A(474), A(296), A(822), A(522)]);
   // the sprites, each lined up with the thing it replaces (art px)
   const mug = box(A(271) - 97, A(650) - 220, 224, 256); // its body's middle and its base
   const note = box(A(276) - 6, A(320) - 15, 156, 162); // the paper's corner
@@ -168,29 +227,32 @@ const savePng = (buf, w, file) => sharp(buf, { raw: { width: w, height: H, chann
   const m = {
     ...old,
     image: 'room.webp',
-    size: { width: W, height: H },
+    size: { width: WW, height: H },
+    // the words on the decks and spines (CinemaScene's WALL_TEXT, in the mockup room's art px) move with them
+    textDx: CUTS.left.d,
     screenPx: glass,
-    screenPct: pct(glass),
-    focalPoint: [+((((glass[0] + glass[2]) / 2) / W) * 100).toFixed(2), +((((glass[1] + glass[3]) / 2) / H) * 100).toFixed(2)],
+    screenPct: { left: +((glass[0] / WW) * 100).toFixed(3), top: +((glass[1] / H) * 100).toFixed(3), width: +(((glass[2] - glass[0]) / WW) * 100).toFixed(3), height: +(((glass[3] - glass[1]) / H) * 100).toFixed(3) },
+    // standing, the room is centred (it's laid out to be seen whole)
+    focalPoint: [50, +((((glass[1] + glass[3]) / 2) / H) * 100).toFixed(2)],
     monitorPct: pct([A(440), A(272), A(848), A(550)]),
     decksPct: [pct([A(388), A(6), A(914), A(136)]), pct([A(386), A(136), A(912), A(266)])],
     props: {
       ...old.props,
-      mug: { ...old.props.mug, boxPx: mug, boxPct: pct(mug), spill: { ...old.props.mug.spill, boxPct: pct(box(mug[0] - 72, mug[1] - 23, 295, 274)) } },
-      steam: { ...old.props.steam, boxPx: mug, boxPct: pct(mug) },
-      note: { ...old.props.note, boxPx: note, boxPct: pct(note) },
-      'plant-pot': { ...old.props['plant-pot'], boxPx: plant, boxPct: pct(plant) },
-      'plant-leaves': { ...old.props['plant-leaves'], boxPx: plant, boxPct: pct(plant) },
+      mug: { ...old.props.mug, boxPx: mv(mug), boxPct: pct(mug), spill: { ...old.props.mug.spill, boxPct: pct(box(mug[0] - 72, mug[1] - 23, 295, 274)) } },
+      steam: { ...old.props.steam, boxPx: mv(mug), boxPct: pct(mug) },
+      note: { ...old.props.note, boxPx: mv(note), boxPct: pct(note) },
+      'plant-pot': { ...old.props['plant-pot'], boxPx: mv(plant), boxPct: pct(plant) },
+      'plant-leaves': { ...old.props['plant-leaves'], boxPx: mv(plant), boxPct: pct(plant) },
     },
     // a peeled note comes to rest flat on the desk's back edge behind the mug (art px from where it hangs)
     noteLand: { dx: A(271) - (note[0] + 78), dy: A(DESK_Y) + 4 - (note[1] + 5) },
     lamp: { off: '/cinema/desk-off.webp', hitPct: pct([A(15), A(262), A(216), A(645)]) },
     lava: { boxPct: pct(lava) },
     pens: { files: [], boxPct: pct([0, 0, 1, 1]), originPct: [], hitPct: pct([0, 0, 1, 1]) },
-    antPct: { from: [+(((A(940)) / W) * 100).toFixed(2), +(((A(652)) / H) * 100).toFixed(2)], to: [+(((A(870)) / W) * 100).toFixed(2), +(((A(664)) / H) * 100).toFixed(2)] },
+    antPct: { from: [+(((mapX(A(940), A(652))) / WW) * 100).toFixed(2), +(((A(652)) / H) * 100).toFixed(2)], to: [+(((mapX(A(870), A(652))) / WW) * 100).toFixed(2), +(((A(664)) / H) * 100).toFixed(2)] },
     sides: { px: SW, left: '/cinema/side-left.png', right: '/cinema/side-right.png', leftOff: '/cinema/side-left-off.png', rightOff: '/cinema/side-right-off.png' },
   };
   delete m.decor; delete m.widen;
   fs.writeFileSync(path.join(CIN, 'room.json'), JSON.stringify(m, null, 2) + '\n');
-  console.log('done', W, H);
+  console.log('done', WW, H);
 })();

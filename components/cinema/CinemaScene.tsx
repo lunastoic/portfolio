@@ -67,6 +67,8 @@ interface Manifest {
   antPct: { from: number[]; to: number[] };
   /** Where a peeled note comes to rest, art px from where it hangs: on the desk behind the mug. */
   noteLand: { dx: number; dy: number };
+  /** How far the deck and spine words move in the widened room (art px). */
+  textDx?: number;
   /** Sprites that just sit in the room (the console, controller, headset and its cable), back to front. */
   decor?: { name: string; file: string; boxPct: PctBox; z: number }[];
   colors: { coffee: { dark: string; mid: string; hi: string } };
@@ -173,7 +175,7 @@ const WALL_TEXT: WallText[] = [
   { lines: ["COMPUTER ORGANIZATION"], x: 625, y: 766, size: 15.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
 ];
 const wallTextStyle = (t: WallText): CSSProperties => ({
-  left: `${(t.x / art.size.width) * 100}%`,
+  left: `${((t.x + (art.textDx ?? 0)) / art.size.width) * 100}%`,
   top: `${(t.y / art.size.height) * 100}%`,
   fontSize: `${(t.size / art.size.width) * 100}cqw`,
   color: t.color,
