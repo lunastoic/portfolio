@@ -1,0 +1,397 @@
+{
+  "colors": {
+    "screenBg": "#011e10",
+    "text": "#56e474",
+    "highlight": "#5cf17e",
+    "highlightText": "#032311",
+    "bezel": "#392519",
+    "coffee": {
+      "dark": "#2e1608",
+      "mid": "#6b3512",
+      "hi": "#a8703a"
+    }
+  },
+  "screenArt": {
+    "file": "screen-art.png",
+    "width": 160,
+    "height": 132
+  },
+  "image": "room.webp",
+  "size": {
+    "width": 1932,
+    "height": 941
+  },
+  "screenPx": [
+    715,
+    377,
+    1152,
+    693
+  ],
+  "screenPct": {
+    "left": 37.008,
+    "top": 40.064,
+    "width": 22.619,
+    "height": 33.581
+  },
+  "focalPoint": [
+    48.32,
+    56.85
+  ],
+  "monitorPct": {
+    "left": 35.093,
+    "top": 35.919,
+    "width": 26.708,
+    "height": 45.909
+  },
+  "decksPct": [
+    {
+      "left": 32.195,
+      "top": 0.744,
+      "width": 32.247,
+      "height": 16.047
+    },
+    {
+      "left": 32.298,
+      "top": 17.747,
+      "width": 32.143,
+      "height": 16.259
+    }
+  ],
+  "props": {
+    "mug": {
+      "file": "/cinema/prop-mug.png",
+      "boxPct": {
+        "left": 16.666,
+        "top": 59.83,
+        "width": 11.594,
+        "height": 27.205
+      },
+      "boxPx": [
+        322,
+        563,
+        546,
+        819
+      ],
+      "originPct": [
+        16.96,
+        85.94
+      ],
+      "spill": {
+        "boxPct": {
+          "left": 12.94,
+          "top": 57.386,
+          "width": 15.27,
+          "height": 29.118
+        },
+        "width": 295,
+        "height": 274,
+        "pivot": [
+          110,
+          243
+        ],
+        "rim": [
+          108,
+          79
+        ],
+        "landY": 240,
+        "mugLeft": 110
+      }
+    },
+    "steam": {
+      "file": "/props/mug-steam.png",
+      "boxPct": {
+        "left": 16.666,
+        "top": 59.83,
+        "width": 11.594,
+        "height": 27.205
+      },
+      "boxPx": [
+        322,
+        563,
+        546,
+        819
+      ],
+      "originPct": [
+        50,
+        100
+      ]
+    },
+    "note": {
+      "file": "/cinema/prop-sticky-1.png",
+      "boxPct": {
+        "left": 20.083,
+        "top": 36.982,
+        "width": 8.074,
+        "height": 17.216
+      },
+      "boxPx": [
+        388,
+        348,
+        544,
+        510
+      ],
+      "originPct": [
+        46.15,
+        12.04
+      ]
+    },
+    "plant-pot": {
+      "file": "/cinema/prop-plant-pot.png",
+      "boxPct": {
+        "left": 71.688,
+        "top": 50.372,
+        "width": 14.907,
+        "height": 35.707
+      },
+      "boxPx": [
+        1385,
+        474,
+        1673,
+        810
+      ],
+      "originPct": [
+        50,
+        95.24
+      ]
+    },
+    "plant-leaves": {
+      "file": "/cinema/prop-plant-leaves.png",
+      "boxPct": {
+        "left": 71.688,
+        "top": 50.372,
+        "width": 14.907,
+        "height": 35.707
+      },
+      "boxPx": [
+        1385,
+        474,
+        1673,
+        810
+      ],
+      "originPct": [
+        50,
+        61.9
+      ]
+    }
+  },
+  "antPct": {
+    "from": [
+      76.45,
+      84.38
+    ],
+    "to": [
+      62.63,
+      85.55
+    ]
+  },
+  "notes": [
+    "/cinema/prop-sticky-1.png",
+    "/cinema/prop-sticky-2.png",
+    "/cinema/prop-sticky-3.png",
+    "/cinema/prop-sticky-4.png",
+    "/cinema/prop-sticky-5.png",
+    "/cinema/prop-sticky-6.png",
+    "/cinema/prop-sticky-7.png"
+  ],
+  "lamp": {
+    "off": "/cinema/desk-off.webp",
+    "front": {
+      "file": "/cinema/lamp-front.png",
+      "boxPct": {
+        "left": 19.462,
+        "top": 35.069,
+        "width": 1.915,
+        "height": 8.183
+      }
+    },
+    "hitPct": {
+      "left": 10.663,
+      "top": 26.78,
+      "width": 9.317,
+      "height": 21.679
+    }
+  },
+  "pens": {
+    "files": [
+      "/cinema/sprite-pen-1.png",
+      "/cinema/sprite-pen-2.png",
+      "/cinema/sprite-pen-3.png"
+    ],
+    "boxPct": {
+      "left": 15.704,
+      "top": 66.351,
+      "width": 3.317,
+      "height": 5.203
+    },
+    "originPct": [
+      [
+        20.22,
+        100
+      ],
+      [
+        47.19,
+        100
+      ],
+      [
+        76.4,
+        100
+      ]
+    ],
+    "hitPct": {
+      "left": 14.855,
+      "top": 66.206,
+      "width": 3.675,
+      "height": 14.24
+    }
+  },
+  "leaves": {
+    "stems": "/cinema/prop-plant-stems.png",
+    "files": [
+      "/cinema/prop-leaf-0.png",
+      "/cinema/prop-leaf-1.png",
+      "/cinema/prop-leaf-2.png",
+      "/cinema/prop-leaf-3.png",
+      "/cinema/prop-leaf-4.png",
+      "/cinema/prop-leaf-5.png",
+      "/cinema/prop-leaf-6.png",
+      "/cinema/prop-leaf-7.png",
+      "/cinema/prop-leaf-8.png",
+      "/cinema/prop-leaf-9.png",
+      "/cinema/prop-leaf-10.png",
+      "/cinema/prop-leaf-11.png",
+      "/cinema/prop-leaf-12.png",
+      "/cinema/prop-leaf-13.png",
+      "/cinema/prop-leaf-14.png",
+      "/cinema/prop-leaf-15.png"
+    ],
+    "originPct": [
+      [
+        42.36,
+        26.79
+      ],
+      [
+        59.03,
+        24.4
+      ],
+      [
+        50.69,
+        17.26
+      ],
+      [
+        31.25,
+        36.31
+      ],
+      [
+        70.14,
+        33.93
+      ],
+      [
+        39.58,
+        38.69
+      ],
+      [
+        61.81,
+        37.5
+      ],
+      [
+        25.69,
+        48.21
+      ],
+      [
+        75.69,
+        45.83
+      ],
+      [
+        50.69,
+        33.93
+      ],
+      [
+        36.81,
+        52.98
+      ],
+      [
+        64.58,
+        52.98
+      ],
+      [
+        29.86,
+        61.31
+      ],
+      [
+        71.53,
+        61.31
+      ],
+      [
+        47.92,
+        50.6
+      ],
+      [
+        54.86,
+        51.79
+      ]
+    ]
+  },
+  "lava": {
+    "boxPct": {
+      "left": 64.183,
+      "top": 60.149,
+      "width": 5.383,
+      "height": 22.104
+    }
+  },
+  "sides": {
+    "px": 900,
+    "left": "/cinema/side-left.png",
+    "right": "/cinema/side-right.png",
+    "leftOff": "/cinema/side-left-off.png",
+    "rightOff": "/cinema/side-right-off.png"
+  },
+  "widen": {
+    "left": {
+      "d": 130,
+      "path": [
+        [
+          0,
+          322,
+          450
+        ],
+        [
+          322,
+          346,
+          450,
+          536
+        ],
+        [
+          346,
+          772,
+          536
+        ],
+        [
+          772,
+          808,
+          495
+        ],
+        [
+          808,
+          941,
+          486
+        ]
+      ]
+    },
+    "right": {
+      "d": 130,
+      "path": [
+        [
+          0,
+          772,
+          1440
+        ],
+        [
+          772,
+          941,
+          1412
+        ]
+      ]
+    }
+  }
+}

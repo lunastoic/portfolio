@@ -9,7 +9,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import manifestJson from "../../public/cinema/manifest.json";
+import manifestJson from "../../public/cinema/room.json";
 import LavaLamp from "./LavaLamp";
 import LofiOS, { type LofiPopup } from "./LofiOS";
 import { Spring, clamp01, easeOutCubic } from "./physics";
@@ -61,6 +61,9 @@ interface Manifest {
   };
   /** The room past the painting's edges (wall, desk, the things the edge cuts), lit and unlit. */
   sides: { px: number; left: string; right: string; leftOff: string; rightOff: string };
+  /** Where strips of wall and desk were cut into the painting (scripts/cinema-room.js): per side, rows
+   *  [y0, y1) and the painting column the cut runs down them, and the px put in. */
+  widen: Record<"left" | "right", { d: number; path: number[][] }>;
   lava: { boxPct: PctBox };
   pens: { files: string[]; boxPct: PctBox; originPct: number[][]; hitPct: PctBox };
   leaves: { stems: string; files: string[]; originPct: number[][] };
@@ -69,6 +72,19 @@ interface Manifest {
 }
 
 const art = manifestJson as unknown as Manifest;
+
+/** A painting column's place in the widened room the scene shows (art px), on row y. */
+const mapX = (x: number, y: number) => {
+  let out = x;
+  for (const side of ["left", "right"] as const) {
+    const leg = art.widen[side].path.find(([y0, y1]) => y >= y0 && y < y1);
+    if (!leg) continue;
+    const [y0, y1, x0, x1] = leg; // a leg slants from x0 to x1 down its rows, or runs straight at x0
+    const cut = x1 == null ? x0 : x0 + ((x1 - x0) * (y - y0)) / (y1 - y0);
+    if (x >= cut) out += art.widen[side].d;
+  }
+  return out;
+};
 
 const SIT_MS = 1700;
 const STAND_MS = 1400;
@@ -121,8 +137,8 @@ const NOTE_TEXTS = [
 
 /**
  * The words round the room (the decks and the book spines), set in real type over the places the painting's own
- * lettering was cleared (scripts/cinema-blend.js). Art px: x, y is the text's anchor (its
- * centre, or its left middle with align "left"), size the font size, rotate follows the
+ * lettering was cleared (scripts/cinema-blend.js). Painting px (mapped into the widened room by mapX): x, y is
+ * the text's anchor (its centre, or its left middle with align "left"), size the font size, rotate follows the
  * book spines' slant.
  */
 /** A run of a line in its own colour (the school's two colours share a line). */
@@ -162,7 +178,7 @@ const WALL_TEXT: WallText[] = [
   { lines: ["NETWORKS"], x: 72, y: 760, size: 16, color: "#f6cf93", align: "left", rotate: -4.6, track: 0.16, weight: 600 },
 ];
 const wallTextStyle = (t: WallText): CSSProperties => ({
-  left: `${(t.x / art.size.width) * 100}%`,
+  left: `${(mapX(t.x, t.y) / art.size.width) * 100}%`,
   top: `${(t.y / art.size.height) * 100}%`,
   fontSize: `${(t.size / art.size.width) * 100}cqw`,
   color: t.color,
@@ -279,7 +295,7 @@ const SIDE_PX = art.sides.px;
 /**
  * Standing back from the desk: the painting's full height always fits, so both decks and the
  * keyboard are in view. A window narrower than the painting crops its sides (monitor as centered as
- * the crop allows); a wider one sees the plain wall and desk painted on either side of it.
+ * the crop allows, never a gap); only a wider one sees the room painted on past either side of it.
  */
 function standingStage(vw: number, vh: number): Stage {
   const { width: W, height: H } = art.size;
@@ -288,7 +304,8 @@ function standingStage(vw: number, vh: number): Stage {
   const w = W * scale;
   const h = H * scale;
   const side = SIDE_PX * scale;
-  const x = Math.min(side, Math.max(vw - w - side, vw / 2 - (fx / 100) * w));
+  const centred = vw / 2 - (fx / 100) * w;
+  const x = w >= vw ? Math.min(0, Math.max(vw - w, centred)) : Math.min(side, Math.max(vw - w - side, centred));
   const y = Math.min(0, Math.max(vh - h, (vh - h) / 2));
   return { x, y, w, h, scale };
 }
@@ -821,6 +838,7 @@ export default function CinemaScene() {
   const standingTab = pose === "standing" ? 0 : -1;
   // the unlit room fades in over the lit one as the lamp goes off (with a flicker, restarted by the key)
   const offClass = `cinema__off${lampOn ? "" : " is-off"}${lampSwitches ? " is-switching" : ""}`;
+  const sideWidth = `${(SIDE_PX / art.size.width) * 100}%`;
 
   return (
     <div className={classes} data-layout={layout}>
@@ -864,10 +882,10 @@ export default function CinemaScene() {
           />
 
           {/* The room past the painting's edges, for wide windows, lit and unlit */}
-          <div className="cinema__side cinema__side--left" style={{ backgroundImage: `url(${art.sides.left})` }} aria-hidden="true">
+          <div className="cinema__side cinema__side--left" style={{ width: sideWidth, backgroundImage: `url(${art.sides.left})` }} aria-hidden="true">
             <div key={`side-l-${lampSwitches}`} className={offClass} style={{ backgroundImage: `url(${art.sides.leftOff})` }} />
           </div>
-          <div className="cinema__side cinema__side--right" style={{ backgroundImage: `url(${art.sides.right})` }} aria-hidden="true">
+          <div className="cinema__side cinema__side--right" style={{ width: sideWidth, backgroundImage: `url(${art.sides.right})` }} aria-hidden="true">
             <div key={`side-r-${lampSwitches}`} className={offClass} style={{ backgroundImage: `url(${art.sides.rightOff})` }} />
           </div>
 

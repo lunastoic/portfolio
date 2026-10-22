@@ -4,6 +4,7 @@ Assets for the pixel-art "v2" room. Nothing here is used by v1.
 
 | File | What it is |
 |---|---|
+| `room.webp`, `room.json` | What the scene actually shows: `desk.webp` widened to 1932 px by two 130 px strips of plain wall and desk cut in between the lamp, the notes and the mug and the monitor on the left and between the poster, the mousepad and the bookcase on the right (`scripts/cinema-room.js`), so a full-screen browser is covered by the painting itself with the shelf and the bookcase at its edges. `room.json` is `manifest.json` with every box moved into that frame, plus the lamp-off and side images and the cuts (the scene maps its own painting-px, the wall text, through them). |
 | `desk.webp` | The painting, 1672x941 ("Cozy Retro Developer Workspace"): no window, the name and title on two skateboard decks above the monitor. Phones cover-fit a portrait crop of the same image. The mug, the wall note and the plant are lifted out and the painting filled behind them; the lamp head is painted in place, and the wall, tower edge and desk behind the plant and the wall behind the cup's pens are rebuilt from the original painting by `scripts/cinema-blend.js`. The same script clears the painting's own lettering (the decks, the poster, the book spines, the shelf's spines); the scene sets real type there instead (`WALL_TEXT` in `CinemaScene.tsx`, in Oxanium), and the live screen shows standing too, so none of the painted words show. The decks' faces are flattened to plain colour (green, plum) under the painted lettering; the wall right of the monitor, which the painting lit as if a second lamp stood there, is toned down so the desk lamp is the room's one light. 256-colour quantised, saved lossless. |
 | `desk-off.webp` | The whole painting again with the desk lamp switched off, laid over the lit one when the lamp is clicked: the lamp's light is measured off the bare wall and desk against the room's ambient and divided out (so the cone on the wall and the beam on the desk go), the room drops a little darker and cooler, the monitor's green reaches the desk in front of it, and the bulb sits dark in its shade (`scripts/cinema-room.js`). |
 | `side-left.png`, `side-right.png`, `side-*-off.png` | The room past the painting's edges, 900 art px each side, for windows wider than the painting: the wall, the desk and its front carried on with the painting's own grain, each row running from the painting's edge colour toward the room's ambient, and the things the edge cuts (the shelf, the pegboard, the book stack, the bookcase, the tower, the book on the desk) carried on a little way and ended. The `-off` pair is the same from the unlit painting. |
@@ -13,7 +14,7 @@ Assets for the pixel-art "v2" room. Nothing here is used by v1.
 | `sprite-ant.png` | A small ant drawn by the script; it walks out of the plant pot when the plant is clicked. |
 | `screen-art.png` | The moon-and-mountains illustration from the painted screen, background keyed out, used by the live menu. |
 | `mug.png` | The pixel mug icon with its background keyed out, shown while the art loads. |
-| `manifest.json` | Image size, the painted screen's rect, the focal point, the decks' boxes (the seated crop starts below them), hotspot boxes, each prop's box, file and transform origin (percentages), the coffee-spill geometry, the ant's path, the lamp-off painting and the side images, and the screen palette sampled from the art. |
+| `manifest.json` | In the painting's own frame (the scripts up to `cinema-blend.js` read and write it; the scene reads `room.json`): image size, the painted screen's rect, the focal point, the decks' boxes (the seated crop starts below them), hotspot boxes, each prop's box, file and transform origin (percentages), the coffee-spill geometry, the ant's path, the lamp-off painting and the side images, and the screen palette sampled from the art. |
 
 The mug (with its steam), the sticky notes and the plant (pot and leaves as two
 layers) are not cut from the painting: they are the pixel drafts from
@@ -48,5 +49,6 @@ draws the drafts themselves. Last, `node scripts/cinema-blend.js` repairs the pa
 (from `scripts/art/desk-base.webp`, the output of the two steps above, and
 `scripts/art/desk-original.webp`, the untouched painting), cuts the pens, writes
 the `prop-*` files, adds its entries to the manifest, and ends by running
-`scripts/cinema-room.js` (also runnable on its own against `desk.webp`), which
-writes `desk-off.webp` and the `side-*.png` files.
+`scripts/cinema-room.js` (also runnable on its own against `desk.webp` and
+`manifest.json`), which writes `room.webp`, `room.json`, `desk-off.webp` and the
+`side-*.png` files.

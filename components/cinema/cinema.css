@@ -42,11 +42,10 @@
   opacity: 1;
 }
 
-/* the room carried on past the painting, 900 art px each side, as crisp as the painting */
+/* the room carried on past the painting (the width is set from the manifest), as crisp as the painting */
 .cinema__side {
   position: absolute;
   top: 0;
-  width: calc(900 / 1672 * 100%);
   height: 100%;
   background-size: 100% 100%;
   image-rendering: pixelated;

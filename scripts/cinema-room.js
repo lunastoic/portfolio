@@ -1,44 +1,76 @@
-// Dresses the finished v2 painting (public/cinema/desk.webp) for the room around it.
+// Dresses the finished v2 painting (public/cinema/desk.webp + manifest.json) into the room the scene shows.
 // usage: node scripts/cinema-room.js        (cinema-blend.js runs this last, on the painting it just wrote)
 //
-// - desk-off.webp: the painting with the desk lamp switched off. The lamp's light is measured off the
-//   bare wall and desk against the room's ambient (the wall right of the monitor, the bare desk by the
-//   tower), carried smoothly across the things it falls on, and divided out, so the cone on the wall and
-//   the beam on the desk go with it; then the room drops a little darker and cooler, the monitor's green
-//   reaches the desk in front of it, and the bulb sits dark in its shade.
-// - side-left.png, side-right.png (and side-*-off.png for the lamp off): the room past the painting's
-//   edges for wide windows, built from the painting's own pixels so it scales as crisply: the plain wall
-//   behind the desk, the desk and its front carried on with their grain, the lamp's light on the left
-//   fading out with distance, and the things the edge cuts (the shelf, the pegboard, the book stack, the
-//   bookcase, the tower, the book on the desk) ended a few px out so only the wall goes on.
+// - room.webp, room.json: the painting widened by WIDEN.left.d + WIDEN.right.d px of plain wall and desk, so
+//   that a full-screen browser is covered by the painting itself and the shelf and the bookcase sit at its
+//   edges. Each strip is cut in along a path that threads between the things in the room (left: between the
+//   lamp, the notes and the mug and the monitor, then between the coaster and the keyboard; right: between
+//   the poster and the bookcase, then between the mousepad and the tower) and carries the painting's colour at
+//   the cut out into the room's ambient (the lamp's glow fading within a short way; the ledge and the desk
+//   running straight across), with the wall's dither and the desk's streaks. room.json is manifest.json
+//   with every box moved into the widened frame (manifest.json itself stays in the painting's frame for the
+//   scripts before this one), plus the lamp-off and side images and the cuts, for the scene's own art-px.
+// - desk-off.webp: the room with the desk lamp switched off, widened the same way. The lamp's light is
+//   measured off the bare wall and desk against the room's ambient (the wall right of the monitor, the bare
+//   desk by the tower), carried smoothly across the things it falls on, and divided out, so the cone on the
+//   wall and the beam on the desk go with it; then the room drops a little darker and cooler, the monitor's
+//   green reaches the desk in front of it, and the bulb sits dark in its shade.
+// - side-left.png, side-right.png (and side-*-off.png for the lamp off): the room past the widened painting's
+//   edges for windows wider still, built from its own pixels so it scales as crisply: the plain wall behind
+//   the desk, the desk and its front carried on with their grain, and the things the edge cuts (the shelf, the
+//   pegboard, the book stack, the bookcase, the tower, the book on the desk) ended a few px out.
 const fs = require('fs'), path = require('path'), sharp = require('sharp');
 
 const ROOT = path.join(__dirname, '..'), CIN = path.join(ROOT, 'public/cinema');
 const W = 1672, H = 941, DESK = 772, FRONT = 890, SW = 900;
+
+/**
+ * Where the painting is cut and how much room goes in: per side, the rows [y0, y1) and the column the cut
+ * runs down them (or from one column to another, slanting, where it has to step across between things),
+ * threading between the things in the room, and the px of wall and desk put in there.
+ */
+const WIDEN = {
+  left: { d: 130, path: [[0, 322, 450], [322, 346, 450, 536], [346, 772, 536], [772, 808, 495], [808, H, 486]] },
+  right: { d: 130, path: [[0, 772, 1440], [772, H, 1412]] },
+};
+const WIDE_W = W + WIDEN.left.d + WIDEN.right.d;
+const cutAt = (side, y) => {
+  const [y0, y1, x0, x1] = WIDEN[side].path.find(([a, b]) => y >= a && y < b);
+  return x1 == null ? x0 : Math.round(x0 + ((x1 - x0) * (y - y0)) / (y1 - y0));
+};
+/** A painting column's place in the widened frame, on row y. */
+const mapX = (x, y) => x + (x >= cutAt('left', y) ? WIDEN.left.d : 0) + (x >= cutAt('right', y) ? WIDEN.right.d : 0);
+/** From these rows down, what the cut runs through goes straight across (the ledge, the desk, its front). */
+const FLAT_FROM = { left: 556, right: 500 };
 /** A clean stretch of bare desk, right of the mousepad and short of the book by the tower. */
 const DESK_REF = [1416, 1470];
 
 const ss = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
-const idx = (x, y) => (y * W + x) * 3;
-const avg = (b, x0, x1, y0, y1) => {
+const idx = (x, y, w = W) => (y * w + x) * 3;
+const avg = (b, x0, x1, y0, y1, w = W) => {
   const a = [0, 0, 0]; let n = 0;
-  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = idx(x, y); a[0] += b[i]; a[1] += b[i + 1]; a[2] += b[i + 2]; n++; }
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = idx(x, y, w); a[0] += b[i]; a[1] += b[i + 1]; a[2] += b[i + 2]; n++; }
   return a.map((v) => v / n);
 };
 /** A tidy hash in [-0.5, 0.5) for a little noise that is the same on every run. */
 const hash = (x, y, s) => ((Math.imul((y * 7919 + x) * 3 + s, 2654435761) >>> 24) / 255) - 0.5;
 
-/** The room's ambient colour row by row: the wall right of the monitor, the bare desk beside the tower. */
-function ambient(img) {
+/** Clean stretches to read the room's ambient off: the wall right of the monitor, the desk's back left of the
+ *  mousepad (by the tower it is in its shadow), the bare desk by the tower; painting columns. */
+const REF_COLS = { wall: [1300, 1340], deskBack: [1240, 1310], desk: DESK_REF };
+/** The same stretches in the widened frame. */
+const WIDE_COLS = { wall: REF_COLS.wall.map((x) => mapX(x, 300)), deskBack: REF_COLS.deskBack.map((x) => mapX(x, 780)), desk: REF_COLS.desk.map((x) => mapX(x, 800)) };
+
+/** The room's ambient colour row by row, read off the clean stretches of wall and desk. */
+function ambient(img, w = W, cols = REF_COLS) {
   const raw = new Float32Array(H * 3);
   for (let y = 0; y < H; y++) {
     let c;
-    if (y < DESK) { const yy = Math.min(y, 556); c = avg(img, 1300, 1340, yy, yy + 2).map((v) => v * (y > 556 ? 1 - 0.18 * ss((y - 556) / 216) : 1)); }
-    // the desk's back rows by the tower are in its shadow: read them left of the mousepad instead
-    else if (y < 790) c = avg(img, 1240, 1310, y, y);
-    else c = avg(img, DESK_REF[0], DESK_REF[1], y, y);
+    if (y < DESK) { const yy = Math.min(y, 556); c = avg(img, cols.wall[0], cols.wall[1], yy, yy + 2, w).map((v) => v * (y > 556 ? 1 - 0.18 * ss((y - 556) / 216) : 1)); }
+    else if (y < 790) c = avg(img, cols.deskBack[0], cols.deskBack[1], y, y, w);
+    else c = avg(img, cols.desk[0], cols.desk[1], y, y, w);
     raw[y * 3] = c[0]; raw[y * 3 + 1] = c[1]; raw[y * 3 + 2] = c[2];
   }
   // smoothed down the rows (the bare wall and desk end up exactly this, so it mustn't step)
@@ -215,6 +247,109 @@ function relight(img, screen, debug) {
    ------------------------------------------------------------------------------------------------ */
 
 /**
+ * The painting's grain, lifted off its clean stretches: the wall's fine dither (tiled out mirrored, so it
+ * never seams) and the desk's streaks, which run on along their rows. `k` counts across the new wall.
+ */
+function grainOf(img, w, cols) {
+  const px = (x, y) => { const i = idx(clamp(x, 0, w - 1), clamp(y, 0, H - 1), w); return [img[i], img[i + 1], img[i + 2]]; };
+  const [wx0, wx1] = cols.wall, wn = wx1 - wx0, [dx0, dx1] = cols.desk;
+  const wallMean = Array.from({ length: H }, (_, y) => avg(img, wx0, wx1 - 1, y, y, w));
+  const deskMean = Array.from({ length: H }, (_, y) => avg(img, dx0, dx1, y, y, w));
+  const streak = deskMean.map((m, y) => { const a = avg(img, dx0, dx1, Math.max(DESK, y - 6), Math.min(H - 1, y + 6), w); return m.map((v, c) => v - a[c]); });
+  return (k, y) => {
+    if (y >= DESK) return streak[y].map((v) => v * 0.8 + hash(k, y, 3) * 4);
+    const yy = y <= 556 ? y : 1112 - y, m = k % (2 * wn), j = m < wn ? m : 2 * wn - 1 - m;
+    return px(wx0 + j, yy).map((v, c) => v - wallMean[yy][c]);
+  };
+}
+
+/* ------------------------------------------------------------------------------------------------
+   Room put into the painting
+   ------------------------------------------------------------------------------------------------ */
+
+/** The painting with WIDEN's strips of wall and desk cut in. */
+function widen(src) {
+  const out = Buffer.alloc(WIDE_W * H * 3);
+  const ref = ambient(src), amb = (y) => [ref[y * 3], ref[y * 3 + 1], ref[y * 3 + 2]];
+  for (let y = 0; y < H; y++) {
+    let o = y * WIDE_W * 3, x = 0;
+    for (const side of ['left', 'right']) {
+      const cut = cutAt(side, y), d = WIDEN[side].d;
+      src.copy(out, o, idx(x, y), idx(cut, y)); o += (cut - x) * 3; x = cut;
+      // the strip: the painting's colour either side of the cut, carried across. Up the wall the lamp's
+      // extra light (over the room's ambient) fades out within a short way, so between the lamp and the
+      // monitor the wall settles to the room's own colour; where the cut runs through the ledge or the
+      // desk, one side blends straight into the other. Left of the monitor there's only the one side.
+      // The strip's colour runs from the painting's colour just left of the cut to the colour just right
+      // of it (what's left of the monitor has only the one side); up the wall both fade toward the room's
+      // ambient on the way, so the lamp's extra light dies out within a short way, while across the ledge
+      // and the desk one blends straight into the other. Over that goes the painting's own dither from
+      // right beside the cut (whichever side is the plainer there), tiled mirrored, so the texture meets
+      // without a seam. An outline that happens to sit by the cut is kept out of the colours.
+      const a = amb(y), flat = y >= FLAT_FROM[side], P = 12;
+      const one = side === 'left' && y >= 330 && y < 772;
+      const px = (x) => { const i = idx(clamp(x, 0, W - 1), y); return [src[i], src[i + 1], src[i + 2]]; };
+      const lumAt = (x) => { const [r, g, b] = px(x); return 0.299 * r + 0.587 * g + 0.114 * b; };
+      const cleanAvg = (x0, x1) => {
+        const xs = []; for (let x = x0; x <= x1; x++) xs.push(x);
+        const ls = xs.map(lumAt).sort((p, q) => p - q), med = ls[ls.length >> 1];
+        const keep = xs.filter((x) => Math.abs(lumAt(x) - med) <= 18);
+        return keep.reduce((acc, x) => { const c = px(x); return acc.map((v, i) => v + c[i] / keep.length); }, [0, 0, 0]);
+      };
+      const range = (x0, x1) => { let lo = 1e9, hi = -1e9; for (let x = x0; x <= x1; x++) { const l = lumAt(x); if (l < lo) lo = l; if (l > hi) hi = l; } return hi - lo; };
+      const useRight = !one && range(cut, cut + P - 1) < range(cut - P, cut - 1);
+      const gx0 = useRight ? cut : cut - P, gMean = cleanAvg(gx0, gx0 + P - 1);
+      const grainAt = (k) => { const m = k % (2 * P), j = m < P ? m : 2 * P - 1 - m; return px(useRight ? gx0 + j : gx0 + P - 1 - j).map((v, i) => clamp(v - gMean[i], -14, 14)); };
+      const L = cleanAvg(cut - 8, cut - 1), R = one ? null : cleanAvg(cut, cut + 7);
+      for (let k = 0; k < d; k++) {
+        const s = k / (d - 1), g = grainAt(k), n = hash(k + cut, y, 5) * 1.5;
+        let c;
+        if (flat) c = R ? L.map((v, i) => lerp(v, R[i], s)) : L;
+        else {
+          const fl = L.map((v, i) => a[i] + (v - a[i]) * Math.exp(-k / 140));
+          const fr = R ? R.map((v, i) => a[i] + (v - a[i]) * Math.exp(-(d - 1 - k) / 140)) : fl;
+          c = fl.map((v, i) => lerp(v, fr[i], R ? s : 0));
+        }
+        for (let i = 0; i < 3; i++) out[o + i] = clamp(Math.round(c[i] + g[i] + n), 0, 255);
+        o += 3;
+      }
+    }
+    src.copy(out, o, idx(x, y), idx(W, y));
+  }
+  return out;
+}
+
+/** manifest.json's boxes and points, moved into the widened frame. */
+function roomManifest(m) {
+  const isPctBox = (v) => v && typeof v === 'object' && ['left', 'top', 'width', 'height'].every((k) => typeof v[k] === 'number');
+  const pctBox = (b) => {
+    const x = (b.left / 100) * W, y = ((b.top + b.height / 2) / 100) * H;
+    return { ...b, left: +((mapX(x, y) / WIDE_W) * 100).toFixed(3), width: +(((b.width / 100) * W / WIDE_W) * 100).toFixed(3) };
+  };
+  const pxBox = ([x0, y0, x1, y1]) => { const d = mapX(x0, (y0 + y1) / 2) - x0; return [x0 + d, y0, x1 + d, y1]; };
+  const pt = ([x, y]) => [+((mapX((x / 100) * W, (y / 100) * H) / WIDE_W) * 100).toFixed(2), y];
+  const walk = (v, key) => {
+    if (Array.isArray(v)) {
+      if (/Px$/.test(key) && v.length === 4) return pxBox(v);
+      if (key === 'focalPoint' || key === 'from' || key === 'to') return pt(v);
+      return v.map((e) => walk(e, key));
+    }
+    if (isPctBox(v)) return pctBox(v);
+    if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, e]) => [k, walk(e, k)]));
+    return v;
+  };
+  const r = walk(m, '');
+  r.image = 'room.webp';
+  r.size = { width: WIDE_W, height: H };
+  r.widen = WIDEN;
+  return r;
+}
+
+/* ------------------------------------------------------------------------------------------------
+   The room past the painting's edges
+   ------------------------------------------------------------------------------------------------ */
+
+/**
  * Rows at each edge that end on plain wall, desk or desk front. The rest is something the edge cuts
  * through (the shelf, the pegboard and the book stack on the left; the bookcase, the tower and the book
  * on the desk on the right): it runs on a few px past the edge to its outline, and the wall and desk go
@@ -223,18 +358,19 @@ function relight(img, screen, debug) {
 const PLAIN = { left: [[0, 129], [509, 604], [786, H - 1]], right: [[0, 79], [849, H - 1]] };
 const CUT = 6;
 
-function sides(src, suffix) {
-  const ref = ambient(src);
+function sides(src, w, cols) {
+  const ref = ambient(src, w, cols);
   const amb = (y) => [ref[y * 3], ref[y * 3 + 1], ref[y * 3 + 2]];
+  const grain = grainOf(src, w, cols);
   const files = {};
   for (const side of ['left', 'right']) {
     const out = Buffer.alloc(SW * H * 3);
-    const ex = side === 'left' ? 0 : W - 1;
+    const ex = side === 'left' ? 0 : w - 1;
     const X = (k) => (side === 'left' ? SW - 1 - k : k); // k counts out from the painting
     const put = (k, y, c) => { const o = (y * SW + X(k)) * 3; out[o] = clamp(Math.round(c[0]), 0, 255); out[o + 1] = clamp(Math.round(c[1]), 0, 255); out[o + 2] = clamp(Math.round(c[2]), 0, 255); };
-    const px = (x, y) => { const i = idx(clamp(x, 0, W - 1), clamp(y, 0, H - 1)); return [src[i], src[i + 1], src[i + 2]]; };
+    const px = (x, y) => { const i = idx(clamp(x, 0, w - 1), clamp(y, 0, H - 1), w); return [src[i], src[i + 1], src[i + 2]]; };
     /** The painting's column `j` in from the edge, mirrored back and forth over `n` columns. */
-    const tile = (k, n) => { const m = k % (2 * n), j = m < n ? m : 2 * n - 1 - m; return side === 'left' ? j : W - 1 - j; };
+    const tile = (k, n) => { const m = k % (2 * n), j = m < n ? m : 2 * n - 1 - m; return side === 'left' ? j : w - 1 - j; };
     const zone = (y) => (y < DESK ? [0, DESK - 1] : y < FRONT ? [DESK, FRONT - 1] : [FRONT, H - 1]);
 
     // how much lighter or darker the painting's edge is than the room's ambient, row by row: read off the
@@ -244,7 +380,7 @@ function sides(src, suffix) {
     const plain = new Uint8Array(H), lift = new Array(H);
     for (const [a, b] of PLAIN[side]) for (let y = a; y <= b; y++) {
       plain[y] = 1;
-      const e = avg(src, side === 'left' ? 0 : W - 6, side === 'left' ? 5 : W - 1, y, y);
+      const e = avg(src, side === 'left' ? 0 : w - 6, side === 'left' ? 5 : w - 1, y, y, w);
       lift[y] = e.map((v, c) => v / Math.max(1, amb(y)[c]));
     }
     for (let y = 0; y < H; y++) if (!plain[y]) {
@@ -259,17 +395,6 @@ function sides(src, suffix) {
       return s.map((v) => v / (y1 - y0 + 1));
     });
     const soft = blurRows(blurRows(lift));
-
-    // the painting's grain, lifted off clean stretches of wall and desk: the wall's fine dither is
-    // tiled out (mirrored, so it never seams); the desk's streaks of grain run on along their rows
-    const rowMean = (x0, n) => Array.from({ length: H }, (_, y) => avg(src, x0, x0 + n - 1, y, y));
-    const wallMean = rowMean(1300, 40), deskMean = rowMean(DESK_REF[0], DESK_REF[1] - DESK_REF[0] + 1);
-    const streak = deskMean.map((m, y) => { const a = avg(src, DESK_REF[0], DESK_REF[1], Math.max(DESK, y - 6), Math.min(H - 1, y + 6)); return m.map((v, c) => v - a[c]); });
-    const grain = (k, y) => {
-      if (y >= DESK) return streak[y].map((v) => v * 0.8 + hash(k, y, 3) * 4);
-      const yy = y <= 556 ? y : 1112 - y, m = k % 80, j = m < 40 ? m : 79 - m;
-      return px(1300 + j, yy).map((v, c) => v - wallMean[yy][c]);
-    };
     const dim = (k) => 1 - 0.3 * ss((k - 120) / (SW - 120));
 
     for (let y = 0; y < H; y++) {
@@ -292,25 +417,31 @@ function sides(src, suffix) {
 /* ------------------------------------------------------------------------------------------------ */
 
 const savePalette = (buf, w, h, file, colours) => sharp(buf, { raw: { width: w, height: h, channels: 3 } }).png({ palette: true, colours, dither: 0 }).toFile(file);
+const saveWebp = async (buf, w, file) => {
+  const q = await sharp(buf, { raw: { width: w, height: H, channels: 3 } }).png({ palette: true, colours: 256, dither: 0 }).toBuffer();
+  await sharp(q).webp({ lossless: true, effort: 6 }).toFile(file + '.tmp');
+  fs.renameSync(file + '.tmp', file);
+};
 
-/** Everything, from the finished painting (a raw RGB buffer, W×H). Rewrites the manifest's entries. */
+/** Everything, from the finished painting (a raw RGB buffer, W×H) and manifest.json; writes room.json. */
 async function run(img) {
-  const mf = path.join(CIN, 'manifest.json'), m = JSON.parse(fs.readFileSync(mf, 'utf8'));
+  const m = JSON.parse(fs.readFileSync(path.join(CIN, 'manifest.json'), 'utf8'));
   const off = relight(img, m.screenPx);
-  const q = await sharp(off, { raw: { width: W, height: H, channels: 3 } }).png({ palette: true, colours: 256, dither: 0 }).toBuffer();
-  await sharp(q).webp({ lossless: true, effort: 6 }).toFile(path.join(CIN, 'desk-off.webp.tmp'));
-  fs.renameSync(path.join(CIN, 'desk-off.webp.tmp'), path.join(CIN, 'desk-off.webp'));
-  for (const [src, suffix] of [[img, ''], [off, '-off']]) {
-    const s = sides(src, suffix);
+  const room = widen(img), roomOff = widen(off);
+  await saveWebp(room, WIDE_W, path.join(CIN, 'room.webp'));
+  await saveWebp(roomOff, WIDE_W, path.join(CIN, 'desk-off.webp'));
+  for (const [src, suffix] of [[room, ''], [roomOff, '-off']]) {
+    const s = sides(src, WIDE_W, WIDE_COLS);
     for (const side of ['left', 'right']) await savePalette(s[side], SW, H, path.join(CIN, `side-${side}${suffix}.png`), 128);
   }
-  m.lamp.off = '/cinema/desk-off.webp';
-  delete m.lamp.shade;
-  m.sides = { px: SW, left: '/cinema/side-left.png', right: '/cinema/side-right.png', leftOff: '/cinema/side-left-off.png', rightOff: '/cinema/side-right-off.png' };
-  fs.writeFileSync(mf, JSON.stringify(m, null, 2) + '\n');
+  const r = roomManifest(m);
+  r.lamp.off = '/cinema/desk-off.webp';
+  delete r.lamp.shade;
+  r.sides = { px: SW, left: '/cinema/side-left.png', right: '/cinema/side-right.png', leftOff: '/cinema/side-left-off.png', rightOff: '/cinema/side-right-off.png' };
+  fs.writeFileSync(path.join(CIN, 'room.json'), JSON.stringify(r, null, 2) + '\n');
 }
 
-module.exports = { run, relight, sides };
+module.exports = { run, relight, widen, sides, WIDEN, WIDE_W };
 
 if (require.main === module) {
   (async () => {
