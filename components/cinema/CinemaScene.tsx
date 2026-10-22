@@ -107,10 +107,14 @@ const DRIP_X = [118, 216];
 const PEEL_S = 0.24;
 /** Lying on the desk, how far over the note lies (degrees from the wall): flat as the desk is seen. */
 const NOTE_FLAT = 80;
-const NOTE_GRAVITY = 900; // art px / s²
-const NOTE_DRAG = 5.2; // 1/s, so it falls at about 170 art px/s
-const NOTE_SWAY = 34; // art px
-const NOTE_SWAY_W = 5.2; // rad/s
+/** Real units: a 76 mm sticky note is about 156 art px across, so about 2000 art px to the metre. */
+const ART_PX_PER_M = 2000;
+const NOTE_GRAVITY = 9.81 * ART_PX_PER_M; // art px / s²
+/** A sticky note flutters down at about 0.75 m/s once it's going (paper's drag tops it out fast). */
+const NOTE_TERMINAL = 0.75 * ART_PX_PER_M;
+const NOTE_DRAG = NOTE_GRAVITY / NOTE_TERMINAL; // 1/s
+const NOTE_SWAY = 16; // art px: the side-to-side glide of the flutter
+const NOTE_SWAY_W = 15; // rad/s: about two and a half swings a second
 const NOTE_LAND_Y = art.noteLand.dy; // art px below the wall spot: its top edge on the desk's back edge, behind the mug
 const NOTE_LAND_X = art.noteLand.dx; // art px it glides across on the way down, to end up behind the mug
 const NOTE_SCATTER = [10, 3, 14]; // a landed note's spread: ± art px across, ± art px deep, ± degrees
@@ -601,9 +605,11 @@ export default function CinemaScene() {
           }
         } else if (n.phase === "fall") {
           // paper falls at a slow terminal speed, gliding side to side and banking into each swing
-          n.vy += (NOTE_GRAVITY - NOTE_DRAG * n.vy) * dt;
+          // paper drops fast then tops out; each swing of the flutter, as it lies flatter, it catches more air
+          const flutter = 1 + 0.45 * Math.cos(2 * NOTE_SWAY_W * n.t);
+          n.vy += (NOTE_GRAVITY - NOTE_DRAG * flutter * n.vy) * dt;
           n.y += n.vy * dt;
-          const grow = 1 - Math.exp(-2.4 * n.t);
+          const grow = 1 - Math.exp(-9 * n.t);
           const ph = NOTE_SWAY_W * n.t;
           n.x = NOTE_SWAY * grow * Math.sin(ph) * n.side;
           // over the last stretch it flattens out toward the desk, so its lower edge never swings

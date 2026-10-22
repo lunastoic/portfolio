@@ -28,7 +28,22 @@ const S = 2, GW = 1300, GH = 636, SIDE = 450, EW = GW + 2 * SIDE;
 /** Mockup px (1339 x 756) to room pixels. */
 const M = (mx, my) => [Math.round(0.8425 * mx + 86), Math.round(0.8425 * my)];
 const DESK = 535, LIP = 626, FRONT = 630; // the desk's back edge, its front lip, its front face
-const SEAMS = [211, 1112]; // panel seams in the wall
+/**
+ * The desk fits a closet wall to wall: the back wall's inside corners near the room's edges, the side walls
+ * coming forward from them (toward the vanishing point behind the monitor), the desk meeting each along a
+ * diagonal crease. Returns the side wall's shade at a pixel, or null where it's back wall or desk.
+ */
+const CORNER = [64, 1236], VP = [640, 360];
+function closet(rx, Y) {
+  for (const [c, dir] of [[CORNER[0], -1], [CORNER[1], 1]]) {
+    const k = Math.abs((c - VP[0]) / (DESK - VP[1])), edge = c + dir * (Y > DESK ? (Y - DESK) * k : 0);
+    const out = (rx - edge) * dir; // px past the corner line, into the side wall
+    if (out < 0) continue;
+    if (out < 1.5) return 0.1; // the crease
+    return 0.44 - 0.12 * ss(out / 420) + 0.04 * (vnoise(rx, Y, 23, 30) - 0.5) + (out < 4 ? -0.08 : 0);
+  }
+  return null;
+}
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -116,7 +131,8 @@ function wall() {
     const rx = x - SIDE;
     let v = 0.5 + 0.08 * (vnoise(x, y, 3, 60) - 0.5) + 0.06 * (vnoise(x, y / 7, 5, 3) - 0.5) + 0.03 * (hash(x, y, 9) - 0.5);
     // the panel seams: a dark line with a lit edge beside it
-    for (const sx of SEAMS) { if (rx === sx) v = 0.12; else if (rx === sx + 1) v = 0.62; }
+    const side = closet(rx, y);
+    if (side !== null) v = side;
     cv.put(x, y, cell(WALLR, v, 0, 'wall', { noOutline: true }));
   }
   return asset('wall', -SIDE, 0, cv, { outline: false, dither: 1, fine: true });
@@ -138,6 +154,8 @@ function desk() {
       if (seams.includes(y) || joint) v = 0.3;
       else v = 0.55 + 0.1 * Math.sin(x * 0.035 + p * 1.7 + 2.6 * vnoise(x, y * 4, 11 + p, 40)) + 0.05 * (hash(x, y, 17) - 0.5) - 0.06 * (1 - y / (LIP - DESK));
     }
+    const side = closet(x - SIDE, Y);
+    if (side !== null) { cv.put(x, y, cell(WALLR, side, 0, 'wall', { noOutline: true })); continue; }
     cv.put(x, y, cell(WOOD, v, 0, 'desk', { noOutline: true }));
   }
   return asset('desk', -SIDE, DESK, cv, { outline: false, dither: 1, fine: true });
@@ -449,7 +467,7 @@ function dome(W, H, inside, cap) {
 
 /** An iPad lying on the desk, screen off, with a white Apple Pencil across it. */
 function ipad() {
-  const X = 90, Y = 544, W = 242, H = 92, cv = new Cv(W, H), cx = 121, cy = 46, hw = 100, hh = 30, a = (8 * Math.PI) / 180;
+  const X = 26, Y = 546, W = 242, H = 92, cv = new Cv(W, H), cx = 121, cy = 46, hw = 86, hh = 28, a = (8 * Math.PI) / 180;
   const ca = Math.cos(a), sa = Math.sin(a);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const dx = x - cx, dy = y - cy, u = dx * ca - dy * sa, v = dx * sa + dy * ca;
@@ -467,7 +485,7 @@ function ipad() {
     cv.put(x, y, cell(NAVY, 0.3 + 0.12 * ((u + hw) / (2 * hw)) + 1.6 * streak, 1.2, 'glass', { noOutline: true, neutral: true }));
   }
   // the Apple Pencil: a long white cylinder with one flat side, a tapered grey tip
-  const P0 = [76, 62], P1 = [196, 36], len = Math.hypot(P1[0] - P0[0], P1[1] - P0[1]), R = 2.6, pen = [];
+  const P0 = [82, 60], P1 = [184, 38], len = Math.hypot(P1[0] - P0[0], P1[1] - P0[1]), R = 2.6, pen = [];
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const t = ((x - P0[0]) * (P1[0] - P0[0]) + (y - P0[1]) * (P1[1] - P0[1])) / (len * len);
     if (t < 0 || t > 1) continue;
@@ -608,7 +626,7 @@ function occlusion() {
   blob(310, 560, 58, 8, 0.55); // the coaster
   blob(875, 549, 50, 6, 0.55); // the plant's pot
   blob(1148, 543, 34, 5, 0.5); // the lava lamp
-  blob(212, 606, 120, 22, 0.7); blob(620, 625, 215, 8, 0.6); blob(945, 626, 115, 6, 0.65); blob(948, 618, 40, 7, 0.55); blob(1116, 614, 70, 7, 0.55);
+  blob(148, 606, 100, 22, 0.7); blob(620, 625, 215, 8, 0.6); blob(945, 626, 115, 6, 0.65); blob(948, 618, 40, 7, 0.55); blob(1116, 614, 70, 7, 0.55);
   return occ;
 }
 function monitorLike() { return deskBack.find((a) => a.name === 'monitor'); }
