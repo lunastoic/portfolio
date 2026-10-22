@@ -1,19 +1,5 @@
 # Lo-fi desk scene (v2) artwork
 
-**The scene is built from pixel assets.** `node scripts/room-scene.js [previewDir]` draws every thing in the
-room as its own pixel-art PNG in `assets/` (2 art px a pixel, the same grid as the mug, notes, plant and lava
-lamp): `wall`, `desk`, `deck-green`, `deck-rose`, `bracket-1…4`, `poster`, `headset` (with its hook), `cable`,
-`lamp` and `lamp-off`, `monitor`, `monitor-stand`, `book-1…3`, `keyboard`, `notebook` (with its pen),
-`coaster`, `cat-cup`, `pen-1…3`, `xbox`, `mousepad`, `mouse`, `controller`. It lays them out after the
-mockup, lights them (the room's ambient, the lamp's warm light, the monitor's green, the lava lamp's pink,
-soft contact shadows, stepped in a dithered pattern) and writes `room.webp` (lamp on), `desk-off.webp` (lamp
-off), `side-left/right(-off).png` (the wall and desk carried on for very wide windows) and `room.json`, which
-the scene reads: every box and hit area in art px, where a peeled note lands, and where the words go. The
-words themselves (the decks, the three book titles) are real type set by the scene, never baked into art.
-The mug, steam, sticky notes and plant are the `prop-*` sprites below; the lava lamp draws itself live.
-
-Everything below describes the painting the scene used before; it and its scripts are kept, unused.
-
 Assets for the pixel-art "v2" room. Nothing here is used by v1.
 
 | File | What it is |

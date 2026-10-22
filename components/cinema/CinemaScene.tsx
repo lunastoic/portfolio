@@ -53,18 +53,17 @@ interface Manifest {
   props: Partial<Record<PropKey, Prop>>;
   notes: string[];
   lamp: {
-    /** The whole room again with the lamp switched off, laid over the lit one. */
+    /** The whole painting again with the lamp switched off, laid over the lit one. */
     off: string;
-    /** Something of the lamp that has to sit in front of the sticky notes, if anything does. */
-    front?: { file: string; boxPct: PctBox };
+    /** The shade's right edge, over the sticky notes on the wall behind it. */
+    front: { file: string; boxPct: PctBox };
     hitPct: PctBox;
   };
-  /** Where a peeled note comes to rest, art px from where it hangs: on the desk behind the mug. */
-  noteLand: { dx: number; dy: number };
-  /** Anchors for the words (art px): each deck's middle, top and bottom; each book's spine, left and middle. */
-  text: { deck1: number[]; deck2: number[]; books: number[][] };
-  /** The wall and desk carried on past the room's edges, lit and unlit. */
+  /** The room past the painting's edges (wall, desk, the things the edge cuts), lit and unlit. */
   sides: { px: number; left: string; right: string; leftOff: string; rightOff: string };
+  /** Where strips of wall and desk were cut into the painting (scripts/cinema-room.js): per side, rows
+   *  [y0, y1) and the painting column the cut runs down them, and the px put in. */
+  widen: Record<"left" | "right", { d: number; path: number[][] }>;
   lava: { boxPct: PctBox };
   pens: { files: string[]; boxPct: PctBox; originPct: number[][]; hitPct: PctBox };
   leaves: { stems: string; files: string[]; originPct: number[][] };
@@ -74,6 +73,18 @@ interface Manifest {
 
 const art = manifestJson as unknown as Manifest;
 
+/** A painting column's place in the widened room the scene shows (art px), on row y. */
+const mapX = (x: number, y: number) => {
+  let out = x;
+  for (const side of ["left", "right"] as const) {
+    const leg = art.widen[side].path.find(([y0, y1]) => y >= y0 && y < y1);
+    if (!leg) continue;
+    const [y0, y1, x0, x1] = leg; // a leg slants from x0 to x1 down its rows, or runs straight at x0
+    const cut = x1 == null ? x0 : x0 + ((x1 - x0) * (y - y0)) / (y1 - y0);
+    if (x >= cut) out += art.widen[side].d;
+  }
+  return out;
+};
 
 const SIT_MS = 1700;
 const STAND_MS = 1400;
@@ -111,8 +122,8 @@ const NOTE_GRAVITY = 900; // art px / s²
 const NOTE_DRAG = 5.2; // 1/s, so it falls at about 170 art px/s
 const NOTE_SWAY = 34; // art px
 const NOTE_SWAY_W = 5.2; // rad/s
-const NOTE_LAND_Y = art.noteLand.dy; // art px below the wall spot: its top edge on the desk's back edge, behind the mug
-const NOTE_LAND_X = art.noteLand.dx; // art px it glides across on the way down, to end up behind the mug
+const NOTE_LAND_Y = 410; // art px below the wall spot: its top edge just onto the desk's far edge, behind the mug
+const NOTE_LAND_X = -105; // art px it glides left on the way down, to end up behind the mug
 const NOTE_SCATTER = [14, 4, 22]; // a landed note's spread: ± art px across, ± art px deep, ± degrees
 /** The eye's distance for the note's tilt, art px: far, so a note lying on the desk is a strip, not a wedge. */
 const NOTE_EYE = 1600;
@@ -154,28 +165,25 @@ interface WallText {
 const CSU_BURGUNDY = "#7e012d";
 const DH_GOLD = "#fcbe11";
 const NAME_GOLD = "#f6bb5c";
-const SPINE = "#d9b77a";
-/** A line on a deck: across the deck's middle, `at` of the way down it. */
-const onDeck = (d: number[], at: number) => ({ x: d[0], y: Math.round(d[1] + at * (d[2] - d[1])) });
-const [D1, D2, B] = [art.text.deck1, art.text.deck2, art.text.books];
 const WALL_TEXT: WallText[] = [
-  { lines: ["CHRISTOPHER LUNA"], ...onDeck(D1, 0.37), size: 54, color: NAME_GOLD, weight: 700, track: 0.06 },
-  { lines: ["LUNA_CHRISTOPHER98@HOTMAIL.COM"], ...onDeck(D1, 0.62), size: 20, color: "#e9b468", weight: 500, track: 0.06 },
-  { lines: ["ANAHEIM, CA 92806  ·  (714) 800-3264"], ...onDeck(D1, 0.76), size: 15.5, color: "#e9b468", weight: 500, track: 0.08 },
-  // the school in its colours, CSU burgundy and DH gold, then the degree in the name's colour
+  { lines: ["CHRISTOPHER LUNA"], x: 803, y: 68, size: 40, color: NAME_GOLD, weight: 700, track: 0.06 },
+  { lines: ["LUNA_CHRISTOPHER98@HOTMAIL.COM"], x: 803, y: 102, size: 15, color: "#e9b468", weight: 500, track: 0.06 },
+  { lines: ["ANAHEIM, CA 92806  ·  (714) 800-3264"], x: 803, y: 122, size: 11.5, color: "#e9b468", weight: 500, track: 0.08 },
+  // the school in its colours, CSU burgundy and DH gold, then the degree in the name's colour, sized like
+  // the email and the line under it
   {
     lines: [[{ text: "CALIFORNIA STATE UNIVERSITY, ", color: CSU_BURGUNDY }, { text: "DOMINGUEZ HILLS", color: DH_GOLD }]],
-    ...onDeck(D2, 0.31), size: 24, color: CSU_BURGUNDY, weight: 700, track: 0.07,
+    x: 803, y: 216, size: 18, color: CSU_BURGUNDY, weight: 700, track: 0.07,
   },
-  { lines: ["BACHELOR OF SCIENCE  ·  COMPUTER SCIENCE"], ...onDeck(D2, 0.5), size: 20, color: NAME_GOLD, weight: 600, track: 0.06, edged: true },
-  { lines: ["FIRST GEN"], ...onDeck(D2, 0.66), size: 15.5, color: NAME_GOLD, weight: 600, track: 0.08, edged: true },
-  // the three books under the monitor, titles in gilt on their spines
-  ...["COMPUTER SCIENCE", "DATA STRUCTURES & ALGORITHMS", "COMPUTER ORGANIZATION"].map((title, i) => ({
-    lines: [title], x: B[i][0], y: B[i][1], size: 21, color: SPINE, align: "left" as const, track: 0.1, weight: 600,
-  })),
+  { lines: ["BACHELOR OF SCIENCE  ·  COMPUTER SCIENCE"], x: 803, y: 247, size: 15, color: NAME_GOLD, weight: 600, track: 0.06, edged: true },
+  { lines: ["FIRST GEN"], x: 803, y: 268, size: 11.5, color: NAME_GOLD, weight: 600, track: 0.08, edged: true },
+  { lines: ["ALGORITHMS"], x: 66, y: 637, size: 15, color: "#e7a256", align: "left", rotate: -2.2, track: 0.14, weight: 600 },
+  { lines: ["TYPESCRIPT"], x: 68, y: 677, size: 15, color: "#e7a256", align: "left", rotate: -2.7, track: 0.14, weight: 600 },
+  { lines: ["SYSTEM DESIGN"], x: 70, y: 719, size: 15.5, color: "#e7a256", align: "left", rotate: -4.8, track: 0.14, weight: 600 },
+  { lines: ["NETWORKS"], x: 72, y: 760, size: 16, color: "#f6cf93", align: "left", rotate: -4.6, track: 0.16, weight: 600 },
 ];
 const wallTextStyle = (t: WallText): CSSProperties => ({
-  left: `${(t.x / art.size.width) * 100}%`,
+  left: `${(mapX(t.x, t.y) / art.size.width) * 100}%`,
   top: `${(t.y / art.size.height) * 100}%`,
   fontSize: `${(t.size / art.size.width) * 100}cqw`,
   color: t.color,
@@ -899,7 +907,7 @@ export default function CinemaScene() {
           {WALL_TEXT.map((t) => (
             <p
               key={t.lines.map((l) => (typeof l === "string" ? l : l.map((r) => r.text).join(""))).join(" ")}
-              className={`cinema__wall-text${t.edged ? " cinema__wall-gold" : ""}${t.y > 900 ? " cinema__wall-text--desk" : ""}`}
+              className={`cinema__wall-text${t.edged ? " cinema__wall-gold" : ""}${t.y > 500 ? " cinema__wall-text--desk" : ""}`}
               style={wallTextStyle(t)}
             >
               {t.lines.map((line, i) => (
@@ -956,11 +964,9 @@ export default function CinemaScene() {
           )}
 
           {/* The lamp's head is in front of the notes on the wall: the shade's edge over them */}
-          {art.lamp.front && (
-            <div className="cinema__lamp-front" style={pctBox(art.lamp.front.boxPct)} aria-hidden="true">
-              <Image src={art.lamp.front.file} alt="" fill unoptimized draggable={false} />
-            </div>
-          )}
+          <div className="cinema__lamp-front" style={pctBox(art.lamp.front.boxPct)} aria-hidden="true">
+            <Image src={art.lamp.front.file} alt="" fill unoptimized draggable={false} />
+          </div>
 
           {/* The lava lamp by the PC: click it off and on */}
           <LavaLamp on={lavaOn} boxPct={art.lava.boxPct} onToggle={switchLava} tabIndex={standingTab} />
