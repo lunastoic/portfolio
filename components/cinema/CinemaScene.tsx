@@ -299,16 +299,13 @@ const SIDE_PX = art.sides.px;
 function standingStage(vw: number, vh: number): Stage {
   const { width: W, height: H } = art.size;
   const [fx] = art.focalPoint;
-  // a wide window crops a little off the desk's front (up to OVERFLOW of the height) before it shows the
-  // closet's side walls carried on past the room
-  const OVERFLOW = 0.08;
-  const scale = Math.max(vh / H, Math.min(vw / W, (vh * (1 + OVERFLOW)) / H), vw / (W + 2 * SIDE_PX));
+  const scale = Math.max(vh / H, vw / (W + 2 * SIDE_PX));
   const w = W * scale;
   const h = H * scale;
   const side = SIDE_PX * scale;
   const centred = vw / 2 - (fx / 100) * w;
   const x = w >= vw ? Math.min(0, Math.max(vw - w, centred)) : Math.min(side, Math.max(vw - w - side, centred));
-  const y = Math.min(0, Math.max(vh - h, (vh - h) * 0.15)); // what's cropped comes mostly off the bottom
+  const y = Math.min(0, Math.max(vh - h, (vh - h) / 2));
   return { x, y, w, h, scale };
 }
 

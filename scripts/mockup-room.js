@@ -96,6 +96,10 @@ function side(img, left) {
   });
   // near the edge the wall follows the room's own light; a little way out it's an even, plain wall
   const near = smooth(14), far = smooth(90);
+  // the side wall's colour per row: the room's edge band (20 px), averaged across and lightly down the rows,
+  // so it carries the room's light on outward without dragging any one pixel's line or dither
+  const bandRaw = []; for (let y = 0; y < H; y++) { const e = [0, 0, 0]; for (let k = 0; k < 20; k++) { const x = left ? k : W - 1 - k; for (let c = 0; c < 3; c++) e[c] += at(x, y, c) / 20; } bandRaw.push(e); }
+  const band = bandRaw.map((_, y) => { const s = [0, 0, 0]; let n = 0; for (let k = y - 5; k <= y + 5; k++) { if (k < 0 || k >= deskY) continue; for (let c = 0; c < 3; c++) s[c] += bandRaw[k][c]; n++; } return n ? s.map((v) => v / n) : bandRaw[y]; });
   // the grain: a clean stretch of the left side wall (art px), mirrored to tile, minus its local mean
   const P = [8, 8, 150, 290], pw = P[2] - P[0], ph = P[3] - P[1];
   const mir = (v, n) => { const m = ((v % (2 * n)) + 2 * n) % (2 * n); return m < n ? m : 2 * n - 1 - m; };
@@ -106,6 +110,12 @@ function side(img, left) {
   };
   for (let y = 0; y < H; y++) for (let k = 0; k < SW; k++) {
     const X = left ? SW - 1 - k : k, d = 1 - 0.3 * Math.min(1, k / SW), blend = Math.min(1, k / 40), t = Math.min(1, k / 120);
+    if (y < deskY) {
+      // the closet's side wall: the room's own edge band (clean wall), mirrored on outward, so its texture and
+      // light carry on exactly, nothing dragged
+      for (let c = 0; c < 3; c++) out[(y * SW + X) * 3 + c] = clamp(Math.round(band[y][c] * d + hash(k, y, 9 + c) * 4), 0, 255);
+      continue;
+    }
     for (let c = 0; c < 3; c++) {
       const v = (near[y][c] * (1 - t) + far[y][c] * t + grain(k, y, c) * 0.8 * blend) * d;
       out[(y * SW + X) * 3 + c] = clamp(Math.round(edge[y][c] * (1 - blend) + v * blend), 0, 255);
@@ -123,6 +133,18 @@ const savePng = (buf, w, file) => sharp(buf, { raw: { width: w, height: H, chann
     const mask = new Uint8Array(W * H);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (r.inside((x + 0.5) / K, (y + 0.5) / K)) mask[y * W + x] = 1;
     fill(img, mask);
+  }
+  // the closet's left corner: the line the mockup draws above the lamp, carried on down behind it to the desk
+  {
+    const CX = 176, lc = [0, 1, 2].map((c) => img[(100 * W + CX) * 3 + c]);
+    const SHADE = [[28, 383], [213, 383], [152, 268], [86, 268]];
+    for (let y = 0; y < Math.round(DESK_Y * K); y++) {
+      const mx = CX / K, my = y / K;
+      if (inPoly(mx, my, SHADE) || (my > 590 && ell(mx, my, 122, 625, 88, 45)) || (my > 383 && Math.abs(mx - 117) < 24)) continue;
+      const o = (y * W + CX) * 3;
+      const wallish = Math.abs(img[o] - img[o - 9]) < 40; // only over wall, never over the lamp
+      if (wallish) for (let c = 0; c < 3; c++) img[o + c] = Math.round(lc[c] * (0.6 + 0.4 * Math.min(1, img[o - 9 + c] / 120)));
+    }
   }
   const off = lampOff(img);
   await saveWebp(img, W, path.join(CIN, 'room.webp'));
