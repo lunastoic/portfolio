@@ -77,15 +77,38 @@ function lampOff(img) {
   return out;
 }
 
-/** The closet's side walls and the desk carried on past the edges: each row's edge colour, darkening outward. */
+/**
+ * The closet's side walls and the desk carried on past the edges, without smearing: each row's colour at the
+ * edge, smoothed down the rows (so no row's dither turns into a stripe), darkening outward, with real 2D grain
+ * from a clean patch of the left side wall laid over it (its fine texture only, the patch's light taken off).
+ */
 function side(img, left) {
-  const out = Buffer.alloc(SW * H * 3);
-  for (let y = 0; y < H; y++) {
-    const e = [0, 0, 0];
-    for (let k = 0; k < 6; k++) { const x = left ? k : W - 1 - k; for (let c = 0; c < 3; c++) e[c] += img[(y * W + x) * 3 + c] / 6; }
-    for (let k = 0; k < SW; k++) {
-      const X = left ? SW - 1 - k : k, d = 1 - 0.35 * Math.min(1, k / SW);
-      for (let c = 0; c < 3; c++) out[(y * SW + X) * 3 + c] = clamp(Math.round(e[c] * d + hash(k, y, left ? 1 : 2) * 4), 0, 255);
+  const out = Buffer.alloc(SW * H * 3), deskY = Math.round(DESK_Y * K);
+  const at = (x, y, c) => img[(clamp(y, 0, H - 1) * W + clamp(x, 0, W - 1)) * 3 + c];
+  // the edge colour per row
+  const edge = [];
+  for (let y = 0; y < H; y++) { const e = [0, 0, 0]; for (let k = 0; k < 8; k++) { const x = left ? k : W - 1 - k; for (let c = 0; c < 3; c++) e[c] += at(x, y, c) / 8; } edge.push(e); }
+  // smoothed down the rows, the wall and the desk apart
+  const smooth = (R) => edge.map((_, y) => {
+    const s = [0, 0, 0]; let n = 0;
+    for (let k = y - R; k <= y + R; k++) { if (k < 0 || k >= H || (k < deskY) !== (y < deskY)) continue; for (let c = 0; c < 3; c++) s[c] += edge[k][c]; n++; }
+    return s.map((v) => v / n);
+  });
+  // near the edge the wall follows the room's own light; a little way out it's an even, plain wall
+  const near = smooth(14), far = smooth(90);
+  // the grain: a clean stretch of the left side wall (art px), mirrored to tile, minus its local mean
+  const P = [8, 8, 150, 290], pw = P[2] - P[0], ph = P[3] - P[1];
+  const mir = (v, n) => { const m = ((v % (2 * n)) + 2 * n) % (2 * n); return m < n ? m : 2 * n - 1 - m; };
+  const grain = (k, y, c) => {
+    const gx = P[0] + mir(k, pw), gy = P[1] + mir(y, ph);
+    let s = 0; for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) s += at(gx + dx, gy + dy, c);
+    return clamp(at(gx, gy, c) - s / 81, -12, 12);
+  };
+  for (let y = 0; y < H; y++) for (let k = 0; k < SW; k++) {
+    const X = left ? SW - 1 - k : k, d = 1 - 0.3 * Math.min(1, k / SW), blend = Math.min(1, k / 40), t = Math.min(1, k / 120);
+    for (let c = 0; c < 3; c++) {
+      const v = (near[y][c] * (1 - t) + far[y][c] * t + grain(k, y, c) * 0.8 * blend) * d;
+      out[(y * SW + X) * 3 + c] = clamp(Math.round(edge[y][c] * (1 - blend) + v * blend), 0, 255);
     }
   }
   return out;
