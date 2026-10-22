@@ -4,7 +4,7 @@
 room as its own pixel-art PNG in `assets/`, in the props' style: painted as a chunky draft (4 art px a pixel,
 so the dither shows as checks), then doubled with the outer outline thinned and graded warm, exactly as the
 mug, notes and plant were (the wall and desk are painted smooth at 2 art px): `wall`, `desk`, `deck-green`, `deck-rose`, `bracket-1…4`, `poster`, `headset` (with its hook), `cable`,
-`lamp` and `lamp-off`, `monitor`, `monitor-stand`, `book-1…3`, `keyboard`, `notebook` (with its pen),
+`lamp` and `lamp-off`, `monitor`, `monitor-stand`, `book-1…3`, `keyboard`, `ipad` (with its Apple Pencil),
 `coaster`, `cat-cup`, `pen-1…3`, `xbox`, `mousepad`, `mouse`, `controller`. It lays them out after the
 mockup, lights them (the room's ambient, the lamp's warm light, the monitor's green, the lava lamp's pink,
 soft contact shadows, stepped in a dithered pattern) and writes `room.webp` (lamp on), `desk-off.webp` (lamp

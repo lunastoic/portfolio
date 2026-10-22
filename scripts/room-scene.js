@@ -58,9 +58,9 @@ const MOUNT = ['#081418', '#14282e', '#1e3a40', '#2a4c52', '#386266', '#4e7c7c',
  * falling off low and right. The wall and desk (`fine`) are painted straight at full resolution.
  */
 function asset(name, x, y, cv, opts = {}) {
-  const { px, glow } = opts.fine ? fine(cv, name, opts) : chunky(cv, name, opts);
+  const { px, glow, neutral = new Uint8Array(cv.W * cv.H) } = opts.fine ? fine(cv, name, opts) : chunky(cv, name, opts);
   writePng(path.join(ASSETS, name + '.png'), cv.W, cv.H, px);
-  return { name, x, y, w: cv.W, h: cv.H, px, glow };
+  return { name, x, y, w: cv.W, h: cv.H, px, glow, neutral };
 }
 function fine(cv, name, opts) {
   const { px } = paint(cv, name, opts), glow = new Uint8Array(cv.W * cv.H);
@@ -76,7 +76,7 @@ function chunky(cv, name, { warm = [1, 0.92, 0.8], shadow = 0.22, sat = 0.88, ..
     if (c) half.c[j * W2 + i] = c;
   }
   const { px: hp } = paint(half, name, opts);
-  const W = cv.W, H = cv.H, px = new Uint8Array(W * H * 4), glow = new Uint8Array(W * H);
+  const W = cv.W, H = cv.H, px = new Uint8Array(W * H * 4), glow = new Uint8Array(W * H), neutral = new Uint8Array(W * H);
   const A = (i, j) => (i < 0 || j < 0 || i >= W2 || j >= H2 ? 0 : hp[(j * W2 + i) * 4 + 3]);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const i = x >> 1, j = y >> 1, si = (j * W2 + i) * 4, o = (y * W + x) * 4;
@@ -85,6 +85,7 @@ function chunky(cv, name, { warm = [1, 0.92, 0.8], shadow = 0.22, sat = 0.88, ..
     const lum = 0.299 * r + 0.587 * g + 0.114 * b, hc = half.c[j * W2 + i];
     // an outline pixel on the silhouette keeps only its inner half
     if (lum < 34 && hp[si + 3] > 200) { const ox = x & 1 ? 1 : -1, oy = y & 1 ? 1 : -1; if (A(i + ox, j) < 128 || A(i, j + oy) < 128) continue; }
+    if (hc && hc.neutral) neutral[y * W + x] = 1;
     if (hc && hc.glow) glow[y * W + x] = 1;
     else {
       const gray = lum; r = gray + (r - gray) * sat; g = gray + (g - gray) * sat; b = gray + (b - gray) * sat;
@@ -93,7 +94,7 @@ function chunky(cv, name, { warm = [1, 0.92, 0.8], shadow = 0.22, sat = 0.88, ..
     }
     px[o] = clamp(Math.round(r), 0, 255); px[o + 1] = clamp(Math.round(g), 0, 255); px[o + 2] = clamp(Math.round(b), 0, 255); px[o + 3] = hp[si + 3];
   }
-  return { px, glow };
+  return { px, glow, neutral };
 }
 const cell = (ramp, v, z, part, extra) => ({ ramp, v, z, part, ...extra });
 /** A rounded rectangle's signed inside distance (px from its edge, negative outside). */
@@ -365,36 +366,6 @@ function keyboard() {
   return asset('keyboard', X, Y, cv);
 }
 
-function notebook() {
-  const X = 90, Y = 544, W = 242, H = 92, cv = new Cv(W, H), cx = 121, cy = 46, hw = 104, hh = 32, a = (8 * Math.PI) / 180;
-  const ca = Math.cos(a), sa = Math.sin(a);
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const dx = x - cx, dy = y - cy, u = dx * ca - dy * sa, v = dx * sa + dy * ca;
-    if (Math.abs(u) <= hw && v >= -hh && v <= hh + 3) {
-      if (v > hh) { cv.put(x, y, cell(PAGES, v > hh + 2 ? 0.2 : 0.42, 1, 'edge')); continue; }
-      let c = cell(PAGES, 0.5 - 0.1 * ((u + hw) / (2 * hw)) + 0.02 * (hash(x, y, 3) - 0.5), 1.1, 'page', { noOutline: true });
-      if (Math.abs(u - (-hw + 24)) < 0.6) c = { col: '#b84a34', z: 1.2, part: 'margin', noOutline: true };
-      else if (u > -hw + 8 && Math.abs(((v + hh) % 6) - 5.5) < 0.5) c = cell(PAGES, 0.6, 1.2, 'rule', { noOutline: true });
-      cv.put(x, y, c);
-    }
-    // the coil along the left edge
-    const ring = Math.abs(u + hw + 1) <= 2.2 && ((v + hh + 1) % 5) < 2.6 && v > -hh && v < hh;
-    if (ring) cv.put(x, y, cell(CHROME, 0.6 + 0.2 * (u + hw + 1) / 2, 2, 'coil', { noOutline: true }));
-  }
-  // the pen lying across it
-  const P0 = [70, 58], P1 = [196, 30], len = Math.hypot(P1[0] - P0[0], P1[1] - P0[1]);
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const t = ((x - P0[0]) * (P1[0] - P0[0]) + (y - P0[1]) * (P1[1] - P0[1])) / (len * len);
-    if (t < 0 || t > 1) continue;
-    const off = ((x - P0[0]) * (P1[1] - P0[1]) - (y - P0[1]) * (P1[0] - P0[0])) / len;
-    const r = t < 0.06 ? 1.2 + t / 0.06 : 2.4;
-    if (Math.abs(off) > r) continue;
-    const ramp = t < 0.06 ? CHROME : t > 0.78 && t < 0.84 ? GOLD : IRON;
-    cv.put(x, y, cell(ramp, cyl(off / r, { spec: 1 }) * (ramp === IRON ? 0.8 : 1), 3, t > 0.78 && t < 0.84 ? 'band' : 'pen'));
-  }
-  return asset('notebook', X, Y, cv);
-}
-
 function coaster(cx, cy) {
   const W = 104, H = 26, cv = new Cv(W, H);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -449,26 +420,6 @@ function pens() {
   });
 }
 
-function xbox() {
-  const [X, Y] = [916, 480], W = 218, H = 77, cv = new Cv(W, H), split = 140;
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    if (rrect(x, y, 0, 0, W - 1, H - 1, 3) < 0) continue;
-    let c;
-    if (y < 9) c = cell(PLASTIC, x < split ? (x % 3 === 0 ? 0.3 : 0.5) : 0.56 - y * 0.01, 1.1, 'top');
-    else if (x < split) {
-      const gloss = Math.abs((x - 30) - (y - 9) * 1.4) < 5 ? 0.18 : 0;
-      c = cell(PLASTIC, 0.18 + gloss + 0.02 * (1 - y / H), 1, 'gloss');
-    } else c = cell(PLASTIC, 0.34 + 0.03 * (hash(x, y, 5) - 0.5), 1, 'matte');
-    if (y === 48 && x > 12 && x < 108) c = cell(PLASTIC, 0.04, 1.2, 'slot');
-    if (y === 49 && x > 12 && x < 108) c = cell(PLASTIC, 0.32, 1.2, 'slot');
-    if (x === split && y > 8) c = cell(PLASTIC, 0.08, 1.2, 'seam');
-    const lr = Math.hypot(x - 188, y - 47);
-    if (lr <= 5) c = { col: Math.abs(Math.abs(x - 188) - Math.abs(y - 47)) <= 0.6 && lr < 4.4 ? '#9aa0a0' : '#f2f4f0', z: 2, part: 'logo', glow: true };
-    cv.put(x, y, c);
-  }
-  return asset('xbox', X, Y, cv);
-}
-
 function mousepad() {
   const [X, Y] = [833, 570], W = 221, H = 59, cv = new Cv(W, H);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -480,40 +431,141 @@ function mousepad() {
   return asset('mousepad', X, Y, cv);
 }
 
-function mouse() {
-  const [X, Y] = [906, 564], W = 80, H = 56, cv = new Cv(W, H), cx = 40, cy = 29, rx = 37, ry = 25;
+const WHITE = ['#2e2c30', '#7c7a80', '#aeacb2', '#cac8cc', '#dedce0', '#eeecef', '#fbfaf9'];
+const SPACE = ['#0a0a0c', '#26262a', '#3c3c42', '#55555c', '#707078', '#90909a', '#b8b8c0'];
+
+/** A shape's height field from its mask: how far in from the edge (capped), so it shades as a soft dome. */
+function dome(W, H, inside, cap) {
+  const h = new Float32Array(W * H);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const ex = (x - cx) / rx, ey = (y - cy) / ry, e = ex * ex + ey * ey;
-    if (e > 1) continue;
-    const n = norm([ex, ey * 1.1, Math.sqrt(1 - e) * 1.2]);
-    let c = cell(PLASTIC, light(n, { spec: 1.1, shin: 26 }) * 1.15, 1, 'shell');
-    if (x === cx && y < cy - 4) c = cell(PLASTIC, 0.06, 1.2, 'split');
-    if (x >= cx - 2 && x <= cx + 2 && y >= 9 && y <= 16) c = cell(PLASTIC, x === cx - 2 ? 0.7 : 0.45, 1.3, 'wheel');
-    const sx = x - 54, sy = y - 33, star = (Math.abs(sx) <= 1 && Math.abs(sy) <= 4) || (Math.abs(sy) <= 1 && Math.abs(sx) <= 4) || (Math.abs(sx) <= 2 && Math.abs(sy) <= 2);
-    if (star) c = { col: Math.abs(sx) + Math.abs(sy) <= 1 ? '#b8ffd0' : '#3fe07a', z: 1.4, part: 'star', glow: true };
+    if (!inside(x, y)) continue;
+    let d = cap;
+    for (let dy = -cap; dy <= cap; dy++) for (let dx = -cap; dx <= cap; dx++) { const r = Math.hypot(dx, dy); if (r < d && !inside(x + dx, y + dy)) d = r; }
+    h[y * W + x] = Math.sqrt(d / cap);
+  }
+  const at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H ? 0 : h[y * W + x]);
+  return { h: at, n: (x, y) => norm([(at(x - 1, y) - at(x + 1, y)) * cap * 0.35, (at(x, y - 1) - at(x, y + 1)) * cap * 0.35, 1]) };
+}
+
+/** An iPad lying on the desk, screen off, with a white Apple Pencil across it. */
+function ipad() {
+  const X = 90, Y = 544, W = 242, H = 92, cv = new Cv(W, H), cx = 121, cy = 46, hw = 100, hh = 30, a = (8 * Math.PI) / 180;
+  const ca = Math.cos(a), sa = Math.sin(a);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const dx = x - cx, dy = y - cy, u = dx * ca - dy * sa, v = dx * sa + dy * ca;
+    const d = rrect(u, v, -hw, -hh, hw, hh, 7);
+    if (d < 0) { if (rrect(u, v - 3, -hw, -hh, hw, hh, 7) >= 0) cv.put(x, y, cell(SPACE, 0.4, 1, 'side', { neutral: true })); continue; }
+    if (d < 2.5) { cv.put(x, y, cell(SPACE, 0.78 - 0.25 * ((v + hh) / (2 * hh)), 1.1, 'rim', { neutral: true })); continue; }
+    // the black bezel round the glass, the front camera on the long side
+    if (Math.min((u + hw) / 6, (hw - u) / 6, (v + hh) / 4.5, (hh - v) / 4.5) < 1) {
+      const cam = Math.hypot(u + hw - 3, v) < 1.3;
+      cv.put(x, y, cell(IRON, cam ? 0.5 : 0.04, 1.2, 'glass', { noOutline: true }));
+      continue;
+    }
+    // the screen, asleep: blue-black glass with a soft streak of reflection across it
+    const s = u * 0.32 - v + 6, streak = Math.abs(s) < 7 ? 0.14 * (1 - Math.abs(s) / 7) : 0;
+    cv.put(x, y, cell(NAVY, 0.3 + 0.12 * ((u + hw) / (2 * hw)) + 1.6 * streak, 1.2, 'glass', { noOutline: true, neutral: true }));
+  }
+  // the Apple Pencil: a long white cylinder with one flat side, a tapered grey tip
+  const P0 = [76, 62], P1 = [196, 36], len = Math.hypot(P1[0] - P0[0], P1[1] - P0[1]), R = 2.6, pen = [];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const t = ((x - P0[0]) * (P1[0] - P0[0]) + (y - P0[1]) * (P1[1] - P0[1])) / (len * len);
+    if (t < 0 || t > 1) continue;
+    const off = ((x - P0[0]) * (P1[1] - P0[1]) - (y - P0[1]) * (P1[0] - P0[0])) / len;
+    const r = t < 0.09 ? 0.7 + (R - 0.7) * (t / 0.09) : R;
+    if (Math.abs(off) > r) continue;
+    const tip = t < 0.03, flat = off > R * 0.45 && !tip;
+    const v = tip ? 0.35 : flat ? 0.62 : cyl(off / r, { spec: 0.8, shin: 16 }) * 1.25;
+    cv.put(x, y, cell(tip ? SPACE : WHITE, v, 3, 'pencil', { neutral: true }));
+    pen.push([x, y]);
+  }
+  // its shadow on the glass
+  for (const [x, y] of pen) { const c = cv.get(x + 1, y + 2); if (c && c.part !== 'pencil') cv.put(x + 1, y + 2, cell(IRON, 0.04, 1.25, 'shadow', { noOutline: true })); }
+  return asset('ipad', X, Y, cv);
+}
+
+/** A black wireless mouse, Logitech-style: an egg, narrower at the front, two buttons and a wheel. */
+function mouse() {
+  const [X, Y] = [920, 560], W = 52, H = 60, cv = new Cv(W, H), cx = 26;
+  const half = (y) => { const t = (y - 3) / 52; if (t < 0 || t > 1) return 0; return 22 * Math.sqrt(Math.max(0, 1 - ((t - 0.55) / 0.55) ** 2)) * (0.78 + 0.22 * t); };
+  const inside = (x, y) => Math.abs(x - cx) <= half(y);
+  const { n } = dome(W, H, inside, 9);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (!inside(x, y)) continue;
+    const ex = (x - cx) / Math.max(1, half(y));
+    let c = cell(PLASTIC, light(n(x, y), { spec: 1.1, shin: 24 }) * (Math.abs(ex) > 0.78 ? 0.75 : 1.05), 1, 'shell');
+    const split = 24 - 0.02 * (x - cx) ** 2; // where the buttons end and the palm begins
+    if (x === cx && y < split) c = cell(PLASTIC, 0.12, 1.2, 'seam', { noOutline: true });
+    if (Math.abs(x - cx) <= 1.5 && y >= 9 && y <= 16) c = cell(PLASTIC, y % 2 ? 0.25 : 0.5, 1.3, 'wheel', { noOutline: true });
     cv.put(x, y, c);
   }
   return asset('mouse', X, Y, cv);
 }
 
-function controller() {
-  const [X, Y] = [1045, 550], W = 138, H = 64, cv = new Cv(W, H);
-  const blobs = [[69, 22, 50, 17], [30, 40, 25, 21], [108, 40, 25, 21]];
+/** An Xbox One: glossy top on the left, vented on the right; the disc slot along the front, the lit logo. */
+function xbox() {
+  const [X, Y] = [916, 480], W = 218, H = 77, cv = new Cv(W, H), split = 132, TOP = 10;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    let best = null;
-    for (const [bx, by, brx, bry] of blobs) { const ex = (x - bx) / brx, ey = (y - by) / bry, e = ex * ex + ey * ey; if (e <= 1 && (!best || e < best.e)) best = { e, ex, ey }; }
-    if (!best) continue;
-    const n = norm([best.ex * 0.8, best.ey * 0.8, Math.sqrt(1 - best.e) + 0.3]);
-    let c = cell(PLASTIC, light(n, { spec: 0.9, shin: 22 }) * 1.1, 1, 'body');
-    if (y < 7 && ((x > 22 && x < 52) || (x > 86 && x < 116))) c = cell(PLASTIC, 0.5, 1.1, 'bumper');
-    for (const [sx, sy] of [[42, 25], [90, 38]]) {
-      const r = Math.hypot(x - sx, y - sy);
-      if (r <= 8) c = cell(PLASTIC, r > 6 ? 0.08 : light(norm([(x - sx) / 6, (y - sy) / 6, 1]), { spec: 1 }) * 0.9, 1.5, 'stick' + sx);
+    if (rrect(x, y, 0, 0, W - 1, H - 1, 2) < 0) continue;
+    let c;
+    if (y < TOP) {
+      if (x < split) c = cell(PLASTIC, 0.3 + (Math.abs(x - 2.2 * y - 40) < 6 ? 0.16 : 0), 1.1, 'top-gloss');
+      else c = cell(PLASTIC, (x + 2 * y) % 4 < 2 ? 0.12 : 0.34, 1.1, 'top-vent', { noOutline: true });
+      if (y === TOP - 1) c = cell(PLASTIC, 0.55, 1.15, 'edge', { noOutline: true });
+    } else if (x < split) {
+      c = cell(PLASTIC, 0.22 + 0.02 * (hash(x, y, 5) - 0.5) - 0.04 * ((y - TOP) / H), 1, 'front-matte');
+      // the disc slot, a port and the eject button
+      if (y === 46 && x > 10 && x < 96) c = cell(PLASTIC, 0.02, 1.2, 'slot', { noOutline: true });
+      if (y === 47 && x > 10 && x < 96) c = cell(PLASTIC, 0.38, 1.2, 'slot', { noOutline: true });
+      if (y >= 58 && y <= 61 && x >= 12 && x <= 18) c = cell(PLASTIC, y === 58 ? 0.4 : 0.06, 1.2, 'usb', { noOutline: true });
+      if (Math.hypot(x - 104, y - 46) < 1.6) c = cell(PLASTIC, 0.45, 1.2, 'eject', { noOutline: true });
+    } else {
+      const gloss = Math.abs((x - split) - (y - TOP) * 0.9 - 10) < 7 ? 0.14 : 0;
+      c = cell(PLASTIC, 0.15 + gloss, 1, 'front-gloss');
     }
-    const dx = x - 52, dy = y - 40;
-    if ((Math.abs(dx) <= 1.5 && Math.abs(dy) <= 6) || (Math.abs(dy) <= 1.5 && Math.abs(dx) <= 6)) c = cell(PLASTIC, 0.2, 1.5, 'dpad');
-    for (const [bx, by, col] of [[100, 13, '#c8a830'], [93, 20, '#3a68c8'], [107, 20, '#c83a34'], [100, 27, '#3aa84a']]) if (Math.hypot(x - bx, y - by) <= 2.4) c = { col, z: 1.6, part: 'btn' + bx + by };
-    if (Math.hypot(x - 69, y - 12) <= 4.2) c = { col: Math.abs(Math.abs(x - 69) - Math.abs(y - 12)) <= 0.6 ? '#7a807a' : '#eef4ee', z: 1.7, part: 'guide', glow: true };
+    if (x === split && y >= TOP) c = cell(PLASTIC, 0.04, 1.2, 'seam', { noOutline: true });
+    if (y >= H - 2) c = cell(PLASTIC, 0.08, 1.2, 'foot');
+    const lr = Math.hypot(x - 178, y - 44);
+    if (lr <= 5.5) c = { col: Math.abs(Math.abs(x - 178) - Math.abs(y - 44)) <= 0.7 && lr < 4.6 ? '#8c9290' : '#f2f4f0', z: 2, part: 'logo', glow: true };
+    cv.put(x, y, c);
+  }
+  return asset('xbox', X, Y, cv);
+}
+
+/** An Xbox One controller: the wide top with its bumpers, two grips, offset sticks, d-pad, ABXY, the lit guide button. */
+function controller() {
+  const [X, Y] = [1043, 548], W = 142, H = 68, cv = new Cv(W, H);
+  const e = (x, y, cx, cy, rx, ry) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2;
+  const inside = (x, y) => {
+    const top = e(x, y, 71, 25, 57, 19) <= 1, gl = e(x, y, 31, 43, 23, 22) <= 1, gr = e(x, y, 111, 43, 23, 22) <= 1;
+    return (top && e(x, y, 71, 64, 30, 21) > 1) || gl || gr;
+  };
+  const { n } = dome(W, H, inside, 8);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (!inside(x, y)) continue;
+    let c = cell(PLASTIC, light(n(x, y), { spec: 0.9, shin: 20 }) * 1.12, 1, 'body');
+    // the bumpers along the top edge
+    if (y < 11 && (x < 55 || x > 87) && !inside(x, y - 3)) c = cell(PLASTIC, 0.46 - y * 0.02, 1.4, x < 71 ? 'lb' : 'rb');
+    // the thumbsticks: a dark well, a concave cap with a grip ring
+    for (const [sx, sy] of [[43, 24], [89, 41]]) {
+      const r = Math.hypot(x - sx, y - sy);
+      if (r <= 8.5) c = r > 6.5 ? cell(PLASTIC, 0.04, 1.5, 'well' + sx, { noOutline: true })
+        : cell(PLASTIC, (r > 5 ? 0.42 : 0.24 + 0.1 * ((x - sx) + (y - sy)) / 6) + (r > 5 && r < 5.8 ? 0.1 : 0), 1.6, 'stick' + sx);
+    }
+    // the d-pad in its round well
+    const dx = x - 56, dy = y - 41, dr = Math.hypot(dx, dy);
+    if (dr <= 7.5) c = cell(PLASTIC, 0.08, 1.5, 'dwell', { noOutline: true });
+    if ((Math.abs(dx) <= 1.6 && Math.abs(dy) <= 6) || (Math.abs(dy) <= 1.6 && Math.abs(dx) <= 6)) c = cell(PLASTIC, 0.36 - (dx + dy) * 0.02, 1.6, 'dpad');
+    // A B X Y: dark caps with their coloured letters
+    for (const [bx, by, col] of [[105, 17, '#e8c43a'], [98, 24, '#3a7ae0'], [112, 24, '#e04a3a'], [105, 31, '#4ac85a']]) {
+      const r = Math.hypot(x - bx, y - by);
+      if (r <= 3.2) c = r <= 1.4 ? { col, z: 1.8, part: 'btn' + bx + by, glow: true } : cell(PLASTIC, 0.2 + (y < by ? 0.15 : 0), 1.7, 'btn' + bx + by);
+    }
+    // view and menu
+    for (const bx of [63, 79]) if (Math.hypot(x - bx, y - 25) <= 1.7) c = cell(PLASTIC, 0.5, 1.6, 'vm' + bx);
+    // the guide button, lit
+    const gr = Math.hypot(x - 71, y - 13);
+    if (gr <= 5) c = gr > 4 ? cell(CHROME, 0.4, 1.7, 'guide-ring') : { col: Math.abs(Math.abs(x - 71) - Math.abs(y - 13)) <= 0.7 && gr < 3.4 ? '#8c9290' : '#f2f4f0', z: 1.8, part: 'guide', glow: true };
     cv.put(x, y, c);
   }
   return asset('controller', X, Y, cv);
@@ -535,7 +587,7 @@ const wallItems = [
   poster(), headset(),
 ];
 const deskBack = [cable(), catCup(), monitorStand(), monitor(), ...books.map(([a, b, c, d, r], i) => book('book-' + (i + 1), a, b, c, d, r)), coaster(MUG_BODY_X, MUG_BASE_Y), xbox()];
-const deskFront = [notebook(), keyboard(), mousepad(), mouse(), controller()];
+const deskFront = [ipad(), keyboard(), mousepad(), mouse(), controller()];
 const penSprites = pens();
 
 /** Soft shadows: the contact shadows under things on the desk, and what the wall items cast (light from the lamp, upper left). */
@@ -580,7 +632,7 @@ function lightAt(x, y, on, self = 1) {
 }
 
 function compose(on) {
-  const out = new Float32Array(EW * GH * 3), glow = new Uint8Array(EW * GH), shaded = new Uint8Array(EW * GH);
+  const out = new Float32Array(EW * GH * 3), glow = new Uint8Array(EW * GH), shaded = new Uint8Array(EW * GH), neutral = new Uint8Array(EW * GH);
   const blit = (a, mark = 0) => {
     for (let y = 0; y < a.h; y++) for (let x = 0; x < a.w; x++) {
       const si = (y * a.w + x) * 4, al = a.px[si + 3] / 255;
@@ -590,7 +642,7 @@ function compose(on) {
       const o = (Y * EW + X) * 3;
       for (let c = 0; c < 3; c++) out[o + c] = out[o + c] * (1 - al) + a.px[si + c] * al;
       glow[Y * EW + X] = al > 0.5 ? a.glow[y * a.w + x] : glow[Y * EW + X];
-      if (al > 0.5) shaded[Y * EW + X] = mark;
+      if (al > 0.5) { shaded[Y * EW + X] = mark; neutral[Y * EW + X] = a.neutral ? a.neutral[y * a.w + x] : 0; }
     }
   };
   blit(wallLayer); blit(deskLayer);
@@ -602,7 +654,9 @@ function compose(on) {
   for (let y = 0; y < GH; y++) for (let X = 0; X < EW; X++) {
     const i = y * EW + X, o = i * 3;
     if (glow[i]) { for (let c = 0; c < 3; c++) img[o + c] = clamp(Math.round(out[o + c]), 0, 255); continue; }
-    const L = lightAt(X - SIDE, y, on, shaded[i] ? 0.3 : 1), b = BAYER[y & 3][X & 3];
+    let L = lightAt(X - SIDE, y, on, shaded[i] ? 0.3 : 1);
+    if (neutral[i]) { const m = (L[0] + L[1] + L[2]) / 3; L = [m * 1.04, m, m * 0.95]; }
+    const b = BAYER[y & 3][X & 3];
     for (let c = 0; c < 3; c++) {
       const q = Math.floor(L[c] * occ[i] * 10 + b) / 10; // light in steps, dithered between them
       img[o + c] = clamp(Math.round(out[o + c] * q), 0, 255);
