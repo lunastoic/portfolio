@@ -38,9 +38,8 @@ const CLEAR = [
   { name: 'book-3', inside: (x, y) => rect(x, y, 517, 628, 714, 649) },
   // the sticky note, the mug and its steam, the plant, the lava lamp
   { name: 'note', inside: (x, y) => rect(x, y, 272, 316, 390, 428) },
-  { name: 'mug', split: true, inside: (x, y) => rect(x, y, 224, 450, 352, 674) || rect(x, y, 206, 450, 224, 560) || ell(x, y, 276, 656, 58, 17) || ell(x, y, 336, 602, 26, 46) || rect(x, y, 240, 462, 310, 542) },
+  { name: 'mug', split: true, inside: (x, y) => rect(x, y, 224, 450, 336, 674) || rect(x, y, 206, 450, 224, 560) || ell(x, y, 272, 659, 68, 19) || ell(x, y, 338, 600, 24, 44) || rect(x, y, 240, 462, 310, 542) },
   { name: 'plant', split: true, inside: (x, y) => inPoly(x, y, [[858, 440], [896, 362], [962, 356], [1012, 404], [1050, 468], [1052, 562], [1012, 640], [994, 658], [902, 658], [866, 622], [852, 560]]) && !(inPoly(x, y, XBOX) && !ell(x, y, 1002, 573, 32, 17)) && !rect(x, y, 948, 278, 1074, 440) },
-  { name: 'lava', split: true, inside: (x, y) => rect(x, y, 1224, 434, 1298, 650) && !inPoly(x, y, XBOX) },
 ];
 
 /** Fill the masked pixels smoothly from the known ones round them (wall and desk apart), then add grain. */
@@ -278,6 +277,115 @@ function side(img, left, W = WW) {
 }
 
 /**
+ * The live things, cut out of the mockup itself so they match it exactly: within each cleared region, the pixels
+ * where the mockup differs from the region's fill (the thing, not the wall or desk behind it), gaps closed. The
+ * sticky note's own lettering is taken off (the scene sets its own words), and the note comes in the seven paper
+ * colours the scene cycles through. The lava lamp stays in the picture; only its switched-off look is cut.
+ * Returns each sprite's place (art px of the mockup room, before widening).
+ */
+const savePngA = (buf, w, h, file) => sharp(buf, { raw: { width: w, height: h, channels: 4 } }).png().toFile(file);
+async function cutSprites(orig, filled, masks) {
+  const out = {}, ZERO = Buffer.alloc(0);
+  const cut = (name, mask, bg, keepIf = () => true, closeIn = null) => {
+    let x0 = W, y0 = H, x1 = 0, y1 = 0;
+    const a = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) {
+      if (!mask[i]) continue;
+      const x = i % W, y = (i / W) | 0;
+      if (!keepIf(x / K, y / K)) continue;
+      let d = 0; for (let c = 0; c < 3; c++) d += Math.abs(orig[i * 3 + c] - bg[i * 3 + c]);
+      if (d > 36 || bg === ZERO) a[i] = 1;
+    }
+    // close small gaps (dilate 2, erode 2), and drop specks
+    const grow = (src, keep) => { const o = new Uint8Array(W * H); for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) { let v = keep ? 1 : 0; for (let dy = -2; dy <= 2 && v === (keep ? 1 : 0); dy++) for (let dx = -2; dx <= 2; dx++) { const s = src[(y + dy) * W + x + dx]; if (keep ? !s : s) { v = keep ? 0 : 1; break; } } o[y * W + x] = v; } return o; };
+    const closed = bg === ZERO && !closeIn ? a : grow(grow(a, false), true);
+    const within = closeIn || mask;
+    for (let i = 0; i < W * H; i++) if (closed[i] && within[i]) { a[i] = 1; const x = i % W, y = (i / W) | 0; x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+    const w = x1 - x0 + 1, h = y1 - y0 + 1, px = Buffer.alloc(w * h * 4);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = (y + y0) * W + x + x0, o = (y * w + x) * 4;
+      if (!a[i]) continue;
+      px[o] = orig[i * 3]; px[o + 1] = orig[i * 3 + 1]; px[o + 2] = orig[i * 3 + 2]; px[o + 3] = 255;
+    }
+    return { px, x0, y0, w, h };
+  };
+  // each thing traced by hand (mockup px), its pixels taken straight from the mockup
+  const traced = (inside) => { const m = new Uint8Array(W * H); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (inside((x + 0.5) / K, (y + 0.5) / K, y * W + x)) m[y * W + x] = 1; return m; };
+  const lumO = (i) => 0.299 * orig[i * 3] + 0.587 * orig[i * 3 + 1] + 0.114 * orig[i * 3 + 2];
+  const lumF = (i) => 0.299 * filled[i * 3] + 0.587 * filled[i * 3 + 1] + 0.114 * filled[i * 3 + 2];
+  const all = () => true;
+  const grayish = (i) => { const r = orig[i * 3], g = orig[i * 3 + 1], b = orig[i * 3 + 2], mx = Math.max(r, g, b); return mx - Math.min(r, g, b) < 0.58 * mx; };
+  // the mug: body, rim, handle (its hole left open), coaster, and the steam's wisps (lighter than the wall)
+  const mugM = traced((x, y, i) => (
+    (x >= 221 && x <= 321 && y >= 537 && y <= 652) || ell(x, y, 271, 538, 50, 9) ||
+    (x > 318 && ell(x, y, 333, 590, 25, 34) && !ell(x, y, 333, 588, 12, 21)) || ell(x, y, 271, 657, 51, 9) ||
+    (x >= 244 && x <= 306 && y >= 452 && y < 529)) && !(x > 318 && y > 600 && orig[i * 3] > 170 && orig[i * 3 + 1] > 140));
+  const mug = cut('mug', mugM, ZERO, all);
+  // the steam: a soft pale layer, as opaque as it is brighter than the wall behind it
+  for (let y = 0; y < mug.h; y++) for (let x = 0; x < mug.w; x++) {
+    const X = x + mug.x0, Y = y + mug.y0, mx = X / K, my = Y / K, i = Y * W + X, o = (y * mug.w + x) * 4;
+    if (!(my < 529 && mx >= 244 && mx <= 306) || ell(mx, my, 271, 538, 50, 9)) continue;
+    let m = 0, n = 0; for (let dy = -7; dy <= 7; dy += 2) for (let dx = -7; dx <= 7; dx += 2) { m += lumO((Y + dy) * W + X + dx); n++; }
+    const a = clamp((lumO(i) - m / n - 5) / 28, 0, 0.85);
+    mug.px[o] = 232; mug.px[o + 1] = 214; mug.px[o + 2] = 200; mug.px[o + 3] = Math.round(a * 255);
+  }
+  await savePngA(mug.px, mug.w, mug.h, path.join(CIN, 'cut-mug.png'));
+  out.mug = mug;
+  // the plant: its leaves (green), the pot, and the dark outlines that hug them
+  const isGreen = (i) => { const r = orig[i * 3], g = orig[i * 3 + 1], b = orig[i * 3 + 2]; return g > r * 0.92 && g > b * 1.1 && g > 40; };
+  const POT = [[903, 560], [997, 560], [988, 652], [912, 652]];
+  const leafy = traced((x, y, i) => masks.plant[i] && isGreen(i));
+  const plantM = traced((x, y, i) => {
+    if (!masks.plant[i]) return false;
+    if (inPoly(x, y, POT) || leafy[i]) return true;
+    if (lumO(i) > 55) return false; // an outline is dark; keep it only beside a leaf
+    const X = i % W, Y = (i / W) | 0;
+    for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (leafy[(Y + dy) * W + X + dx]) return true;
+    return false;
+  });
+  const plant = cut('plant', plantM, ZERO, all, masks.plant);
+  await savePngA(plant.px, plant.w, plant.h, path.join(CIN, 'cut-plant.png'));
+  out.plant = plant;
+  // the note: its lettering painted over with the paper, then recoloured into the scene's seven papers
+  const note = cut('note', traced((x, y) => x >= 277 && x <= 382 && y >= 321 && y <= 422), ZERO, all);
+  const L = (o) => 0.299 * note.px[o] + 0.587 * note.px[o + 1] + 0.114 * note.px[o + 2];
+  const ls = []; for (let o = 0; o < note.px.length; o += 4) if (note.px[o + 3]) ls.push(L(o));
+  ls.sort((p, q) => p - q);
+  const paper = ls[(ls.length * 0.6) | 0];
+  // the paper's own colour (median of its lit pixels)
+  const pc = [0, 0, 0]; let pn = 0;
+  for (let o = 0; o < note.px.length; o += 4) if (note.px[o + 3] && Math.abs(L(o) - paper) < 12) { for (let c = 0; c < 3; c++) pc[c] += note.px[o + c]; pn++; }
+  for (let c = 0; c < 3; c++) pc[c] /= pn;
+  // the lettering: the paper's middle repainted from the paper round it (blended in from all four sides)
+  {
+    const X0 = Math.round(note.w * 0.1), X1 = Math.round(note.w * 0.86), Y0 = Math.round(note.h * 0.22), Y1 = Math.round(note.h * 0.7);
+    const at = (x, y, c) => note.px[(y * note.w + x) * 4 + c];
+    for (let y = Y0 + 1; y < Y1; y++) for (let x = X0 + 1; x < X1; x++) {
+      const u = (x - X0) / (X1 - X0), v = (y - Y0) / (Y1 - Y0), o = (y * note.w + x) * 4;
+      for (let c = 0; c < 3; c++) {
+        const p = (1 - v) * at(x, Y0, c) + v * at(x, Y1, c) + (1 - u) * at(X0, y, c) + u * at(X1, y, c) - ((1 - u) * (1 - v) * at(X0, Y0, c) + u * (1 - v) * at(X1, Y0, c) + (1 - u) * v * at(X0, Y1, c) + u * v * at(X1, Y1, c));
+        note.px[o + c] = clamp(Math.round(p + hash(x, y, 91 + c) * 5), 0, 255);
+      }
+    }
+  }
+  const PAPERS = [null, [236, 150, 84], [232, 196, 92], [222, 148, 176], [236, 218, 178], null, [236, 150, 84]]; // null: the mockup's own green
+  const pl = 0.299 * pc[0] + 0.587 * pc[1] + 0.114 * pc[2];
+  for (let n = 0; n < PAPERS.length; n++) {
+    const t = PAPERS[n] || pc, tl = 0.299 * t[0] + 0.587 * t[1] + 0.114 * t[2], px = Buffer.from(note.px);
+    if (PAPERS[n]) for (let o = 0; o < px.length; o += 4) { if (!px[o + 3]) continue; const k = L(o) / pl; for (let c = 0; c < 3; c++) px[o + c] = clamp(Math.round(t[c] * k * (pl / tl) * (tl / pl)), 0, 255); }
+    await savePngA(px, note.w, note.h, path.join(CIN, `cut-note-${n + 1}.png`));
+  }
+  out.note = note;
+  // the lava lamp switched off: its own pixels against a fill of its spot, darkened and cooled
+  const lava = cut('lava', traced((x, y) => inPoly(x, y, [[1250, 443], [1260, 443], [1272, 485], [1281, 520], [1283, 545], [1276, 572], [1276, 578], [1280, 655], [1241, 655], [1238, 578], [1236, 572], [1231, 545], [1233, 520], [1238, 485]])), ZERO, all);
+  for (let o = 0; o < lava.px.length; o += 4) { if (!lava.px[o + 3]) continue; const l = 0.299 * lava.px[o] + 0.587 * lava.px[o + 1] + 0.114 * lava.px[o + 2]; lava.px[o] = clamp(Math.round(l * 0.42 + lava.px[o] * 0.12), 0, 255); lava.px[o + 1] = clamp(Math.round(l * 0.36), 0, 255); lava.px[o + 2] = clamp(Math.round(l * 0.4 + lava.px[o + 2] * 0.1), 0, 255); }
+  await savePngA(lava.px, lava.w, lava.h, path.join(CIN, 'cut-lava-off.png'));
+  out.lava = lava;
+  await savePngA(Buffer.alloc(4), 1, 1, path.join(CIN, 'cut-empty.png'));
+  return out;
+}
+
+/**
  * The lamp's corner moved right: every row's columns left of S (a plain band between the lamp and pencil cup on
  * one side, the sticky note and mug on the other) slide LAMP_DX right, the band just left of S dropping out;
  * the room at the far left fills in from its own edge.
@@ -291,7 +399,7 @@ function shiftLamp(img) {
       const o = (y * W + x) * 3;
       if (x < d) { for (let c = 0; c < 3; c++) img[o + c] = clamp(Math.round(row[c] + hash(x, y, 70 + c) * 4), 0, 255); continue; } // the far left: the room's edge carried in
       let t = 0; // near S, blend back into what was there (only over plain wall or desk) so no seam shows
-      const b = y < 640 ? 80 : B; // wider over the wall (the lamp's glow), narrow by the pencil cup
+      const b = y < 640 ? 80 : y < 780 ? 36 : 64; // wide over the wall and the open desk, narrow by the pencil cup
       if (x >= S - b && Math.abs(l(row, x - d) - l(row, x)) < 22) t = (x - (S - b)) / b;
       for (let c = 0; c < 3; c++) img[o + c] = Math.round(row[(x - d) * 3 + c] * (1 - t) + row[x * 3 + c] * t);
     }
@@ -341,6 +449,7 @@ const savePng = (buf, w, file) => sharp(buf, { raw: { width: w, height: H, chann
 
 (async () => {
   const img = await sharp(MOCKUP).removeAlpha().resize(W, H, { kernel: 'lanczos3' }).raw().toBuffer();
+  const orig = Buffer.from(img), masks = {};
   for (const r of CLEAR) {
     const mask = new Uint8Array(W * H);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (r.inside((x + 0.5) / K, (y + 0.5) / K)) mask[y * W + x] = 1;
@@ -355,18 +464,37 @@ const savePng = (buf, w, file) => sharp(buf, { raw: { width: w, height: H, chann
         grown[Y * W + X] = 1;
       }
     }
+    masks[r.name] = grown;
     fill(img, grown);
+    // on the desk, the planks run straight across: each desk row of the region from the nearest clean desk
+    // either side of it (lit orange wood, not the notepad's paper or the lamp's base)
+    if (r.name === 'mug') {
+      const desky = (x, y) => { const o = (y * W + x) * 3, R = orig[o], G = orig[o + 1], B = orig[o + 2]; return R > 90 && R < 245 && R > G * 1.35 && G > B * 1.05 && !(R > 200 && G > 150); };
+      for (let y = Math.round(DESK_Y * K) + 2; y < H; y++) {
+        let x0 = W, x1 = -1;
+        for (let x = 0; x < W; x++) if (grown[y * W + x]) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
+        if (x1 < 0) continue;
+        let a = x0 - 1; while (a > 0 && (grown[y * W + a] || !desky(a, y))) a--;
+        let b = x1 + 1; while (b < W - 1 && (grown[y * W + b] || !desky(b, y))) b++;
+        for (let x = x0; x <= x1; x++) {
+          if (!grown[y * W + x]) continue;
+          const t = (x - a) / Math.max(1, b - a), o = (y * W + x) * 3;
+          for (let c = 0; c < 3; c++) img[o + c] = clamp(Math.round(orig[(y * W + a) * 3 + c] * (1 - t) + orig[(y * W + b) * 3 + c] * t + hash(x, y, 120 + c) * 3), 0, 255);
+        }
+      }
+    }
   }
+  const cuts = await cutSprites(orig, img, masks);
   shiftLamp(img);
   const off0 = lampOff(img);
-  const room = alignCorners(coaster(widen(img), 1)), off = alignCorners(coaster(widen(off0), 0.55));
-  const roomP = await pixelize(room, WW), offP = await pixelize(off, WW);
+  const room = alignCorners(widen(img)), off = alignCorners(widen(off0));
+  const roomP = room, offP = off;
   await saveWebp(roomP, WW, path.join(CIN, 'room.webp'));
   await saveWebp(offP, WW, path.join(CIN, 'desk-off.webp'));
-  await savePng(await pixelize(side(room, true), SW), SW, path.join(CIN, 'side-left.png'));
-  await savePng(await pixelize(side(room, false), SW), SW, path.join(CIN, 'side-right.png'));
-  await savePng(await pixelize(side(off, true), SW), SW, path.join(CIN, 'side-left-off.png'));
-  await savePng(await pixelize(side(off, false), SW), SW, path.join(CIN, 'side-right-off.png'));
+  await savePng(side(room, true), SW, path.join(CIN, 'side-left.png'));
+  await savePng(side(room, false), SW, path.join(CIN, 'side-right.png'));
+  await savePng(side(off, true), SW, path.join(CIN, 'side-left-off.png'));
+  await savePng(side(off, false), SW, path.join(CIN, 'side-right-off.png'));
 
   // ---- room.json: every box in art px (mockup px x K) ----
   const A = (v) => Math.round(v * K);
@@ -377,10 +505,11 @@ const savePng = (buf, w, file) => sharp(buf, { raw: { width: w, height: H, chann
   const old = JSON.parse(fs.readFileSync(path.join(CIN, 'room.json'), 'utf8'));
   const glass = mv([A(474), A(296), A(822), A(522)]);
   // the sprites, each lined up with the thing it replaces (art px)
-  const mug = box(MUG_X - 97, A(650) - 220, 224, 256); // its body's middle and its base
-  const note = box(A(276) - 6, A(320) - 15, 156, 162); // the paper's corner
-  const PS = 0.85, plant = box(A(947) - Math.round(162 * PS), A(652) - Math.round(336 * PS), Math.round(288 * PS), Math.round(336 * PS)); // the pot's middle and base
-  const lava = box(A(1272) - 55, A(648) - 220, 110, 220);
+  const mdx = MUG_X - A(277); // the mug moves over to beside the keyboard (its body's middle at MUG_X)
+  const mug = box(cuts.mug.x0 + mdx, cuts.mug.y0, cuts.mug.w, cuts.mug.h);
+  const note = box(cuts.note.x0, cuts.note.y0, cuts.note.w, cuts.note.h);
+  const plant = box(cuts.plant.x0, cuts.plant.y0, cuts.plant.w, cuts.plant.h);
+  const lava = box(cuts.lava.x0, cuts.lava.y0, cuts.lava.w, cuts.lava.h);
   const m = {
     ...old,
     image: 'room.webp',
@@ -395,16 +524,20 @@ const savePng = (buf, w, file) => sharp(buf, { raw: { width: w, height: H, chann
     decksPct: [pct([A(388), A(6), A(914), A(136)]), pct([A(386), A(136), A(912), A(266)])],
     props: {
       ...old.props,
-      mug: { ...old.props.mug, boxPx: mv(mug), boxPct: pct(mug), spill: { ...old.props.mug.spill, boxPct: pct(box(mug[0] - 72, mug[1] - 23, 295, 274)) } },
-      steam: { ...old.props.steam, boxPx: mv(mug), boxPct: pct(mug) },
-      note: { ...old.props.note, boxPx: mv(note), boxPct: pct(note) },
-      'plant-pot': { ...old.props['plant-pot'], boxPx: mv(plant), boxPct: pct(plant) },
-      'plant-leaves': { ...old.props['plant-leaves'], boxPx: mv(plant), boxPct: pct(plant) },
+      // the mug's spill canvas lines up with the cut mug's body (its lip, its base, its middle)
+      mug: { ...old.props.mug, file: '/cinema/cut-mug.png', boxPx: mv(mug), boxPct: pct(mug), originPct: [50, 94], spill: { ...old.props.mug.spill, boxPct: pct(box(MUG_X - 95 - 72, A(652) - 220 - 23, 295, 274)) } },
+      steam: { ...old.props.steam, file: '/cinema/cut-empty.png', boxPx: mv(mug), boxPct: pct(mug) },
+      note: { ...old.props.note, file: '/cinema/cut-note-1.png', boxPx: mv(note), boxPct: pct(note) },
+      'plant-pot': { ...old.props['plant-pot'], file: '/cinema/cut-empty.png', boxPx: mv(plant), boxPct: pct(plant) },
+      'plant-leaves': { ...old.props['plant-leaves'], file: '/cinema/cut-empty.png', boxPx: mv(plant), boxPct: pct(plant) },
     },
     // a peeled note comes to rest flat on the desk's back edge behind the mug (art px from where it hangs)
     noteLand: { dx: MUG_X - (note[0] + 78), dy: A(DESK_Y) + 4 - (note[1] + 5) },
     lamp: { off: '/cinema/desk-off.webp', hitPct: pct([A(15) + LAMP_DX, A(262), A(216) + LAMP_DX, A(645)]) },
-    lava: { boxPct: pct(lava) },
+    lava: { boxPct: pct(lava), off: '/cinema/cut-lava-off.png' },
+    notes: Array.from({ length: 7 }, (_, i) => `/cinema/cut-note-${i + 1}.png`),
+    // the whole plant sways about the middle of its pot's foot
+    leaves: { stems: '/cinema/cut-empty.png', files: ['/cinema/cut-plant.png'], originPct: [[50, 98]] },
     pens: { files: [], boxPct: pct([0, 0, 1, 1]), originPct: [], hitPct: pct([0, 0, 1, 1]) },
     antPct: { from: [+(((mapX(A(940), A(652))) / WW) * 100).toFixed(2), +(((A(652)) / H) * 100).toFixed(2)], to: [+(((mapX(A(870), A(652))) / WW) * 100).toFixed(2), +(((A(664)) / H) * 100).toFixed(2)] },
     sides: { px: SW, left: '/cinema/side-left.png', right: '/cinema/side-right.png', leftOff: '/cinema/side-left-off.png', rightOff: '/cinema/side-right-off.png' },

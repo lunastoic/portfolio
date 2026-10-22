@@ -740,3 +740,12 @@ body:has(.cinema) .crt-flicker {
   font-size: 0.8em;
   inset: 12% 10% auto;
 }
+
+/* the lava lamp in the picture: switched off, its darkened cut-out lies over it */
+.cinema__lava-pic img {
+  transition: opacity 0.6s ease;
+}
+
+.cinema__lava-pic img.is-hidden {
+  opacity: 0;
+}

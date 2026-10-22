@@ -59,27 +59,27 @@
   ],
   "props": {
     "mug": {
-      "file": "/cinema/prop-mug.png",
+      "file": "/cinema/cut-mug.png",
       "boxPct": {
-        "left": 20.781,
-        "top": 61.742,
-        "width": 12.154,
-        "height": 28.225
+        "left": 22.355,
+        "top": 59.757,
+        "width": 9.007,
+        "height": 28.335
       },
       "boxPx": [
-        383,
-        560,
-        607,
-        816
+        412,
+        542,
+        578,
+        799
       ],
       "originPct": [
-        16.96,
-        85.94
+        50,
+        94
       ],
       "spill": {
         "boxPct": {
-          "left": 16.875,
-          "top": 59.206,
+          "left": 16.983,
+          "top": 59.427,
           "width": 16.007,
           "height": 30.209
         },
@@ -98,18 +98,18 @@
       }
     },
     "steam": {
-      "file": "/props/mug-steam.png",
+      "file": "/cinema/cut-empty.png",
       "boxPct": {
-        "left": 20.781,
-        "top": 61.742,
-        "width": 12.154,
-        "height": 28.225
+        "left": 22.355,
+        "top": 59.757,
+        "width": 9.007,
+        "height": 28.335
       },
       "boxPx": [
-        383,
-        560,
-        607,
-        816
+        412,
+        542,
+        578,
+        799
       ],
       "originPct": [
         50,
@@ -117,18 +117,18 @@
       ]
     },
     "note": {
-      "file": "/cinema/prop-sticky-1.png",
+      "file": "/cinema/cut-note-1.png",
       "boxPct": {
-        "left": 17.634,
-        "top": 40.684,
-        "width": 8.464,
-        "height": 17.861
+        "left": 18.014,
+        "top": 42.448,
+        "width": 6.837,
+        "height": 13.341
       },
       "boxPx": [
-        325,
-        369,
-        481,
-        531
+        332,
+        385,
+        458,
+        506
       ],
       "originPct": [
         46.15,
@@ -136,17 +136,17 @@
       ]
     },
     "plant-pot": {
-      "file": "/cinema/prop-plant-pot.png",
+      "file": "/cinema/cut-empty.png",
       "boxPct": {
-        "left": 60.553,
-        "top": 54.686,
-        "width": 13.294,
-        "height": 31.533
+        "left": 61.747,
+        "top": 57.001,
+        "width": 12.154,
+        "height": 29.217
       },
       "boxPx": [
-        1116,
-        496,
-        1361,
+        1138,
+        517,
+        1362,
         782
       ],
       "originPct": [
@@ -155,17 +155,17 @@
       ]
     },
     "plant-leaves": {
-      "file": "/cinema/prop-plant-leaves.png",
+      "file": "/cinema/cut-empty.png",
       "boxPct": {
-        "left": 60.553,
-        "top": 54.686,
-        "width": 13.294,
-        "height": 31.533
+        "left": 61.747,
+        "top": 57.001,
+        "width": 12.154,
+        "height": 29.217
       },
       "boxPx": [
-        1116,
-        496,
-        1361,
+        1138,
+        517,
+        1362,
         782
       ],
       "originPct": [
@@ -185,13 +185,13 @@
     ]
   },
   "notes": [
-    "/cinema/prop-sticky-1.png",
-    "/cinema/prop-sticky-2.png",
-    "/cinema/prop-sticky-3.png",
-    "/cinema/prop-sticky-4.png",
-    "/cinema/prop-sticky-5.png",
-    "/cinema/prop-sticky-6.png",
-    "/cinema/prop-sticky-7.png"
+    "/cinema/cut-note-1.png",
+    "/cinema/cut-note-2.png",
+    "/cinema/cut-note-3.png",
+    "/cinema/cut-note-4.png",
+    "/cinema/cut-note-5.png",
+    "/cinema/cut-note-6.png",
+    "/cinema/cut-note-7.png"
   ],
   "lamp": {
     "off": "/cinema/desk-off.webp",
@@ -219,99 +219,25 @@
     }
   },
   "leaves": {
-    "stems": "/cinema/prop-plant-stems.png",
+    "stems": "/cinema/cut-empty.png",
     "files": [
-      "/cinema/prop-leaf-0.png",
-      "/cinema/prop-leaf-1.png",
-      "/cinema/prop-leaf-2.png",
-      "/cinema/prop-leaf-3.png",
-      "/cinema/prop-leaf-4.png",
-      "/cinema/prop-leaf-5.png",
-      "/cinema/prop-leaf-6.png",
-      "/cinema/prop-leaf-7.png",
-      "/cinema/prop-leaf-8.png",
-      "/cinema/prop-leaf-9.png",
-      "/cinema/prop-leaf-10.png",
-      "/cinema/prop-leaf-11.png",
-      "/cinema/prop-leaf-12.png",
-      "/cinema/prop-leaf-13.png",
-      "/cinema/prop-leaf-14.png",
-      "/cinema/prop-leaf-15.png"
+      "/cinema/cut-plant.png"
     ],
     "originPct": [
       [
-        42.36,
-        26.79
-      ],
-      [
-        59.03,
-        24.4
-      ],
-      [
-        50.69,
-        17.26
-      ],
-      [
-        31.25,
-        36.31
-      ],
-      [
-        70.14,
-        33.93
-      ],
-      [
-        39.58,
-        38.69
-      ],
-      [
-        61.81,
-        37.5
-      ],
-      [
-        25.69,
-        48.21
-      ],
-      [
-        75.69,
-        45.83
-      ],
-      [
-        50.69,
-        33.93
-      ],
-      [
-        36.81,
-        52.98
-      ],
-      [
-        64.58,
-        52.98
-      ],
-      [
-        29.86,
-        61.31
-      ],
-      [
-        71.53,
-        61.31
-      ],
-      [
-        47.92,
-        50.6
-      ],
-      [
-        54.86,
-        51.79
+        50,
+        98
       ]
     ]
   },
   "lava": {
     "boxPct": {
-      "left": 92.621,
-      "top": 61.521,
-      "width": 5.969,
-      "height": 24.256
-    }
+      "left": 92.946,
+      "top": 58.655,
+      "width": 3.418,
+      "height": 28.004
+    },
+    "off": "/cinema/cut-lava-off.png"
   },
   "sides": {
     "px": 540,
@@ -321,8 +247,8 @@
     "rightOff": "/cinema/side-right-off.png"
   },
   "noteLand": {
-    "dx": 77,
-    "dy": 386
+    "dx": 70,
+    "dy": 370
   },
   "textDx": 118
 }

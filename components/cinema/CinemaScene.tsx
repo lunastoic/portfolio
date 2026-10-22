@@ -61,7 +61,8 @@ interface Manifest {
   };
   /** The room past the painting's edges (wall, desk, the things the edge cuts), lit and unlit. */
   sides: { px: number; left: string; right: string; leftOff: string; rightOff: string };
-  lava: { boxPct: PctBox };
+  /** The lava lamp: with `off`, it's part of the picture and `off` is its switched-off look laid over it. */
+  lava: { boxPct: PctBox; off?: string };
   pens: { files: string[]; boxPct: PctBox; originPct: number[][]; hitPct: PctBox };
   leaves: { stems: string; files: string[]; originPct: number[][] };
   antPct: { from: number[]; to: number[] };
@@ -970,7 +971,20 @@ export default function CinemaScene() {
           ))}
 
           {/* The lava lamp by the PC: click it off and on */}
-          <LavaLamp on={lavaOn} boxPct={art.lava.boxPct} onToggle={switchLava} tabIndex={standingTab} />
+          {art.lava.off ? (
+            <button
+              type="button"
+              className="cinema__sprite cinema__lava-pic"
+              style={pctBox(art.lava.boxPct)}
+              onClick={switchLava}
+              tabIndex={standingTab}
+              aria-label={lavaOn ? "Switch the lava lamp off" : "Switch the lava lamp on"}
+            >
+              <Image src={art.lava.off} alt="" fill unoptimized draggable={false} className={lavaOn ? "is-hidden" : ""} />
+            </button>
+          ) : (
+            <LavaLamp on={lavaOn} boxPct={art.lava.boxPct} onToggle={switchLava} tabIndex={standingTab} />
+          )}
 
           {/* The pens in the cat pencil cup under the lamp, each rocking on its own */}
           {art.pens.files.map((file, i) => (
