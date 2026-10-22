@@ -61,15 +61,15 @@
     "mug": {
       "file": "/cinema/prop-mug.png",
       "boxPct": {
-        "left": 12.371,
+        "left": 20.781,
         "top": 61.742,
         "width": 12.154,
         "height": 28.225
       },
       "boxPx": [
-        228,
+        383,
         560,
-        452,
+        607,
         816
       ],
       "originPct": [
@@ -78,7 +78,7 @@
       ],
       "spill": {
         "boxPct": {
-          "left": 8.464,
+          "left": 16.875,
           "top": 59.206,
           "width": 16.007,
           "height": 30.209
@@ -100,15 +100,15 @@
     "steam": {
       "file": "/props/mug-steam.png",
       "boxPct": {
-        "left": 12.371,
+        "left": 20.781,
         "top": 61.742,
         "width": 12.154,
         "height": 28.225
       },
       "boxPx": [
-        228,
+        383,
         560,
-        452,
+        607,
         816
       ],
       "originPct": [
@@ -196,7 +196,7 @@
   "lamp": {
     "off": "/cinema/desk-off.webp",
     "hitPct": {
-      "left": 0.977,
+      "left": 3.147,
       "top": 34.62,
       "width": 13.077,
       "height": 50.717
@@ -321,7 +321,7 @@
     "rightOff": "/cinema/side-right-off.png"
   },
   "noteLand": {
-    "dx": -78,
+    "dx": 77,
     "dy": 386
   },
   "textDx": 118

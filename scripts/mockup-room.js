@@ -15,6 +15,10 @@ const ROOT = path.join(__dirname, '..'), CIN = path.join(ROOT, 'public/cinema');
 const MOCKUP = path.join(ROOT, 'scripts/art/mockup.png');
 const K = 1.2, MW = 1339, MH = 756, W = Math.round(MW * K), H = Math.round(MH * K), SW = 540;
 const DESK_Y = 630; // the desk's back edge, mockup px
+/** The lamp's corner (the lamp, its glow, the pencil cup, the notebook) moves this far right, art px; mockup px LX. */
+const LAMP_DX = 40, LX = LAMP_DX / 1.2;
+/** The mug's body's middle, art px of the widened room: beside the keyboard, off to its side. */
+const MUG_X = 480;
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const hash = (x, y, s) => ((Math.imul((y * 7919 + x) * 3 + s, 2654435761) >>> 24) / 255) - 0.5;
@@ -34,7 +38,7 @@ const CLEAR = [
   { name: 'book-3', inside: (x, y) => rect(x, y, 517, 628, 714, 649) },
   // the sticky note, the mug and its steam, the plant, the lava lamp
   { name: 'note', inside: (x, y) => rect(x, y, 272, 316, 390, 428) },
-  { name: 'mug', split: true, inside: (x, y) => rect(x, y, 220, 540, 324, 652) || ell(x, y, 334, 602, 22, 42) || rect(x, y, 240, 462, 310, 542) },
+  { name: 'mug', split: true, inside: (x, y) => rect(x, y, 224, 450, 352, 674) || rect(x, y, 206, 450, 224, 560) || ell(x, y, 276, 656, 58, 17) || ell(x, y, 336, 602, 26, 46) || rect(x, y, 240, 462, 310, 542) },
   { name: 'plant', split: true, inside: (x, y) => inPoly(x, y, [[858, 440], [896, 362], [962, 356], [1012, 404], [1050, 468], [1052, 562], [1012, 640], [994, 658], [902, 658], [866, 622], [852, 560]]) && !inPoly(x, y, XBOX) && !rect(x, y, 948, 278, 1074, 440) },
   { name: 'lava', split: true, inside: (x, y) => rect(x, y, 1224, 434, 1298, 650) && !inPoly(x, y, XBOX) },
 ];
@@ -66,10 +70,10 @@ function fill(img, mask) {
 
 /** The lamp switched off: its warm light divided out of the room round it, the shade's glass dark. */
 function lampOff(img) {
-  const out = Buffer.alloc(img.length), SHADE = [[28, 383], [213, 383], [152, 268], [86, 268]];
+  const out = Buffer.alloc(img.length), SHADE = [[28 + LX, 383], [213 + LX, 383], [152 + LX, 268], [86 + LX, 268]];
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const mx = x / K, my = y / K, o = (y * W + x) * 3;
-    const G = 1.6 * Math.exp(-(((mx - 118) / 300) ** 2) - ((my - 420) / 280) ** 2) + (my > DESK_Y ? 0.9 * Math.exp(-(((mx - 170) / 330) ** 2) - ((my - 700) / 110) ** 2) : 0);
+    const G = 1.6 * Math.exp(-(((mx - 118 - LX) / 300) ** 2) - ((my - 420) / 280) ** 2) + (my > DESK_Y ? 0.9 * Math.exp(-(((mx - 170 - LX) / 330) ** 2) - ((my - 700) / 110) ** 2) : 0);
     const tint = [1.2, 1, 0.65];
     for (let c = 0; c < 3; c++) out[o + c] = clamp(Math.round((img[o + c] * 0.8 * [0.95, 0.97, 1.08][c]) / (1 + G * tint[c])), 0, 255);
     if (inPoly(mx, my, SHADE)) { const l = 0.3 * img[o] + 0.59 * img[o + 1] + 0.11 * img[o + 2]; out[o] = l * 0.26; out[o + 1] = l * 0.17; out[o + 2] = l * 0.1; }
@@ -148,8 +152,8 @@ function widen(img) {
  */
 const CORNERS = [{ side: 'left', old: 176, w: 4, x: 181, y: 758, src: 690 }, { side: 'right', old: 1699, w: 6, x: 1672, y: 768, src: 762 }];
 const SLOPE = 0.12; // the crease's drop per px out from the corner (shallow, so the lamp and lava lamp stand on the desk)
-const SHADE_POLY = [[28, 383], [213, 383], [152, 268], [86, 268]];
-const NOTEBOOK = [[8, 842], [236, 782], [272, 840], [60, 900], [8, 900]];
+const SHADE_POLY = [[28 + LX, 383], [213 + LX, 383], [152 + LX, 268], [86 + LX, 268]];
+const NOTEBOOK = [[8, 842], [236, 782], [272, 840], [60, 900], [8, 900]].map(([x, y]) => [x + LAMP_DX, y]);
 const HEADSET = (x, y) => ell(x, y, 1229, 261, 35, 42) || ell(x, y, 1287, 262, 34, 42) || (y < 232 && ell(x, y, 1262, 216, 50, 76) && !ell(x, y, 1262, 222, 27, 63)) || (x >= 1246 && x <= 1272 && y >= 116 && y <= 154);
 function alignCorners(img) {
   const at = (x, y, c) => img[(y * WW + x) * 3 + c];
@@ -160,7 +164,7 @@ function alignCorners(img) {
   // things in front of the walls (art px of the widened room)
   const keep = (x, y) => {
     const mx = (x > 900 ? x - CUTS.left.d - CUTS.right.d : x) / K, my = y / K;
-    return inPoly(mx, my, SHADE_POLY) || (my > 383 && my < 600 && Math.abs(mx - 117) < 26) || ell(mx, my, 122, 625, 92, 48) || inPoly(x, y, NOTEBOOK) || HEADSET(mx, my) || (x > 900 && inPoly(mx, my, XBOX));
+    return inPoly(mx, my, SHADE_POLY) || (my > 383 && my < 600 && Math.abs(mx - 117 - LX) < 26) || ell(mx, my, 122 + LX, 625, 92, 48) || inPoly(x, y, NOTEBOOK) || HEADSET(mx, my) || (x > 900 && inPoly(mx, my, XBOX));
   };
   for (const { side, old, w, x: cx, y: dy, src: sy } of CORNERS) {
     const out = side === 'left' ? -1 : 1;
@@ -254,6 +258,42 @@ function side(img, left, W = WW) {
   return out;
 }
 
+/**
+ * The lamp's corner moved right: every row's columns left of S (a plain band between the lamp and pencil cup on
+ * one side, the sticky note and mug on the other) slide LAMP_DX right, the band just left of S dropping out;
+ * the room at the far left fills in from its own edge.
+ */
+function shiftLamp(img) {
+  const S = 342, d = LAMP_DX, B = 24;
+  for (let y = 0; y < H; y++) {
+    const row = Buffer.from(img.subarray(y * W * 3, (y * W + S) * 3));
+    const l = (b, x) => 0.299 * b[x * 3] + 0.587 * b[x * 3 + 1] + 0.114 * b[x * 3 + 2];
+    for (let x = 0; x < S; x++) {
+      const o = (y * W + x) * 3;
+      if (x < d) { for (let c = 0; c < 3; c++) img[o + c] = clamp(Math.round(row[c] + hash(x, y, 70 + c) * 4), 0, 255); continue; } // the far left: the room's edge carried in
+      let t = 0; // near S, blend back into what was there (only over plain wall or desk) so no seam shows
+      if (x >= S - B && Math.abs(l(row, x - d) - l(row, x)) < 22) t = (x - (S - B)) / B;
+      for (let c = 0; c < 3; c++) img[o + c] = Math.round(row[(x - d) * 3 + c] * (1 - t) + row[x * 3 + c] * t);
+    }
+  }
+}
+
+/** The mug's cork coaster, drawn round its foot (widened-room art px) in the room's palette; `lit` dims it for the lamp off. */
+function coaster(img, lit) {
+  const cx = MUG_X, cy = Math.round(650 * K) + 6, rx = 64, ry = 15;
+  for (let y = cy - ry - 2; y <= cy + ry + 6; y++) for (let x = cx - rx - 2; x <= cx + rx + 2; x++) {
+    const e = ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2, side = ((x - cx) / rx) ** 2 + ((y - cy - 5) / ry) ** 2;
+    let c = null;
+    if (e <= 1) c = e > 0.8 ? [62, 30, 12] : [138 + 10 * hash(x, y, 61), 84 + 8 * hash(x, y, 62), 44];
+    else if (side <= 1 && y > cy) c = [70, 36, 16];
+    else if (side <= 1.12 && y > cy) c = [26, 12, 6];
+    if (!c) continue;
+    const o = (y * WW + x) * 3;
+    for (let k = 0; k < 3; k++) img[o + k] = clamp(Math.round(c[k] * lit), 0, 255);
+  }
+  return img;
+}
+
 const saveWebp = async (buf, w, file) => { await sharp(buf, { raw: { width: w, height: H, channels: 3 } }).webp({ lossless: true, effort: 6 }).toFile(file + '.tmp'); fs.renameSync(file + '.tmp', file); };
 const savePng = (buf, w, file) => sharp(buf, { raw: { width: w, height: H, channels: 3 } }).png({ palette: true, colours: 128, dither: 0 }).toFile(file);
 
@@ -264,8 +304,9 @@ const savePng = (buf, w, file) => sharp(buf, { raw: { width: w, height: H, chann
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (r.inside((x + 0.5) / K, (y + 0.5) / K)) mask[y * W + x] = 1;
     fill(img, mask);
   }
+  shiftLamp(img);
   const off0 = lampOff(img);
-  const room = alignCorners(widen(img)), off = alignCorners(widen(off0));
+  const room = alignCorners(coaster(widen(img), 1)), off = alignCorners(coaster(widen(off0), 0.55));
   await saveWebp(room, WW, path.join(CIN, 'room.webp'));
   await saveWebp(off, WW, path.join(CIN, 'desk-off.webp'));
   await savePng(side(room, true), SW, path.join(CIN, 'side-left.png'));
@@ -282,7 +323,7 @@ const savePng = (buf, w, file) => sharp(buf, { raw: { width: w, height: H, chann
   const old = JSON.parse(fs.readFileSync(path.join(CIN, 'room.json'), 'utf8'));
   const glass = mv([A(474), A(296), A(822), A(522)]);
   // the sprites, each lined up with the thing it replaces (art px)
-  const mug = box(A(271) - 97, A(650) - 220, 224, 256); // its body's middle and its base
+  const mug = box(MUG_X - 97, A(650) - 220, 224, 256); // its body's middle and its base
   const note = box(A(276) - 6, A(320) - 15, 156, 162); // the paper's corner
   const PS = 0.85, plant = box(A(947) - Math.round(162 * PS), A(652) - Math.round(336 * PS), Math.round(288 * PS), Math.round(336 * PS)); // the pot's middle and base
   const lava = box(A(1272) - 55, A(648) - 220, 110, 220);
@@ -307,8 +348,8 @@ const savePng = (buf, w, file) => sharp(buf, { raw: { width: w, height: H, chann
       'plant-leaves': { ...old.props['plant-leaves'], boxPx: mv(plant), boxPct: pct(plant) },
     },
     // a peeled note comes to rest flat on the desk's back edge behind the mug (art px from where it hangs)
-    noteLand: { dx: A(271) - (note[0] + 78), dy: A(DESK_Y) + 4 - (note[1] + 5) },
-    lamp: { off: '/cinema/desk-off.webp', hitPct: pct([A(15), A(262), A(216), A(645)]) },
+    noteLand: { dx: MUG_X - (note[0] + 78), dy: A(DESK_Y) + 4 - (note[1] + 5) },
+    lamp: { off: '/cinema/desk-off.webp', hitPct: pct([A(15) + LAMP_DX, A(262), A(216) + LAMP_DX, A(645)]) },
     lava: { boxPct: pct(lava) },
     pens: { files: [], boxPct: pct([0, 0, 1, 1]), originPct: [], hitPct: pct([0, 0, 1, 1]) },
     antPct: { from: [+(((mapX(A(940), A(652))) / WW) * 100).toFixed(2), +(((A(652)) / H) * 100).toFixed(2)], to: [+(((mapX(A(870), A(652))) / WW) * 100).toFixed(2), +(((A(664)) / H) * 100).toFixed(2)] },
