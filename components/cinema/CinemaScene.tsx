@@ -491,6 +491,8 @@ export default function CinemaScene() {
   const fallbackRef = useRef(0);
   const worldRef = useRef<World | null>(null);
   const steamPuff = useRef<(() => void) | null>(null);
+  // how far the camera has zoomed in from standing, so the steam keeps one pace on screen
+  const steamZoom = useRef(1);
   const elsRef = useRef<Partial<Record<PropKey, HTMLElement | null>>>({});
   const noteRefs = useRef(new Map<number, HTMLDivElement>());
   const penRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -847,6 +849,10 @@ export default function CinemaScene() {
       )
     : null;
   const screen = stage ? screenRect(stage) : null;
+  const zoom = stage ? stage.scale / standingStage(vp.w, vp.h).scale : 1;
+  useEffect(() => {
+    steamZoom.current = zoom;
+  }, [zoom]);
   // the live screen is laid out at its seated size and only scaled as you sit and stand, so the text
   // never reflows or jumps between font sizes on the way
   const seatStage = ready ? seatedStage(layout, vp.w, vp.h) : null;
@@ -1076,7 +1082,7 @@ export default function CinemaScene() {
                   style={style}
                   aria-hidden="true"
                 >
-                  <Steam steam={steam} puffRef={steamPuff} />
+                  <Steam steam={steam} puffRef={steamPuff} zoomRef={steamZoom} />
                 </div>
               );
             }

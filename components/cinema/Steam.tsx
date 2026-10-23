@@ -19,6 +19,8 @@ interface Puff {
   phase: number;
   sway: number;
   drift: number;
+  /** Part of a knock's burst: it keeps its quick pace. */
+  strong: boolean;
 }
 
 // the steam's light ramp, darkest to palest, as the studies drew it
@@ -27,6 +29,8 @@ const RAMP = ["#aaa29c", "#cdc5bf", "#ece6e0"];
 const EVERY = 0.085;
 const BURST = 34;
 const HARD_FOR = 0.8;
+// the steam's own pace, slower than the burst's
+const DRIFT = 0.7;
 
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
@@ -34,9 +38,18 @@ const rnd = (a: number, b: number) => a + Math.random() * (b - a);
  * The coffee's steam, drawn live on a pixel canvas over the mug: puffs leave the coffee in two or three wisps, rise
  * curling side to side, thin out through the room's checker dither and are gone, over and over without end. The box rides the
  * mug's own transform, so the steam goes where the mug goes. `puffRef` lets the scene make it puff when the mug is
- * knocked.
+ * knocked. `zoomRef` is how far the camera has zoomed in from standing: the steam slows by as much, so it crosses the
+ * screen at the same pace standing and seated.
  */
-export default function Steam({ steam, puffRef }: { steam: SteamArt; puffRef: RefObject<(() => void) | null> }) {
+export default function Steam({
+  steam,
+  puffRef,
+  zoomRef,
+}: {
+  steam: SteamArt;
+  puffRef: RefObject<(() => void) | null>;
+  zoomRef: RefObject<number>;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -57,6 +70,7 @@ export default function Steam({ steam, puffRef }: { steam: SteamArt; puffRef: Re
         phase: rnd(0, Math.PI * 2),
         sway: strong ? rnd(1.6, 3) : rnd(0.8, 1.6),
         drift: rnd(-1.2, 1.2),
+        strong,
       });
 
     puffRef.current = () => {
@@ -66,14 +80,16 @@ export default function Steam({ steam, puffRef }: { steam: SteamArt; puffRef: Re
 
     const step = (dt: number) => {
       hard = Math.max(0, hard - dt);
+      const zoom = Math.max(1, zoomRef.current ?? 1);
+      const slow = (dt * DRIFT) / zoom;
       sources.forEach((s, i) => {
-        due[i] -= dt * (hard > 0 ? 2.5 : 1);
+        due[i] -= slow * (hard > 0 ? 2.5 : 1);
         while (due[i] <= 0) {
           spawn(s, false);
           due[i] += EVERY * rnd(0.7, 1.3);
         }
       });
-      for (const p of puffs) p.age += dt;
+      for (const p of puffs) p.age += p.strong ? dt / zoom : slow;
       for (let i = puffs.length - 1; i >= 0; i--) if (puffs[i].age >= puffs[i].life) puffs.splice(i, 1);
     };
 
@@ -110,7 +126,7 @@ export default function Steam({ steam, puffRef }: { steam: SteamArt; puffRef: Re
       cancelAnimationFrame(raf);
       puffRef.current = null;
     };
-  }, [steam, puffRef]);
+  }, [steam, puffRef, zoomRef]);
 
   return <canvas ref={canvasRef} width={steam.width} height={steam.height} />;
 }
