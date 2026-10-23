@@ -1788,5 +1788,18 @@
       "on": "#111116",
       "off": "#0b0c14"
     }
+  },
+  "bands": {
+    "top": {
+      "px": 264,
+      "over": 15,
+      "on": "/cinema/band-top.png",
+      "off": "/cinema/band-top-off.png"
+    },
+    "bottom": {
+      "px": 501,
+      "on": "/cinema/band-bottom.png",
+      "off": "/cinema/band-bottom-off.png"
+    }
   }
 }

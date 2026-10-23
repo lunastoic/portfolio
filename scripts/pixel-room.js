@@ -16,6 +16,9 @@ const CIN = path.join(__dirname, '..', 'public', 'cinema');
 const S = 3; // site art px per pixel
 const SIDE = 188; // pixels drawn past each side (135 u)
 const WS = W + 2 * SIDE; // the whole drawing's width, pixels
+// for phones held upright: pixels of room drawn above it (60 u of wall) and below it (120 u: the desk's front, the dark
+// under it and the floor); the top band runs OVER pixels down into the room, over the shadow along its top edge
+const TOP = Math.round(60 * K), BOTTOM = Math.round(120 * K), OVER = 5;
 const F = K * S; // art px per u
 const AW = W * S, AH = H * S; // the art's size
 
@@ -42,6 +45,13 @@ async function save(px, file, [x0, x1] = [SIDE, SIDE + W], width = WS) {
   const w = x1 - x0, buf = Buffer.alloc(w * H * 4);
   for (let y = 0; y < H; y++) Buffer.from(px.buffer, (y * width + x0) * 4, w * 4).copy(buf, y * w * 4);
   await sharp(buf, { raw: { width: w, height: H, channels: 4 } }).resize(w * S, H * S, { kernel: 'nearest' }).png({ compressionLevel: 9 }).toFile(path.join(CIN, file));
+}
+
+/** Rows y0..y1 and columns x0..x1 of a drawing `width` px wide, scaled up to art px. */
+async function saveRows(px, file, [x0, x1], [y0, y1], width = WS) {
+  const w = x1 - x0, h = y1 - y0, buf = Buffer.alloc(w * h * 4);
+  for (let y = 0; y < h; y++) Buffer.from(px.buffer, ((y0 + y) * width + x0) * 4, w * 4).copy(buf, y * w * 4);
+  await sharp(buf, { raw: { width: w, height: h, channels: 4 } }).resize(w * S, h * S, { kernel: 'nearest' }).png({ compressionLevel: 9 }).toFile(path.join(CIN, file));
 }
 
 /** A thing on its own: the pixels where the room with it differs from the room without it (its shadow comes along),
@@ -71,6 +81,11 @@ async function cut(withIt, withoutIt, file) {
   await save(lit, 'side-right.png', [SIDE + W, WS]);
   await save(dark, 'side-left-off.png', [0, SIDE]);
   await save(dark, 'side-right-off.png', [SIDE + W, WS]);
+  // the room above and below, for phones held upright (lit and unlit)
+  for (const [px, tag] of [[render(true, true, MOVING, { top: TOP, bottom: BOTTOM }), ''], [render(false, true, MOVING, { top: TOP, bottom: BOTTOM }), '-off']]) {
+    await saveRows(px, `band-top${tag}.png`, [SIDE, SIDE + W], [0, TOP + OVER]);
+    await saveRows(px, `band-bottom${tag}.png`, [SIDE, SIDE + W], [TOP + H, TOP + H + BOTTOM]);
+  }
 
   // ---- the things that move, each cut out lit (the scene dims them with the lamp)
   const MUG = await cut(render(true, true, without('mug')), lit, 'cut-mug.png');
@@ -139,6 +154,10 @@ async function cut(withIt, withoutIt, file) {
     lavaOff: { on: '/cinema/room-lava-off.png', off: '/cinema/desk-off-lava-off.png' },
     lava: { boxPct: pct([p(lavaX), p(lavaY), p(lavaX + 30), p(lavaY + 90)]) },
     sides: { ...m.sides, px: SIDE * S },
+    bands: {
+      top: { px: (TOP + OVER) * S, over: OVER * S, on: '/cinema/band-top.png', off: '/cinema/band-top-off.png' },
+      bottom: { px: BOTTOM * S, on: '/cinema/band-bottom.png', off: '/cinema/band-bottom-off.png' },
+    },
     notes: NOTE_COLOURS.map((_, i) => `/cinema/cut-note-${i + 1}.png`),
     // a peeled note comes to rest flat on the desk just behind the mug, a little to its right
     noteLand: { dx: Math.round(u(129) - u(127)), dy: Math.round(u(193) - u(97)) },

@@ -10,7 +10,7 @@ sticky note in seven colours) and `cut-pen-1…3.png` (each pen in the cat cup).
 (`components/cinema/LavaLamp.tsx`) and the headset's cable (`HeadsetCable.tsx`) are drawn live on the page, so
 `room.json` only says where they go. The backdrops: `room.png` and `desk-off.png` (desk lamp on / off) and
 `room-lava-off.png` and `desk-off-lava-off.png` (the lava lamp's light gone as well), and the `side-*` strips for very
-wide windows (the same drawing carried on past each edge). `room.json` holds every place the scene uses: the
+wide windows (the same drawing carried on past each edge), and the `band-top` / `band-bottom` pair (lit and `-off`) for phones held upright: more wall above the decks, and below the desk's front edge the dark under it, the skirting and the floor. `room.json` holds every place the scene uses: the
 screen's glass, the decks, the mug and its coffee spill, the note and where it lands, the pens' pivots, the lamp's
 hit box, the lava lamp's box and the cable's path. `scripts/mockup-room.js` and everything below about the painting
 (`desk.webp`, `cinema-blend.js`) describe earlier rooms, kept but unused.

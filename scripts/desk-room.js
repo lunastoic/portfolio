@@ -205,21 +205,23 @@ function controllerImage(on = true) {
 
 function drawRoom(theme, on, lavaOn = true, opt = {}) {
   // opt.side: px of room drawn past each edge; opt.skip: pieces left out (mug, note, lava, pens, pen0..2, cable);
-  // opt.noteRamp: the sticky note's colour; opt.info: filled in with where things are (u)
+  // opt.noteRamp: the sticky note's colour; opt.info: filled in with where things are (u); opt.top / opt.bottom: px of
+  // room drawn above and below it (rows -top..H+bottom; the drawing comes back (H + top + bottom) rows tall)
   const OX = opt.side || 0, WW = W + 2 * OX, skip = new Set(opt.skip || []), info = opt.info || {};
+  const OT = opt.top || 0, OB = opt.bottom || 0, RH = H + OT + OB;
   const ramps = [], rampId = new Map();
   const id = (name) => {
     if (!rampId.has(name)) { rampId.set(name, ramps.length); ramps.push(theme.ramps[name] || SHARED[name]); }
     return rampId.get(name);
   };
-  const RB = new Int16Array(WW * H).fill(-1), SB = new Float32Array(WW * H), EB = new Uint8Array(WW * H);
+  const RB = new Int16Array(WW * RH).fill(-1), SB = new Float32Array(WW * RH), EB = new Uint8Array(WW * RH);
   // where each pixel takes the room's light from (u): its own place for the wall and desk, the spot an object stands
   // on for everything on them, so an object is lit as one thing; ANC is the object being drawn
-  const AX = new Float32Array(WW * H).fill(-1), AY = new Float32Array(WW * H);
+  const AX = new Float32Array(WW * RH).fill(-1), AY = new Float32Array(WW * RH);
   let ANC = null;
   const put = (X, Y, ramp, s, emit) => {
-    if (X < 0 || Y < 0 || X >= WW || Y >= H) return;
-    const i = Y * WW + X; RB[i] = id(ramp); SB[i] = s; EB[i] = emit === 2 ? 2 : emit ? 1 : 0;
+    if (X < 0 || Y < -OT || X >= WW || Y >= H + OB) return;
+    const i = (Y + OT) * WW + X; RB[i] = id(ramp); SB[i] = s; EB[i] = emit === 2 ? 2 : emit ? 1 : 0;
     if (ANC) { AX[i] = ANC[0]; AY[i] = ANC[1]; } else AX[i] = -1;
   };
   const val = (v, x, y, X, Y) => (typeof v === 'function' ? v(x, y, X, Y) : v);
@@ -268,13 +270,29 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   const DESK = 190, CL = 45, CR = 418, SLOPE = 0.38; // SLOPE: the crease's drop per u out from the corner (toward the eye's vanishing point)
   const crease = (x) => (x < CL ? DESK + (CL - x) * SLOPE : x > CR ? DESK + (x - CR) * SLOPE : DESK);
   const onWall = (x, y) => y < crease(x);
-  for (let Y = 0; Y < H; Y++) for (let X = 0; X < WW; X++) {
+  // below the desk's front edge (drawn on for phones): its front board, the dark under the desk, the skirting along
+  // the wall and the floorboards running toward you
+  const APRON = LH + 8, SKIRT = LH + 46, FLOOR = LH + 52;
+  for (let Y = -OT; Y < H + OB; Y++) for (let X = 0; X < WW; X++) {
     const x = (X - OX + 0.5) / K, y = (Y + 0.5) / K;
+    if (y >= LH) {
+      if (y < APRON) put(X, Y, 'desk', y > APRON - 1.2 ? 0.04 : 0.2 + 0.06 * Math.sin(x * 0.19 + 2 * Math.sin(y * 0.9)));
+      else if (y < SKIRT) put(X, Y, 'wall', (y < APRON + 3 ? 0 : 0.06) + (hash(X - OX, Y, 7) > 0.93 ? 0.06 : 0));
+      else if (y < FLOOR) put(X, Y, 'deckWood', y < SKIRT + 1 ? 0.3 : y > FLOOR - 1 ? 0.04 : 0.12);
+      else {
+        // boards in perspective: their seams run out from the corner below the eye, the joins across them space out
+        // as they come toward you
+        const d = y - FLOOR + 6, seam = ((((x - 230) * 40) / d) % 14 + 14) % 14, row = Math.floor(Math.log(d) * 9);
+        const joint = Math.abs(((((x * 40) / d + row * 23) % 61) + 61) % 61) < 0.9;
+        put(X, Y, 'desk', seam < 0.8 || joint ? 0.05 : 0.17 + 0.05 * Math.sin(x * 0.11 + row * 1.3) + (hash((X - OX) >> 2, Y >> 1, row) > 0.9 ? -0.06 : 0));
+      }
+      continue;
+    }
     if (onWall(x, y)) {
       let s = theme.wall(x, y, X - OX, Y);
       if (x < CL || x > CR) s -= 0.2;
       if (Math.abs(x - CL) < 0.6 || Math.abs(x - CR) < 0.6) s = 0.02;
-      if (y < 3) s = Math.min(s, 0.1);
+      if (y < 3 && !OT) s = Math.min(s, 0.1);
       if (y > crease(x) - 2.2) s = Math.min(s, 0.12); // the shadow where the wall meets the desk
       put(X, Y, 'wall', s);
     } else if (y >= LH - 4.5) {
@@ -333,7 +351,7 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
     };
     // its shadows on the desk (and whatever lies flat on it): contact shade under it, each light's cast shadow
     for (let Y = Y0; Y <= Math.min(H - 1, Y1 + 6); Y++) for (let X = Math.max(0, X0 - 4); X <= Math.min(WW - 1, X1 + m.reach * K); X++) {
-      const x = (X - OX + 0.5) / K, y = (Y + 0.5) / K, i = Y * WW + X;
+      const x = (X - OX + 0.5) / K, y = (Y + 0.5) / K, i = (Y + OT) * WW + X;
       if (onWall(x, y) || RB[i] < 0 || EB[i]) continue;
       const d = [x - CAM[0], y - CAM[1], -CAM[2]], t = (DESK - CAM[1]) / d[1];
       const P = [CAM[0] + d[0] * t, DESK - 0.01, CAM[2] + d[2] * t];
@@ -439,7 +457,7 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
     if (x <= 418 || !onWall(x, y)) continue;
     const d = [x - CAM[0], y - CAM[1], -CAM[2]], t = (418 - CAM[0]) / d[0];
     const P = [CAM[0] + d[0] * t, CAM[1] + d[1] * t, CAM[2] + d[2] * t];
-    if (hitAll(P, [LAMP[0] - P[0], LAMP[1] - P[1], LAMP[2] - P[2]], 0.002)) { const i = Y * WW + X; if (RB[i] >= 0) SB[i] = Math.max(0, SB[i] - 0.22); }
+    if (hitAll(P, [LAMP[0] - P[0], LAMP[1] - P[1], LAMP[2] - P[2]], 0.002)) { const i = (Y + OT) * WW + X; if (RB[i] >= 0) SB[i] = Math.max(0, SB[i] - 0.22); }
   }
   // the headset itself
   const HW = HX1 - HX0 + 1, HH = HY1 - HY0 + 1, depth = new Float32Array(HW * HH).fill(Infinity), part = new Array(HW * HH).fill(null), shadeBuf = new Float32Array(HW * HH);
@@ -744,16 +762,16 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
     info.controller = { x: 549, y: 312 - pad.h, pad }; // its sprite and top-left corner (px)
     for (const [c, r, ramp, shade, emit] of pad.px) { put(PX0 + c, PY0 + r, ramp, shade, emit); low.set(c, Math.max(low.get(c) ?? -1, r)); }
     // its shadow on the desk under it
-    for (const [c, r] of low) for (let k = 1; k <= 2; k++) { const i = (PY0 + r + k) * WW + PX0 + c; if (!EB[i] && RB[i] >= 0) SB[i] = Math.max(0, SB[i] - (k === 1 ? 0.35 : 0.18)); }
+    for (const [c, r] of low) for (let k = 1; k <= 2; k++) { const i = (PY0 + r + k + OT) * WW + PX0 + c; if (!EB[i] && RB[i] >= 0) SB[i] = Math.max(0, SB[i] - (k === 1 ? 0.35 : 0.18)); }
   }
   // ------------------------------------------------ light
-  const out = new Uint8ClampedArray(WW * H * 4);
-  for (let Y = 0; Y < H; Y++) for (let X = 0; X < WW; X++) {
-    const i = Y * WW + X, o = i * 4;
+  const out = new Uint8ClampedArray(WW * RH * 4);
+  for (let Y = -OT; Y < H + OB; Y++) for (let X = 0; X < WW; X++) {
+    const i = (Y + OT) * WW + X, o = i * 4;
     out[o + 3] = 255;
     const r = RB[i];
     if (r < 0) continue;
-    const ramp = ramps[r], n = ramp.length, b = BAYER[(Y & 3) * 4 + ((X - OX) & 3)];
+    const ramp = ramps[r], n = ramp.length, b = BAYER[((Y + 1024) & 3) * 4 + ((X - OX) & 3)];
     const anchored = AX[i] >= 0, x = anchored ? AX[i] : (X - OX + 0.5) / K, y = anchored ? AY[i] : (Y + 0.5) / K;
     if (EB[i]) { const c = ramp[clamp(Math.round(SB[i] * (n - 1) + (EB[i] === 2 ? (b - 0.5) * 0.95 : 0)), 0, n - 1)]; out[o] = c[0]; out[o + 1] = c[1]; out[o + 2] = c[2]; continue; }
     // the lamp: a pool on the wall round the shade (taller below it), one on the desk under it

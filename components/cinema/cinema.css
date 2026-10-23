@@ -52,6 +52,17 @@
   pointer-events: none;
 }
 
+/* the room above and below it, for phones held upright; the top one reaches a few px down over the room's top edge */
+.cinema__band {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  width: 100%;
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
 .cinema__side--left {
   right: 100%;
 }
