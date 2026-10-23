@@ -420,7 +420,7 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   // Modelled in 3D and ray-traced through the room's camera, so its angle and perspective match the closet. The headset hangs in a plane parallel to
   // the side wall, off a short hook: band over the hook, a cup at each end facing the other, so from here you see
   // the near cup's round face, the far cup behind it, and the band arching between them.
-  const HXW = 409, HOOK_Y = 36, HZ = 30, BR = 15; // the headset's plane, the hook's height, its depth, the band's radius
+  const HXW = 409, HOOK_Y = 93, HZ = 30, BR = 15; // the headset's plane, the hook's height, its depth, the band's radius
   const BCY = HOOK_Y + 1.6 + BR, CUP_Y = BCY + 8;
   const prims = []; // axis-aligned ellipsoids: centre, radii, part
   const add = (c, r, part) => prims.push({ c, r, part });
