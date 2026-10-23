@@ -205,6 +205,12 @@ const spriteSrc = (file: string) => (file.startsWith("/") ? file : `/cinema/${fi
 
 /** Back-to-front draw order of the props. */
 const SPRITE_ORDER: PropKey[] = ["steam", "mug"];
+
+/** The steam's canvas, made once: a new object every render would restart the steam on every frame of sitting down. */
+const STEAM_ART: SteamArt | null = (() => {
+  const p = art.props.steam;
+  return p?.width && p.height && p.sources ? { width: p.width, height: p.height, sources: p.sources } : null;
+})();
 const SPRITE_LABEL: Record<PropKey, string> = {
   mug: "Knock the coffee mug",
   steam: "",
@@ -1072,8 +1078,7 @@ export default function CinemaScene() {
               elsRef.current[k] = node;
             };
             if (k === "steam") {
-              if (!p.width || !p.height || !p.sources) return null;
-              const steam: SteamArt = { width: p.width, height: p.height, sources: p.sources };
+              if (!STEAM_ART) return null;
               return (
                 <div
                   key={k}
@@ -1082,7 +1087,7 @@ export default function CinemaScene() {
                   style={style}
                   aria-hidden="true"
                 >
-                  <Steam steam={steam} puffRef={steamPuff} zoomRef={steamZoom} />
+                  <Steam steam={STEAM_ART} puffRef={steamPuff} zoomRef={steamZoom} />
                 </div>
               );
             }
