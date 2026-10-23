@@ -29,6 +29,7 @@ const SHARED = {
   pencilWhite: R(['#5e5e64', '#8c8c92', '#b8b8be', '#dadade', '#f0f0f2', '#ffffff']),
   padBlack: R(['#08080b', '#121217', '#1d1d24', '#2b2b35', '#3e3e4b', '#5a5a6a', '#8c8c9c']),
   cushion: R(['#050506', '#0a0a0d', '#111115', '#19191e', '#232329']),
+  headset: R(['#0b0807', '#151110', '#1f1916', '#2b231e', '#3a2f28', '#4f4036', '#7a6250', '#a08068']), // HEADSET's warm blacks and stitching
   steam: R(['#5e5650', '#847c76', '#aaa29c', '#cdc5bf', '#ece6e0']),
   screen: R(['#00120a', '#011a0e', '#022414', '#032e1a', '#0b5a2e', '#1f9a48', '#3fd068', '#86f8a0']),
   gold: R(['#5a3e16', '#8a6626', '#c09a52', '#e2c27a', '#fff0b4']),
@@ -58,6 +59,74 @@ const SHARED = {
 // 3 x 5, row by row
 const GLYPHS = {"0":"####.##.##.####","1":".#.##..#..#.###","4":"#.##.####..#..#","9":"####.####..###.","A":".#.#.#####.##.#","B":"##.#.###.#.###.","C":".###..#..#...##","D":"##.#.##.##.###.","E":"####..##.#..###","F":"####..##.#..#..","G":".###..#.##.#.##","H":"#.##.#####.##.#","I":"###.#..#..#.###","J":"..#..#..##.#.#.","K":"#.##.###.#.##.#","L":"#..#..#..#..###","M":"#.########.##.#","N":"##.#.##.##.##.#","O":".#.#.##.##.#.#.","P":"##.#.###.#..#..","Q":".#.#.##.###..##","R":"##.#.###.#.##.#","S":".###...#...###.","T":"###.#..#..#..#.","U":"#.##.##.##.####","V":"#.##.##.##.#.#.","W":"#.##.########.#","X":"#.##.#.#.#.##.#","Y":"#.##.#.#..#..#.","Z":"###..#.#.#..###",".":".............#.",":":"....#.....#....","_":"............###",">":"#...#...#.#.#..","&":".#.#.#.#.#.#.##","/":"..#..#.#.#..#..","\\":"#..#...#...#..#","-":"......###......"," ":"...............","!":".#..#..#.....#."};
 const textWidth = (s, sc) => s.length * 4 * sc - sc;
+
+// the headset on the side wall, one character a pixel: '.' clear, 'o' ink, 0-7 the headset ramp (scripts/headset-sprite.js)
+const HEADSET = [
+  '...............................................',
+  '........................ooooooo................',
+  '.....................ooo5446664oooo............',
+  '...................oo66644444666443oo..........',
+  '..................o544443333444444433o.........',
+  '.................o44433322224444444333o........',
+  '................o4433000000003344444433o.......',
+  '...............o440000000000000444464433o......',
+  '..............o44000000001oooo00044644333o.....',
+  '.............o4420000001oo....oo0344644333o....',
+  '............o5422000001o........o344644333o....',
+  '............o432200001o..........o444443333o...',
+  '...........o443200001o...........o234543333o...',
+  '...........o440000001o............o34544333o...',
+  '..........o440010001o.............o345544333o..',
+  '..........o43211001o...............o44544333o..',
+  '..........o43211111o...............o34544333o..',
+  '.........o44221112o................o34544333o..',
+  '.........o43221122o................o34544333o..',
+  '.........o43221122o.................o45433333o.',
+  '........o44322122o..................o44433332o.',
+  '........o44322222o..................o45433332o.',
+  '........o43222222o.................o445443332o.',
+  '........o4322222o..................o445443333o.',
+  '.......o44322222o..................o345433333o.',
+  '.......o44422222o..................o344433333o.',
+  '.......o44322222o..................o333333333o.',
+  '.......o3332222o....................o3333222o..',
+  '.......o3321122o....................o4443322o..',
+  '.......o3321111o...................o44443333o..',
+  '.......o3222222oo............ooooooo44433333o..',
+  '.......o323333332oo........oo433221034333333o..',
+  '.......o34444333332o.....oo4444322103433322o...',
+  '......o3355443333332o...o455443300103433322o...',
+  '.....o345554332222322ooo5555442202203333332o...',
+  '....o3345532000002222225555000000000333332o....',
+  '...o44455532000000222225550000223330003332o....',
+  '...o444554320000000222255000335555522000332o...',
+  '..o54445542000000002335550035533335552002222o..',
+  '..o44445532000000000355530355333333355202223o..',
+  '..o44345432001110000455500553333333225300223o..',
+  '.o443345432001111000455203533333332223220222o..',
+  '.o443345432001111004443002533333322222220222o..',
+  '.o4333454320012210044430253333332222222200222o.',
+  '.o3333454320012210344330253333322222222220222o.',
+  '.o2233454320012210344330253333222222222220222o.',
+  '.o3332344321011113343330253332222222222220222o.',
+  '.o3332344421011103333230253322222222223200222o.',
+  '..o322234432001103332230053222222222223300222o.',
+  '..o32223443200000332222203322222222222330222o..',
+  '..o32222243320000232222303332222222223330222o..',
+  '...o2222233322000222022300222222222233300222o..',
+  '...o222223333220022102223022222222233300022o...',
+  '....o22112233322222102223202222233333302222o...',
+  '....o2221112222222210202220002222333002222o....',
+  '.....o221111222200220002222200022200022222o....',
+  '......o2211100000022002222222000000222222o.....',
+  '.......o22110000000220222222222333322222o......',
+  '........ooo000000ooo2200222222223222222o.......',
+  '...........oooooo...o2000222222222222oo........',
+  '.....................o2110222222222oo..........',
+  '......................ooo0112222ooo............',
+  '.........................ooooooo...............',
+  '...............................................',
+];
 
 // vectors, and signed distances for the modelled things (in whatever unit a model uses)
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -221,7 +290,7 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   let ANC = null;
   const put = (X, Y, ramp, s, emit) => {
     if (X < 0 || Y < -OT || X >= WW || Y >= H + OB) return;
-    const i = (Y + OT) * WW + X; RB[i] = id(ramp); SB[i] = s; EB[i] = emit === 2 ? 2 : emit ? 1 : 0;
+    const i = (Y + OT) * WW + X; RB[i] = id(ramp); SB[i] = s; EB[i] = emit === 3 ? 3 : emit === 2 ? 2 : emit ? 1 : 0;
     if (ANC) { AX[i] = ANC[0]; AY[i] = ANC[1]; } else AX[i] = -1;
   };
   const val = (v, x, y, X, Y) => (typeof v === 'function' ? v(x, y, X, Y) : v);
@@ -417,84 +486,34 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   for (const [cx, h] of [[351, 9], [374, 8], [360, 6], [366, 7]]) shape([cx - 3, 127.6 - h, cx + 3, 127.6], poly([[cx, 127.6 - h], [cx + 2.6, 127.6], [cx - 2.6, 127.6]]), 'pine', (x) => (x < cx ? 0.55 : 0.25), { outline: false });
 
   // ------------------------------------------------ the headset, on a hook on the right side wall
-  // Modelled in 3D and ray-traced through the room's camera, so its angle and perspective match the closet. The headset hangs in a plane parallel to
-  // the side wall, off a short hook: band over the hook, a cup at each end facing the other, so from here you see
-  // the near cup's round face, the far cup behind it, and the band arching between them.
-  const HXW = 409, HOOK_Y = 93, HZ = 30, BR = 15; // the headset's plane, the hook's height, its depth, the band's radius
-  const BCY = HOOK_Y + 1.6 + BR, CUP_Y = BCY + 8;
-  const prims = []; // axis-aligned ellipsoids: centre, radii, part
-  const add = (c, r, part) => prims.push({ c, r, part });
-  for (let i = 0; i <= 44; i++) { const a = -Math.PI * 0.53 + (i / 44) * Math.PI * 1.06; add([HXW, BCY - BR * Math.cos(a), HZ + BR * Math.sin(a)], [1.9, 1.5, 1.5], 'band'); }
-  for (const sgn of [-1, 1]) {
-    add([HXW, CUP_Y, HZ + sgn * (BR + 1.6)], [6.8, 8.8, 2.8], 'shell');
-    add([HXW, CUP_Y, HZ + sgn * (BR - 1.4)], [6.4, 8.4, 2.3], 'cushion');
-    add([HXW, BCY - 1, HZ + sgn * BR], [1.4, 3.4, 1.4], 'band'); // the yoke down to the cup
-  }
-  for (let i = 0; i <= 8; i++) add([418 - i * 1.25, HOOK_Y + 0.4, HZ], [1.1, 1.1, 1.1], 'hook');
-  add([417.6, HOOK_Y + 0.4, HZ], [0.6, 3.2, 2.6], 'hook'); // its plate on the wall
-  const hitAll = (o, d, skipT) => {
-    let best = null;
-    for (const p of prims) {
-      const oc = [(o[0] - p.c[0]) / p.r[0], (o[1] - p.c[1]) / p.r[1], (o[2] - p.c[2]) / p.r[2]];
-      const dd = [d[0] / p.r[0], d[1] / p.r[1], d[2] / p.r[2]];
-      const A = dd[0] ** 2 + dd[1] ** 2 + dd[2] ** 2, B = 2 * (oc[0] * dd[0] + oc[1] * dd[1] + oc[2] * dd[2]), C = oc[0] ** 2 + oc[1] ** 2 + oc[2] ** 2 - 1;
-      const disc = B * B - 4 * A * C;
-      if (disc < 0) continue;
-      const t = (-B - Math.sqrt(disc)) / (2 * A);
-      if (t <= (skipT || 1e-4)) continue;
-      if (!best || t < best.t) best = { t, p };
-      if (skipT && best) return best; // a shadow ray only needs one
+  // A drawn sprite (HEADSET), level with the middle of the poster, its band over a hook hidden behind it. Lit by the room without
+  // dither (emit 3), so its pixels stay as drawn; its shadow falls down and to the right, away from the lamp.
+  {
+    const HW = HEADSET[0].length, HH = HEADSET.length, HX0 = 573 + OX, HY0 = 119;
+    const solid = (c, r) => r >= 0 && r < HH && c >= 0 && c < HW && HEADSET[r][c] !== '.';
+    if (on) for (let r = 0; r < HH; r++) for (let c = 0; c < HW; c++) {
+      if (!solid(c, r) || solid(c + 4, r + 3)) continue;
+      const X = HX0 + c + 4, Y = HY0 + r + 3, i = (Y + OT) * WW + X;
+      if (onWall((X - OX + 0.5) / K, (Y + 0.5) / K) && RB[i] >= 0 && !EB[i]) SB[i] = Math.max(0, SB[i] - 0.22);
     }
-    return best;
-  };
-  // where it lands on the screen
-  const corners = [];
-  for (const x of [HXW - 9, 418]) for (const y of [HOOK_Y - 3, CUP_Y + 10]) for (const z of [HZ - BR - 6, HZ + BR + 6]) corners.push(toScreen([x, y, z]));
-  const HB = bb(corners), HX0 = Math.floor(HB[0] * K) + OX - 2, HX1 = Math.ceil(HB[2] * K) + OX + 2, HY0 = Math.floor(HB[1] * K) - 2, HY1 = Math.ceil(HB[3] * K) + 2;
-  // its shadow on the side wall (lamp on): the wall point under each pixel, traced back toward the lamp
-  if (on) for (let Y = HY0; Y <= HY1 + 14; Y++) for (let X = HX0; X <= HX1 + 14; X++) {
-    const x = (X - OX + 0.5) / K, y = (Y + 0.5) / K;
-    if (x <= 418 || !onWall(x, y)) continue;
-    const d = [x - CAM[0], y - CAM[1], -CAM[2]], t = (418 - CAM[0]) / d[0];
-    const P = [CAM[0] + d[0] * t, CAM[1] + d[1] * t, CAM[2] + d[2] * t];
-    if (hitAll(P, [LAMP[0] - P[0], LAMP[1] - P[1], LAMP[2] - P[2]], 0.002)) { const i = (Y + OT) * WW + X; if (RB[i] >= 0) SB[i] = Math.max(0, SB[i] - 0.22); }
+    for (let r = 0; r < HH; r++) for (let c = 0; c < HW; c++) {
+      const ch = HEADSET[r][c];
+      if (ch === 'o') put(HX0 + c, HY0 + r, 'ink', 0.5, 3);
+      else if (ch !== '.') put(HX0 + c, HY0 + r, 'headset', +ch / 7, 3);
+    }
+    // the cable comes out of the bottom of the near cup, under the middle of its lowest row
+    let br = HH - 1; while (!/[0-7]/.test(HEADSET[br])) br--;
+    const bc = (HEADSET[br].search(/[0-7]/) + HEADSET[br].length - HEADSET[br].split('').reverse().join('').search(/[0-7]/) - 1) / 2;
+    // a little boot under the cup where it plugs in, three pixels wide, and the cable carries on out of its foot
+    const bx = Math.round(bc);
+    for (const r of [br + 1, br + 2]) { put(HX0 + bx - 1, HY0 + r, 'ink', 0.5, 3); put(HX0 + bx, HY0 + r, 'headset', r === br + 1 ? 3 / 7 : 2 / 7, 3); put(HX0 + bx + 1, HY0 + r, 'ink', 0.5, 3); }
+    info.cableStart = [(HX0 - OX + bx - 0.3) / K, (HY0 + br + 3.25) / K]; // left of the column's middle, so it hangs straight out of the boot a while before its wave sets in
   }
-  // the headset itself
-  const HW = HX1 - HX0 + 1, HH = HY1 - HY0 + 1, depth = new Float32Array(HW * HH).fill(Infinity), part = new Array(HW * HH).fill(null), shadeBuf = new Float32Array(HW * HH);
-  for (let Y = HY0; Y <= HY1; Y++) for (let X = HX0; X <= HX1; X++) {
-    const x = (X - OX + 0.5) / K, y = (Y + 0.5) / K, d = [x - CAM[0], y - CAM[1], -CAM[2]];
-    const h = hitAll(CAM, d);
-    if (!h) continue;
-    const P = [CAM[0] + d[0] * h.t, CAM[1] + d[1] * h.t, CAM[2] + d[2] * h.t];
-    const n = norm([(P[0] - h.p.c[0]) / h.p.r[0] ** 2, (P[1] - h.p.c[1]) / h.p.r[1] ** 2, (P[2] - h.p.c[2]) / h.p.r[2] ** 2]);
-    const L = norm([LAMP[0] - P[0], LAMP[1] - P[1], LAMP[2] - P[2]]), V = norm([-d[0], -d[1], -d[2]]);
-    const diff = Math.max(0, dot(n, L)), spec = Math.max(0, dot(n, norm([L[0] + V[0], L[1] + V[1], L[2] + V[2]]))) ** 24;
-    const fill = Math.max(0, dot(n, V)) * 0.18; // the room's light from in front
-    const gloss = h.p.part === 'cushion' ? 0 : h.p.part === 'hook' ? 0.8 : 0.6;
-    const j = (Y - HY0) * HW + (X - HX0);
-    depth[j] = h.t; part[j] = h.p.part; shadeBuf[j] = 0.1 + 0.6 * diff * (on ? 1 : 0.35) + fill + gloss * spec * (on ? 1 : 0.2);
-  }
-  for (let Y = HY0; Y <= HY1; Y++) for (let X = HX0; X <= HX1; X++) {
-    const j = (Y - HY0) * HW + (X - HX0);
-    if (!part[j]) continue;
-    // its outline: where it meets the wall, or where it passes in front of a part well behind it
-    const edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => {
-      const XX = X + a, YY = Y + b;
-      if (XX < HX0 || XX > HX1 || YY < HY0 || YY > HY1) return true;
-      const k = (YY - HY0) * HW + (XX - HX0);
-      return !part[k] || depth[k] - depth[j] > 0.012;
-    });
-    put(X, Y, edge ? 'ink' : part[j] === 'cushion' ? 'cushion' : part[j] === 'hook' ? 'silver' : 'plastic', edge ? 0.5 : clamp(shadeBuf[j], 0, 1));
-  }
-  // the green logo on the near cup's face
-  const [lx, ly] = toScreen([HXW, CUP_Y, HZ + BR + 1.6 + 2.8]);
-  for (const [a, b] of [[0, -1], [-1, 0], [1, 0], [0, 1], [0, 0]]) put(pxX(lx) + a, px(ly) + b, 'ledGreen', b === 0 && a === 0 ? 0.5 : 0.85, true);
   // the cable: from the near cup's foot, down the wall, then across the desk to the controller's back
-  const [cx0, cy0] = toScreen([HXW, CUP_Y + 8.6, HZ + BR]);
-  info.cableStart = [cx0, cy0];
+  const [cx0, cy0] = info.cableStart;
   if (!skip.has('cable')) for (let y = cy0; y < 196; y += 0.4) {
     const t = (y - cy0) / (196 - cy0);
-    put(pxX(cx0 + (419 - cx0) * t ** 3 + Math.sin(y / 9) * 1.1 * (1 - t)), px(y), 'plastic', 0.3);
+    put(pxX(cx0 + (419 - cx0) * t ** 3 + Math.sin((y - cy0) / 9) * 1.1 * (1 - t)), px(y), 'plastic', 0.3);
   }
 
   // ------------------------------------------------ the monitor
@@ -773,7 +792,7 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
     if (r < 0) continue;
     const ramp = ramps[r], n = ramp.length, b = BAYER[((Y + 1024) & 3) * 4 + ((X - OX) & 3)];
     const anchored = AX[i] >= 0, x = anchored ? AX[i] : (X - OX + 0.5) / K, y = anchored ? AY[i] : (Y + 0.5) / K;
-    if (EB[i]) { const c = ramp[clamp(Math.round(SB[i] * (n - 1) + (EB[i] === 2 ? (b - 0.5) * 0.95 : 0)), 0, n - 1)]; out[o] = c[0]; out[o + 1] = c[1]; out[o + 2] = c[2]; continue; }
+    if (EB[i] && EB[i] !== 3) { const c = ramp[clamp(Math.round(SB[i] * (n - 1) + (EB[i] === 2 ? (b - 0.5) * 0.95 : 0)), 0, n - 1)]; out[o] = c[0]; out[o + 1] = c[1]; out[o + 2] = c[2]; continue; }
     // the lamp: a pool on the wall round the shade (taller below it), one on the desk under it
     let lamp = 0;
     if (on) {
@@ -785,7 +804,7 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
     // the lava lamp: a soft pink pool on the wall round its glass, and one on the desk at its foot
     const lava = !lavaOn ? 0 : onWall(x, y) ? Math.exp(-((Math.hypot(x - 310, (y - 160) * 0.85) / 40) ** 2)) : Math.exp(-((Math.hypot((x - 310) / 2.4, (y - 199) / 0.8) / 24) ** 2));
     const shift = (on ? lamp * 2.3 - 0.25 + theme.ambient : -1.05 + theme.ambient + mon * 0.9) + lava * (on ? 0.7 : 1.5);
-    const v = SB[i] * (n - 1) + shift + (b - 0.5) * 0.95;
+    const v = SB[i] * (n - 1) + shift + (EB[i] === 3 ? 0 : (b - 0.5) * 0.95);
     const c = ramp[clamp(Math.round(v), 0, n - 1)];
     // tint in flat dithered bands
     const q = (f) => Math.floor(f * 4 + (anchored ? 0.5 : b * 0.999)) / 4;

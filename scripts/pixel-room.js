@@ -119,9 +119,10 @@ async function cut(withIt, withoutIt, file) {
   const penOrigin = info.pens.map(([x0, y0], i) => { const b = penBoxes[i]; return [+(((u(x0) - b[0]) / (b[2] - b[0])) * 100).toFixed(2), +(((u(y0) - b[1]) / (b[3] - b[1])) * 100).toFixed(2)]; });
 
   // the headset's cable: from the cup's foot down the wall (as the study draws it) to the desk in the corner, then
-  // across into the USB port on the controller's top edge; drawn live on the page so it can sway
+  // across into the USB port on the controller's top edge; drawn live on the page so it can sway. It starts right at
+  // the cup (no sideways wiggle at its first point), so it meets the headset flush
   const [cx0, cy0] = info.cableStart, wall = [];
-  for (let y = cy0; y < 196; y += 0.4) { const t = (y - cy0) / (196 - cy0); wall.push([cx0 + (419 - cx0) * t ** 3 + Math.sin(y / 9) * 1.1 * (1 - t), y]); }
+  for (let y = cy0; y < 196; y += 0.4) { const t = (y - cy0) / (196 - cy0); wall.push([cx0 + (419 - cx0) * t ** 3 + Math.sin((y - cy0) / 9) * 1.1 * (1 - t), y]); }
   const ctl = info.controller, mid = ctl.pad.px.filter(([c]) => Math.abs(c - ctl.pad.w * 0.5) < ctl.pad.w * 0.12);
   const topR = Math.min(...mid.map(([, r]) => r)), topC = mid.filter(([, r]) => r === topR).reduce((a, [c]) => a + c, 0) / mid.filter(([, r]) => r === topR).length;
   const port = [(ctl.x + topC + 0.5) / K, (ctl.y + topR + 0.5) / K];
