@@ -889,13 +889,6 @@ body:has(.cinema) .crt-flicker {
   color: #1f4fa8;
 }
 
-/* the coffee popup floats over the whole desktop */
-.mac .retro-window--popup {
-  inset: 12% 22% auto;
-  max-height: 72%;
-  font-size: 0.68em;
-}
-
 .mac__dock {
   position: absolute;
   left: 50%;
@@ -938,11 +931,6 @@ body:has(.cinema) .crt-flicker {
 .mac__tile .lofi__icon {
   width: 0.95em;
   height: 0.88em;
-}
-
-.mac__tile--coffee {
-  color: #6b3f22;
-  background: #f3e3c4;
 }
 
 .mac__dock-item--active .mac__tile,

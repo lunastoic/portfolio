@@ -6,12 +6,9 @@ import AboutWindow from "@/components/monitor/AboutWindow";
 import ProjectsWindow from "@/components/monitor/ProjectsWindow";
 import ResumeWindow from "@/components/monitor/ResumeWindow";
 import ContactCard from "./ContactCard";
-import CoffeeWindow from "@/components/monitor/CoffeeWindow";
 import PixelIcon, { type IconName } from "./PixelIcon";
 import GamesWindow, { type GameId } from "./GamesWindow";
 import { setGameOn } from "./gamePause";
-
-export type LofiPopup = "coffee" | null;
 
 type DeskApp = AppId | "games";
 
@@ -38,22 +35,19 @@ const formatClock = () =>
  * The desk computer's desktop, Mac style: a menu bar across the top with my name and a live clock, the
  * moon-and-mountains wallpaper at dusk, the four sections as big numbered files on the desktop (the games folder smaller, off to the side) and a dock
  * along the bottom. Clicking a file selects it as Finder does, then its window springs open out of the icon (the same windows
- * v1 uses, in light Mac chrome); the dock opens them too, and the cup in the dock pours the coffee popup. Arrow keys
+ * v1 uses, in light Mac chrome); the dock opens them too. Arrow keys
  * walk the files, Enter opens, 1–5 open a file straight away. While a game is playing every key is the game's, and
  * ESC goes back to the games folder.
  */
 export default function LofiOS({
-  initialPopup = null,
   interactive = true,
 }: {
-  initialPopup?: LofiPopup;
   /** Standing back, the screen just shows; keys and clicks only reach it once you sit down. */
   interactive?: boolean;
 }) {
   const [selected, setSelected] = useState(0);
   const [activeApp, setActiveApp] = useState<DeskApp | null>(null);
   const [game, setGame] = useState<GameId | null>(null);
-  const [popup, setPopup] = useState<LofiPopup>(initialPopup);
   const [clock, setClock] = useState("");
 
   useEffect(() => {
@@ -114,11 +108,9 @@ export default function LofiOS({
         return;
       }
       if (e.key === "Escape") {
-        if (popup) setPopup(null);
-        else if (activeApp) close();
+        if (activeApp) close();
         return;
       }
-      if (popup) return;
       if (/^[1-5]$/.test(e.key)) {
         const i = Number(e.key) - 1;
         open(i, fileRefs.current[i], OPEN_AFTER);
@@ -137,7 +129,7 @@ export default function LofiOS({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [interactive, popup, activeApp, game, selected, close, open]);
+  }, [interactive, activeApp, game, selected, close, open]);
 
   const tab = interactive ? 0 : -1;
   const appName =
@@ -247,24 +239,8 @@ export default function LofiOS({
           </span>
           <span className={`mac__dot ${activeApp === "games" ? "mac__dot--on" : ""}`} aria-hidden="true" />
         </button>
-        <button
-          type="button"
-          className="mac__dock-item"
-          tabIndex={tab}
-          aria-label="Coffee"
-          onClick={() => setPopup("coffee")}
-        >
-          <span className="mac__tip" aria-hidden="true">
-            Coffee
-          </span>
-          <span className="mac__tile mac__tile--coffee" aria-hidden="true">
-            <PixelIcon name="cup" />
-          </span>
-          <span className={`mac__dot ${popup === "coffee" ? "mac__dot--on" : ""}`} aria-hidden="true" />
-        </button>
       </nav>
 
-      {popup === "coffee" && <CoffeeWindow onClose={() => setPopup(null)} />}
     </div>
   );
 }

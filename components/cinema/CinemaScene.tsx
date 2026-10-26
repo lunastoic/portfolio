@@ -12,7 +12,7 @@ import {
 import manifestJson from "../../public/cinema/room.json";
 import HeadsetCable from "./HeadsetCable";
 import LavaLamp from "./LavaLamp";
-import LofiOS, { type LofiPopup } from "./LofiOS";
+import LofiOS from "./LofiOS";
 import Steam, { type SteamArt } from "./Steam";
 import { Spring, clamp01, easeOutCubic } from "./physics";
 import { Spill } from "./spill";
@@ -484,7 +484,6 @@ export default function CinemaScene() {
   const [cam, setCam] = useState<Cam>(CAM_REST);
   const [loadedImage, setLoadedImage] = useState<string | null>(null);
   const [hint, setHint] = useState(false);
-  const [pendingPopup, setPendingPopup] = useState<LofiPopup>(null);
   const [noteIndex, setNoteIndex] = useState(0);
   /** Every note peeled off so far (which note it was), in order: they stay on the desk until reload. */
   const [fallen, setFallen] = useState<number[]>([]);
@@ -574,15 +573,11 @@ export default function CinemaScene() {
     fallbackRef.current = window.setTimeout(finish, duration + 250);
   }, []);
 
-  const sitDown = useCallback(
-    (popup: LofiPopup = null) => {
-      if (pose !== "standing") return;
-      setPendingPopup(popup);
-      setPose("sitting");
-      animateTo(1, () => setPose("seated"));
-    },
-    [pose, animateTo],
-  );
+  const sitDown = useCallback(() => {
+    if (pose !== "standing") return;
+    setPose("sitting");
+    animateTo(1, () => setPose("seated"));
+  }, [pose, animateTo]);
 
   const standUp = useCallback(() => {
     if (pose !== "seated") return;
@@ -1169,7 +1164,7 @@ export default function CinemaScene() {
               } as CSSProperties
             }
           >
-            <LofiOS key={visits} initialPopup={pendingPopup} interactive={pose === "seated"} />
+            <LofiOS key={visits} interactive={pose === "seated"} />
           </div>
         )}
       </div>
