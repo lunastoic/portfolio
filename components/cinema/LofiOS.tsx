@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { AppId } from "@/components/types";
 import AboutApp from "./AboutApp";
+import InfoApp from "./InfoApp";
 import ProjectsApp from "./ProjectsApp";
 import ResumeWindow from "@/components/monitor/ResumeWindow";
 import ContactCard from "./ContactCard";
@@ -10,7 +11,7 @@ import PixelIcon, { type IconName } from "./PixelIcon";
 import GamesWindow, { type GameId } from "./GamesWindow";
 import { setGameOn } from "./gamePause";
 
-type DeskApp = AppId | "games";
+type DeskApp = AppId | "games" | "info";
 
 // each section is a numbered file on the desktop and an app in the dock
 const ITEMS: { id: DeskApp; label: string; file: string; icon: IconName; tile: string }[] = [
@@ -19,11 +20,13 @@ const ITEMS: { id: DeskApp; label: string; file: string; icon: IconName; tile: s
   { id: "resume", label: "Resume", file: "Resume.pdf", icon: "document", tile: "#8c6ad8" },
   { id: "contact", label: "Contact", file: "Contact", icon: "mail", tile: "#3fb37f" },
   { id: "games", label: "Games", file: "Games", icon: "gamepad", tile: "#d4a72c" },
+  { id: "info", label: "Info", file: "Info", icon: "info", tile: "#6b7a90" },
 ];
 
-// the four sections are the desktop's main files; the games folder sits off to the side
+// the four sections are the desktop's main files; the games folder and the info file sit off to the side
 const MAIN = 4;
 const GAMES = MAIN;
+const SIDE = [GAMES, GAMES + 1];
 
 // how long a clicked file stays highlighted before its window springs open, ms
 const OPEN_AFTER = 160;
@@ -175,22 +178,27 @@ export default function LofiOS({
         ))}
       </ul>
 
-      <button
-        ref={(el) => {
-          fileRefs.current[GAMES] = el;
-        }}
-        type="button"
-        className={`mac__file mac__file--side ${selected === GAMES ? "mac__file--selected" : ""}`}
-        tabIndex={tab}
-        aria-hidden={!interactive || undefined}
-        aria-label="5. Open Games"
-        onClick={(e) => open(GAMES, e.currentTarget, OPEN_AFTER)}
-      >
-        <span className="mac__file-icon" style={{ background: ITEMS[GAMES].tile }}>
-          <PixelIcon name={ITEMS[GAMES].icon} />
-        </span>
-        <span className="mac__file-label">{ITEMS[GAMES].file}</span>
-      </button>
+      <ul className="mac__side" aria-hidden={!interactive || undefined}>
+        {SIDE.map((i) => (
+          <li key={ITEMS[i].id}>
+            <button
+              ref={(el) => {
+                fileRefs.current[i] = el;
+              }}
+              type="button"
+              className={`mac__file mac__file--side ${selected === i ? "mac__file--selected" : ""}`}
+              tabIndex={tab}
+              aria-label={`Open ${ITEMS[i].label}`}
+              onClick={(e) => open(i, e.currentTarget, OPEN_AFTER)}
+            >
+              <span className="mac__file-icon" style={{ background: ITEMS[i].tile }}>
+                <PixelIcon name={ITEMS[i].icon} />
+              </span>
+              <span className="mac__file-label">{ITEMS[i].file}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
 
       {activeApp && (
         <div className="lofi__window mac__window" ref={winRef} key={activeApp}>
@@ -199,6 +207,7 @@ export default function LofiOS({
           {activeApp === "resume" && <ResumeWindow onClose={close} />}
           {activeApp === "contact" && <ContactCard onClose={close} />}
           {activeApp === "games" && <GamesWindow game={game} onGame={setGame} onClose={close} />}
+          {activeApp === "info" && <InfoApp onClose={close} />}
         </div>
       )}
 
