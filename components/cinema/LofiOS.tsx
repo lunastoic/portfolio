@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { AppId } from "@/components/types";
 import AboutWindow from "@/components/monitor/AboutWindow";
-import ProjectsWindow from "@/components/monitor/ProjectsWindow";
+import ProjectsApp from "./ProjectsApp";
 import ResumeWindow from "@/components/monitor/ResumeWindow";
 import ContactCard from "./ContactCard";
 import PixelIcon, { type IconName } from "./PixelIcon";
@@ -195,7 +195,7 @@ export default function LofiOS({
       {activeApp && (
         <div className="lofi__window mac__window" ref={winRef} key={activeApp}>
           {activeApp === "about" && <AboutWindow onClose={close} />}
-          {activeApp === "projects" && <ProjectsWindow onClose={close} />}
+          {activeApp === "projects" && <ProjectsApp onClose={close} />}
           {activeApp === "resume" && <ResumeWindow onClose={close} />}
           {activeApp === "contact" && <ContactCard onClose={close} />}
           {activeApp === "games" && <GamesWindow game={game} onGame={setGame} onClose={close} />}
