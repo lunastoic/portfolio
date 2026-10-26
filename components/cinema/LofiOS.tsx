@@ -24,6 +24,10 @@ const ITEMS: { id: DeskApp; label: string; file: string; icon: IconName; tile: s
   { id: "games", label: "Games", file: "Games", icon: "gamepad", tile: "#d4a72c" },
 ];
 
+// the four sections are the desktop's main files; the games folder sits off to the side
+const MAIN = 4;
+const GAMES = MAIN;
+
 // how long a clicked file stays highlighted before its window springs open, ms
 const OPEN_AFTER = 160;
 
@@ -32,7 +36,7 @@ const formatClock = () =>
 
 /**
  * The desk computer's desktop, Mac style: a menu bar across the top with my name and a live clock, the
- * moon-and-mountains wallpaper at dusk, the sections as big numbered files on the desktop (the games folder last) and a dock
+ * moon-and-mountains wallpaper at dusk, the four sections as big numbered files on the desktop (the games folder smaller, off to the side) and a dock
  * along the bottom. Clicking a file selects it as Finder does, then its window springs open out of the icon (the same windows
  * v1 uses, in light Mac chrome); the dock opens them too, and the cup in the dock pours the coffee popup. Arrow keys
  * walk the files, Enter opens, 1–5 open a file straight away. While a game is playing every key is the game's, and
@@ -123,10 +127,10 @@ export default function LofiOS({
       if (activeApp) return;
       if (e.key === "ArrowRight" || e.key === "ArrowDown") {
         e.preventDefault();
-        setSelected((i) => (i + 1) % ITEMS.length);
+        setSelected((i) => (i + 1) % MAIN);
       } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
         e.preventDefault();
-        setSelected((i) => (i + ITEMS.length - 1) % ITEMS.length);
+        setSelected((i) => (i + MAIN - 1) % MAIN);
       } else if (e.key === "Enter") {
         open(selected, fileRefs.current[selected], OPEN_AFTER);
       }
@@ -154,7 +158,7 @@ export default function LofiOS({
       </div>
 
       <ul className="mac__files" aria-hidden={!interactive || undefined}>
-        {ITEMS.map((item, i) => (
+        {ITEMS.slice(0, MAIN).map((item, i) => (
           <li key={item.id}>
             <button
               ref={(el) => {
@@ -179,6 +183,23 @@ export default function LofiOS({
         ))}
       </ul>
 
+      <button
+        ref={(el) => {
+          fileRefs.current[GAMES] = el;
+        }}
+        type="button"
+        className={`mac__file mac__file--side ${selected === GAMES ? "mac__file--selected" : ""}`}
+        tabIndex={tab}
+        aria-hidden={!interactive || undefined}
+        aria-label="5. Open Games"
+        onClick={(e) => open(GAMES, e.currentTarget, OPEN_AFTER)}
+      >
+        <span className="mac__file-icon" style={{ background: ITEMS[GAMES].tile }}>
+          <PixelIcon name={ITEMS[GAMES].icon} />
+        </span>
+        <span className="mac__file-label">{ITEMS[GAMES].file}</span>
+      </button>
+
       {activeApp && (
         <div className="lofi__window mac__window" ref={winRef} key={activeApp}>
           {activeApp === "about" && <AboutWindow onClose={close} />}
@@ -190,7 +211,7 @@ export default function LofiOS({
       )}
 
       <nav className="mac__dock" aria-label="Portfolio sections" aria-hidden={!interactive || undefined}>
-        {ITEMS.map((item, i) => (
+        {ITEMS.slice(0, MAIN).map((item, i) => (
           <button
             key={item.id}
             type="button"
@@ -211,6 +232,21 @@ export default function LofiOS({
           </button>
         ))}
         <span className="mac__dock-rule" aria-hidden="true" />
+        <button
+          type="button"
+          className="mac__dock-item"
+          tabIndex={tab}
+          aria-label="Games"
+          onClick={(e) => open(GAMES, e.currentTarget)}
+        >
+          <span className="mac__tip" aria-hidden="true">
+            Games
+          </span>
+          <span className="mac__tile" style={{ background: ITEMS[GAMES].tile }}>
+            <PixelIcon name={ITEMS[GAMES].icon} />
+          </span>
+          <span className={`mac__dot ${activeApp === "games" ? "mac__dot--on" : ""}`} aria-hidden="true" />
+        </button>
         <button
           type="button"
           className="mac__dock-item"
