@@ -1528,6 +1528,21 @@ body:has(.cinema) .crt-flicker {
   color: var(--green-bright);
 }
 
+/* CSUDH's colours: the CSU in gold (a shade deeper than the school's, to read on the light window), Dominguez
+   Hills in burgundy */
+.about__csu {
+  color: #c8960c;
+}
+
+.about__dh {
+  color: #8c1d40;
+}
+
+.about__body strong .about__csu,
+.about__body strong .about__dh {
+  font-weight: 800;
+}
+
 .about__h--hello {
   font-size: 1.4em;
 }

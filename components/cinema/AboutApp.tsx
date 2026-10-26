@@ -35,7 +35,9 @@ export default function AboutApp({ onClose }: { onClose: () => void }) {
           <ul className="about__facts">
             <li>Anaheim, CA</li>
             <li>B.S. Computer Science</li>
-            <li>CSU Dominguez Hills</li>
+            <li>
+              <span className="about__csu">CSU</span> <span className="about__dh">Dominguez Hills</span>
+            </li>
             <li>First-generation graduate</li>
           </ul>
         </aside>
@@ -44,7 +46,12 @@ export default function AboutApp({ onClose }: { onClose: () => void }) {
           <section>
             <h3 className="about__h about__h--hello">Hey, I&apos;m Christopher!</h3>
             <p>
-              I&apos;m a Computer Science graduate from <strong>California State University, Dominguez Hills (CSUDH)</strong>,
+              I&apos;m a Computer Science graduate from <strong>
+                <span className="about__csu">California State University,</span>{" "}
+                <span className="about__dh">Dominguez Hills</span> (<span className="about__csu">CSU</span>
+                <span className="about__dh">DH</span>)
+              </strong>
+              ,
               where I earned my Bachelor of Science in Computer Science.
             </p>
             <p>
