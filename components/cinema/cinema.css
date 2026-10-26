@@ -636,68 +636,126 @@ body:has(.cinema) .crt-flicker {
   flex: 1;
 }
 
-.mac__icons {
+/* the four sections, big numbered files in two columns down the desktop's left */
+.mac__files {
   position: absolute;
-  top: 2.6em;
-  right: 0.9em;
+  top: 2.5em;
+  left: 0.9em;
+  z-index: 1;
   list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6em;
+  display: grid;
+  grid-template-columns: repeat(2, 5em);
+  gap: 0.5em 0.4em;
 }
 
-.mac__icon {
+/* buttons don't take the screen's font size by themselves, and everything here is sized from it */
+.mac__file,
+.mac__dock-item {
+  font: inherit;
+}
+
+.mac__file {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25em;
-  width: 4.6em;
-  padding: 0.3em 0.1em;
+  gap: 0.35em;
+  width: 100%;
+  padding: 0.35em 0.1em 0.3em;
   color: #fff;
-  border-radius: 0.3em;
+  border-radius: 0.45em;
 }
 
-.mac__icon:hover,
-.mac__icon:focus-visible {
+.mac__file:focus-visible {
   outline: none;
   box-shadow: none;
-  background: rgba(255, 255, 255, 0.16);
 }
 
-.mac__glyph {
+.mac__file:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* selected as Finder does: a soft box round the icon, the name on a blue pill */
+.mac__file--selected,
+.mac__file--selected:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.mac__file--selected .mac__file-label {
+  background: #2f6fe0;
+  text-shadow: none;
+}
+
+.mac__file-icon {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 2.2em;
-  height: 1.9em;
+  width: 2.9em;
+  height: 2.9em;
+  border-radius: 0.7em;
+  box-shadow:
+    inset 0 -0.2em 0 rgba(0, 0, 0, 0.18),
+    inset 0 0.12em 0 rgba(255, 255, 255, 0.25),
+    0 0.2em 0.45em rgba(0, 0, 0, 0.45);
+  transition: transform 0.15s ease-out;
 }
 
-.mac__glyph .lofi__icon {
-  width: 2.2em;
-  height: 1.9em;
+.mac__file:hover .mac__file-icon,
+.mac__file--selected .mac__file-icon {
+  transform: translateY(-0.08em) scale(1.04);
 }
 
-.mac__glyph--folder {
-  color: #7fb4f2;
+/* pressed, it dips as you click it open */
+.mac__file:active .mac__file-icon {
+  transform: scale(0.94);
 }
 
-.mac__glyph--document {
-  color: #f4f1ec;
+.mac__file-icon .lofi__icon {
+  width: 1.6em;
+  height: 1.45em;
 }
 
-.mac__icon-label {
-  padding: 0 0.3em;
-  font-size: 0.75em;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+.mac__file-num {
+  position: absolute;
+  top: -0.45em;
+  left: -0.45em;
+  display: grid;
+  place-items: center;
+  width: 1.45em;
+  height: 1.45em;
+  font-size: 0.95em;
+  font-weight: 700;
+  line-height: 1;
+  color: #1d1838;
+  background: #fff4d8;
+  border: 0.12em solid #1d1838;
+  border-radius: 50%;
+  box-shadow: 0 0.1em 0.25em rgba(0, 0, 0, 0.4);
+}
+
+.mac__file-label {
+  max-width: 100%;
+  padding: 0.05em 0.45em;
+  font-size: 0.82em;
+  font-weight: 600;
+  white-space: nowrap;
+  border-radius: 0.35em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
 }
 
 /* an open app's window, over the wallpaper between the menu bar and the dock */
 .mac__window {
   position: absolute;
-  inset: 2.4em 7.5em 4.6em 1.6em;
+  inset: 2.4em 1.2em 4.6em 14.4em; /* in its own (smaller) em: clear of the files */
   z-index: 2;
+  animation: mac-zoom 0.26s cubic-bezier(0.2, 0.8, 0.25, 1);
   margin: 0;
   font-size: 0.8em;
   color: var(--green);
+}
+
+/* the window zooms out of the file instead (see .mac__window) */
+.mac .mac__window .retro-window {
+  animation: none;
 }
 
 .mac .retro-window {
@@ -827,20 +885,20 @@ body:has(.cinema) .crt-flicker {
 .mac__tile {
   display: grid;
   place-items: center;
-  width: 2.5em;
-  height: 2.5em;
+  width: 1.7em;
+  height: 1.7em;
   color: #fff;
-  border-radius: 0.6em;
+  border-radius: 0.42em;
   box-shadow:
-    inset 0 -0.16em 0 rgba(0, 0, 0, 0.18),
+    inset 0 -0.12em 0 rgba(0, 0, 0, 0.18),
     0 0.12em 0.3em rgba(0, 0, 0, 0.35);
   transition: transform 0.15s ease-out;
   transform-origin: 50% 100%;
 }
 
 .mac__tile .lofi__icon {
-  width: 1.4em;
-  height: 1.3em;
+  width: 0.95em;
+  height: 0.88em;
 }
 
 .mac__tile--coffee {
@@ -908,6 +966,17 @@ body:has(.cinema) .crt-flicker {
   display: flex;
 }
 
+@keyframes mac-zoom {
+  from {
+    opacity: 0.3;
+    transform: scale(0.06);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @keyframes mac-open {
   from {
     opacity: 0;
@@ -921,7 +990,9 @@ body:has(.cinema) .crt-flicker {
 
 @media (prefers-reduced-motion: reduce) {
   .mac .retro-window,
-  .mac__tile {
+  .mac__window,
+  .mac__tile,
+  .mac__file-icon {
     animation: none;
     transition: none;
   }

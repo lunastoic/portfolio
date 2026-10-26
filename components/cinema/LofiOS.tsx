@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { AppId } from "@/components/types";
 import AboutWindow from "@/components/monitor/AboutWindow";
 import ProjectsWindow from "@/components/monitor/ProjectsWindow";
@@ -11,27 +11,26 @@ import PixelIcon, { type IconName } from "./PixelIcon";
 
 export type LofiPopup = "coffee" | null;
 
-const ITEMS: { id: AppId; label: string; icon: IconName; tile: string }[] = [
-  { id: "about", label: "About", icon: "person", tile: "#e8835a" },
-  { id: "projects", label: "Projects", icon: "folder", tile: "#4f8de0" },
-  { id: "resume", label: "Resume", icon: "document", tile: "#8c6ad8" },
-  { id: "contact", label: "Contact", icon: "mail", tile: "#3fb37f" },
+// each section is a numbered file on the desktop and an app in the dock
+const ITEMS: { id: AppId; label: string; file: string; icon: IconName; tile: string }[] = [
+  { id: "about", label: "About", file: "About Me", icon: "person", tile: "#e8835a" },
+  { id: "projects", label: "Projects", file: "Projects", icon: "folder", tile: "#4f8de0" },
+  { id: "resume", label: "Resume", file: "Resume.pdf", icon: "document", tile: "#8c6ad8" },
+  { id: "contact", label: "Contact", file: "Contact", icon: "mail", tile: "#3fb37f" },
 ];
 
-// what sits loose on the desktop, top right as a Mac keeps it
-const DESKTOP: { id: AppId; label: string; icon: IconName }[] = [
-  { id: "projects", label: "Projects", icon: "folder" },
-  { id: "resume", label: "Resume.pdf", icon: "document" },
-];
+// how long a clicked file stays highlighted before its window springs open, ms
+const OPEN_AFTER = 160;
 
 const formatClock = () =>
   new Date().toLocaleTimeString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
 
 /**
  * The desk computer's desktop, Mac style: a menu bar across the top with my name and a live clock, the
- * moon-and-mountains wallpaper at dusk, a couple of icons loose on the desktop and a dock along the bottom. Each
- * dock app opens its window over the wallpaper (the same windows v1 uses, in light Mac chrome), and the cup in the
- * dock pours the coffee popup. Arrow keys walk the dock, Enter opens, 1–4 jump straight to an app.
+ * moon-and-mountains wallpaper at dusk, the four sections as big numbered files on the desktop and a dock along the
+ * bottom. Clicking a file selects it as Finder does, then its window springs open out of the icon (the same windows
+ * v1 uses, in light Mac chrome); the dock opens them too, and the cup in the dock pours the coffee popup. Arrow keys
+ * walk the files, Enter opens, 1–4 open a file straight away.
  */
 export default function LofiOS({
   initialPopup = null,
@@ -55,6 +54,35 @@ export default function LofiOS({
 
   const close = useCallback(() => setActiveApp(null), []);
 
+  const rootRef = useRef<HTMLDivElement>(null);
+  const winRef = useRef<HTMLDivElement>(null);
+  const fileRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  // where the opening window grows from: the middle of what was clicked, in the desktop's own px
+  const from = useRef<[number, number] | null>(null);
+  const timer = useRef(0);
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  /** Opens item i out of the element it was opened from, after a moment highlighted if it's a file. */
+  const open = useCallback((i: number, el: Element | null | undefined, wait = 0) => {
+    setSelected(i);
+    const root = rootRef.current;
+    if (root && el) {
+      const r = root.getBoundingClientRect();
+      const e = el.getBoundingClientRect();
+      const k = r.width / root.offsetWidth || 1; // the screen is scaled while you sit and stand
+      from.current = [(e.left + e.width / 2 - r.left) / k, (e.top + e.height / 2 - r.top) / k];
+    } else from.current = null;
+    clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setActiveApp(ITEMS[i].id), wait);
+  }, []);
+
+  // the window zooms out of the icon: its transform origin is the icon, measured before the first frame
+  useLayoutEffect(() => {
+    const win = winRef.current;
+    if (!win || !from.current) return;
+    win.style.transformOrigin = `${from.current[0] - win.offsetLeft}px ${from.current[1] - win.offsetTop}px`;
+  }, [activeApp]);
+
   useEffect(() => {
     if (!interactive) return;
     const onKey = (e: KeyboardEvent) => {
@@ -63,7 +91,13 @@ export default function LofiOS({
         else if (activeApp) close();
         return;
       }
-      if (popup || activeApp) return;
+      if (popup) return;
+      if (/^[1-4]$/.test(e.key)) {
+        const i = Number(e.key) - 1;
+        open(i, fileRefs.current[i], OPEN_AFTER);
+        return;
+      }
+      if (activeApp) return;
       if (e.key === "ArrowRight" || e.key === "ArrowDown") {
         e.preventDefault();
         setSelected((i) => (i + 1) % ITEMS.length);
@@ -71,26 +105,18 @@ export default function LofiOS({
         e.preventDefault();
         setSelected((i) => (i + ITEMS.length - 1) % ITEMS.length);
       } else if (e.key === "Enter") {
-        setActiveApp(ITEMS[selected].id);
-      } else if (/^[1-4]$/.test(e.key)) {
-        const i = Number(e.key) - 1;
-        setSelected(i);
-        setActiveApp(ITEMS[i].id);
+        open(selected, fileRefs.current[selected], OPEN_AFTER);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [interactive, popup, activeApp, selected, close]);
+  }, [interactive, popup, activeApp, selected, close, open]);
 
   const tab = interactive ? 0 : -1;
-  const open = (id: AppId) => {
-    setSelected(ITEMS.findIndex((it) => it.id === id));
-    setActiveApp(id);
-  };
   const appName = activeApp ? ITEMS.find((it) => it.id === activeApp)?.label : "Desktop";
 
   return (
-    <div className="lofi mac">
+    <div className="lofi mac" ref={rootRef}>
       <div className="mac__menubar" aria-hidden="true">
         <span className="mac__moon">☾</span>
         <span className="mac__app">{appName}</span>
@@ -103,21 +129,34 @@ export default function LofiOS({
         <span>{clock}</span>
       </div>
 
-      <ul className="mac__icons" aria-hidden={!interactive || undefined}>
-        {DESKTOP.map((d) => (
-          <li key={d.id}>
-            <button type="button" className="mac__icon" tabIndex={tab} onClick={() => open(d.id)}>
-              <span className={`mac__glyph mac__glyph--${d.icon}`}>
-                <PixelIcon name={d.icon} />
+      <ul className="mac__files" aria-hidden={!interactive || undefined}>
+        {ITEMS.map((item, i) => (
+          <li key={item.id}>
+            <button
+              ref={(el) => {
+                fileRefs.current[i] = el;
+              }}
+              type="button"
+              className={`mac__file ${i === selected ? "mac__file--selected" : ""}`}
+              tabIndex={tab}
+              aria-label={`${i + 1}. Open ${item.label}`}
+              onFocus={() => setSelected(i)}
+              onClick={(e) => open(i, e.currentTarget, OPEN_AFTER)}
+            >
+              <span className="mac__file-icon" style={{ background: item.tile }}>
+                <PixelIcon name={item.icon} />
+                <span className="mac__file-num" aria-hidden="true">
+                  {i + 1}
+                </span>
               </span>
-              <span className="mac__icon-label">{d.label}</span>
+              <span className="mac__file-label">{item.file}</span>
             </button>
           </li>
         ))}
       </ul>
 
       {activeApp && (
-        <div className="lofi__window mac__window">
+        <div className="lofi__window mac__window" ref={winRef} key={activeApp}>
           {activeApp === "about" && <AboutWindow onClose={close} />}
           {activeApp === "projects" && <ProjectsWindow onClose={close} />}
           {activeApp === "resume" && <ResumeWindow onClose={close} />}
@@ -135,7 +174,7 @@ export default function LofiOS({
             aria-label={`${i + 1}. ${item.label}`}
             onMouseEnter={() => setSelected(i)}
             onFocus={() => setSelected(i)}
-            onClick={() => setActiveApp(item.id)}
+            onClick={(e) => open(i, e.currentTarget)}
           >
             <span className="mac__tip" aria-hidden="true">
               {item.label}
