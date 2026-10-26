@@ -644,7 +644,7 @@ body:has(.cinema) .crt-flicker {
   z-index: 1;
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(2, 5em);
+  grid-template-columns: repeat(3, 5em);
   gap: 0.5em 0.4em;
 }
 
@@ -1015,4 +1015,117 @@ body:has(.cinema) .crt-flicker {
     animation: none;
     transition: none;
   }
+}
+
+/* ---- the games folder, and a game playing in its window ---- */
+
+.games {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2em;
+  padding: 1.5em 0;
+}
+
+.games__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35em;
+  width: 9em;
+  padding: 0.6em;
+  font: inherit;
+  color: var(--green);
+  border-radius: 0.6em;
+}
+
+.games__item:hover,
+.games__item:focus-visible {
+  outline: none;
+  box-shadow: none;
+  background: rgba(var(--accent-rgb), 0.12);
+}
+
+.games__tile {
+  display: grid;
+  place-items: center;
+  width: 5em;
+  height: 5em;
+  font-size: 1.2em;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #fff4d8;
+  border-radius: 1em;
+  box-shadow:
+    inset 0 -0.2em 0 rgba(0, 0, 0, 0.2),
+    0 0.2em 0.5em rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease-out;
+}
+
+.games__item:hover .games__tile {
+  transform: translateY(-0.1em) scale(1.04);
+}
+
+.games__tile--doom {
+  font-size: 1.35em;
+  font-style: italic;
+  color: #ffd27a;
+  text-shadow: 0.08em 0.08em 0 #4a0f08;
+}
+
+.games__name {
+  font-size: 1.2em;
+  font-weight: 700;
+  color: var(--green-bright);
+}
+
+.games__note {
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
+/* playing: the game fills the window's body edge to edge */
+.game-window .retro-window__body:has(.game) {
+  padding: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+.game {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.game__back {
+  position: absolute;
+  top: 0.5em;
+  left: 0.5em;
+  z-index: 1;
+  padding: 0.2em 0.7em;
+  font: inherit;
+  font-size: 0.9em;
+  color: #fff;
+  background: rgba(20, 16, 38, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 0.4em;
+}
+
+.game__pong {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  background: #1d1838;
+  outline: none;
+  touch-action: none;
+}
+
+.game__frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
 }

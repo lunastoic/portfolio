@@ -8,15 +8,20 @@ import ResumeWindow from "@/components/monitor/ResumeWindow";
 import ContactCard from "./ContactCard";
 import CoffeeWindow from "@/components/monitor/CoffeeWindow";
 import PixelIcon, { type IconName } from "./PixelIcon";
+import GamesWindow, { type GameId } from "./GamesWindow";
+import { setGameOn } from "./gamePause";
 
 export type LofiPopup = "coffee" | null;
 
+type DeskApp = AppId | "games";
+
 // each section is a numbered file on the desktop and an app in the dock
-const ITEMS: { id: AppId; label: string; file: string; icon: IconName; tile: string }[] = [
+const ITEMS: { id: DeskApp; label: string; file: string; icon: IconName; tile: string }[] = [
   { id: "about", label: "About", file: "About Me", icon: "person", tile: "#e8835a" },
   { id: "projects", label: "Projects", file: "Projects", icon: "folder", tile: "#4f8de0" },
   { id: "resume", label: "Resume", file: "Resume.pdf", icon: "document", tile: "#8c6ad8" },
   { id: "contact", label: "Contact", file: "Contact", icon: "mail", tile: "#3fb37f" },
+  { id: "games", label: "Games", file: "Games", icon: "gamepad", tile: "#d4a72c" },
 ];
 
 // how long a clicked file stays highlighted before its window springs open, ms
@@ -27,10 +32,11 @@ const formatClock = () =>
 
 /**
  * The desk computer's desktop, Mac style: a menu bar across the top with my name and a live clock, the
- * moon-and-mountains wallpaper at dusk, the four sections as big numbered files on the desktop and a dock along the
- * bottom. Clicking a file selects it as Finder does, then its window springs open out of the icon (the same windows
+ * moon-and-mountains wallpaper at dusk, the sections as big numbered files on the desktop (the games folder last) and a dock
+ * along the bottom. Clicking a file selects it as Finder does, then its window springs open out of the icon (the same windows
  * v1 uses, in light Mac chrome); the dock opens them too, and the cup in the dock pours the coffee popup. Arrow keys
- * walk the files, Enter opens, 1–4 open a file straight away.
+ * walk the files, Enter opens, 1–5 open a file straight away. While a game is playing every key is the game's, and
+ * ESC goes back to the games folder.
  */
 export default function LofiOS({
   initialPopup = null,
@@ -41,7 +47,8 @@ export default function LofiOS({
   interactive?: boolean;
 }) {
   const [selected, setSelected] = useState(0);
-  const [activeApp, setActiveApp] = useState<AppId | null>(null);
+  const [activeApp, setActiveApp] = useState<DeskApp | null>(null);
+  const [game, setGame] = useState<GameId | null>(null);
   const [popup, setPopup] = useState<LofiPopup>(initialPopup);
   const [clock, setClock] = useState("");
 
@@ -52,7 +59,16 @@ export default function LofiOS({
     return () => clearInterval(id);
   }, []);
 
-  const close = useCallback(() => setActiveApp(null), []);
+  const close = useCallback(() => {
+    setActiveApp(null);
+    setGame(null);
+  }, []);
+
+  // the room holds still while a game plays
+  useEffect(() => {
+    setGameOn(game !== null);
+    return () => setGameOn(false);
+  }, [game]);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const winRef = useRef<HTMLDivElement>(null);
@@ -73,7 +89,10 @@ export default function LofiOS({
       from.current = [(e.left + e.width / 2 - r.left) / k, (e.top + e.height / 2 - r.top) / k];
     } else from.current = null;
     clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setActiveApp(ITEMS[i].id), wait);
+    timer.current = window.setTimeout(() => {
+      setActiveApp(ITEMS[i].id);
+      setGame(null);
+    }, wait);
   }, []);
 
   // the window zooms out of the icon: its transform origin is the icon, measured before the first frame
@@ -86,13 +105,17 @@ export default function LofiOS({
   useEffect(() => {
     if (!interactive) return;
     const onKey = (e: KeyboardEvent) => {
+      if (game) {
+        if (e.key === "Escape") setGame(null);
+        return;
+      }
       if (e.key === "Escape") {
         if (popup) setPopup(null);
         else if (activeApp) close();
         return;
       }
       if (popup) return;
-      if (/^[1-4]$/.test(e.key)) {
+      if (/^[1-5]$/.test(e.key)) {
         const i = Number(e.key) - 1;
         open(i, fileRefs.current[i], OPEN_AFTER);
         return;
@@ -110,10 +133,11 @@ export default function LofiOS({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [interactive, popup, activeApp, selected, close, open]);
+  }, [interactive, popup, activeApp, game, selected, close, open]);
 
   const tab = interactive ? 0 : -1;
-  const appName = activeApp ? ITEMS.find((it) => it.id === activeApp)?.label : "Desktop";
+  const appName =
+    game === "pong" ? "Pong" : game === "doom" ? "DOOM" : activeApp ? ITEMS.find((it) => it.id === activeApp)?.label : "Desktop";
 
   return (
     <div className="lofi mac" ref={rootRef}>
@@ -161,6 +185,7 @@ export default function LofiOS({
           {activeApp === "projects" && <ProjectsWindow onClose={close} />}
           {activeApp === "resume" && <ResumeWindow onClose={close} />}
           {activeApp === "contact" && <ContactCard onClose={close} />}
+          {activeApp === "games" && <GamesWindow game={game} onGame={setGame} onClose={close} />}
         </div>
       )}
 

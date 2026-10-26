@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type CSSProperties } from "react";
+import { gameOn } from "./gamePause";
 
 /**
  * The lava lamp on the desk, drawn live on a small pixel canvas (one pixel of the room's drawing a pixel,
@@ -115,6 +116,12 @@ export default function LavaLamp({
     const px = img.data;
 
     const frame = (now: number) => {
+      // a game is playing on the computer: hold still until it's done
+      if (gameOn()) {
+        st.last = now;
+        st.raf = requestAnimationFrame(frame);
+        return;
+      }
       const dt = st.last ? Math.min(0.05, (now - st.last) / 1000) : 1 / 60;
       st.last = now;
       st.t += dt;

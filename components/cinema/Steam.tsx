@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type RefObject } from "react";
+import { gameOn } from "./gamePause";
 
 export interface SteamArt {
   /** The canvas, one pixel of the room's drawing a pixel. */
@@ -182,8 +183,11 @@ export default function Steam({
     const frame = (now: number) => {
       const dt = last ? Math.min(0.05, (now - last) / 1000) : 1 / 60;
       last = now;
-      step(dt);
-      draw();
+      // a game is playing on the computer: hold still until it's done
+      if (!gameOn()) {
+        step(dt);
+        draw();
+      }
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
