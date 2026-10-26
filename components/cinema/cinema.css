@@ -1519,8 +1519,28 @@ body:has(.cinema) .crt-flicker {
   color: var(--green-bright);
 }
 
-.about__lead {
-  font-size: 1.05em;
+/* the paragraphs of a section, a little apart */
+.about__body section p + p {
+  margin-top: 0.7em;
+}
+
+.about__body strong {
+  color: var(--green-bright);
+}
+
+.about__h--hello {
+  font-size: 1.4em;
+}
+
+/* the closing line, set apart */
+.about__signoff {
+  margin-top: 1.4em !important;
+  padding: 0.7em 0.9em;
+  font-weight: 700;
+  color: var(--green-bright);
+  background: rgba(61, 115, 214, 0.1);
+  border-left: 0.25em solid var(--green-mid);
+  border-radius: 0.4em;
 }
 
 .about__grid {

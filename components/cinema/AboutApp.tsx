@@ -19,8 +19,8 @@ const SKILLS = [
 
 /**
  * The desk computer's About Me window: a profile card on the left (name, role, where, school) and the story on the
- * right: a short intro, what I build, my skills grouped, and what I'm into away
- * from the keyboard. On a narrow screen the card sits on top.
+ * right: my story in my own words, what I build, my skills grouped, and who I am outside of coding. On a narrow
+ * screen the card sits on top.
  */
 export default function AboutApp({ onClose }: { onClose: () => void }) {
   return (
@@ -42,10 +42,20 @@ export default function AboutApp({ onClose }: { onClose: () => void }) {
 
         <div className="about__body">
           <section>
-            <h3 className="about__h">Hi, I&apos;m Christopher</h3>
-            <p className="about__lead">
-              I&apos;m a software engineer who likes building things people actually use. I care about clean interfaces,
-              solid logic underneath, and the small details that make software feel good.
+            <h3 className="about__h about__h--hello">Hey, I&apos;m Christopher!</h3>
+            <p>
+              I&apos;m a Computer Science graduate from <strong>California State University, Dominguez Hills (CSUDH)</strong>,
+              where I earned my Bachelor of Science in Computer Science.
+            </p>
+            <p>
+              I&apos;ve always been fascinated by technology and how things work. What I enjoy most about programming is
+              being able to take an idea, start with a blank screen, and turn it into something people can actually use.
+            </p>
+            <p>
+              Since graduating, I&apos;ve been working on a variety of personal projects, from building full-stack websites
+              for small businesses to developing mobile applications and experimenting with creative web experiences. I
+              enjoy both the technical and creative sides of development, especially finding ways to make websites and
+              applications feel unique, interactive, and easy to use.
             </p>
           </section>
 
@@ -80,14 +90,26 @@ export default function AboutApp({ onClose }: { onClose: () => void }) {
           </section>
 
           <section>
-            <h3 className="about__h">How I work</h3>
-            <p>Ship it, test it, make it better. Powered by dark roast coffee and a healthy respect for the terminal.</p>
+            <h3 className="about__h">Outside of coding</h3>
+            <p>
+              <strong>There&apos;s a lot more to me than sitting behind a computer.</strong>
+            </p>
+            <p>
+              I love spending quality time with my family, hanging out with friends, and making memories with my dog,
+              Tessie. I also enjoy video games, movies, and anything that sparks my curiosity.
+            </p>
+            <p>
+              My favorite movie is <em>Interstellar</em>. There&apos;s something about its combination of science, space
+              exploration, storytelling, and the unknown that has always stuck with me.
+            </p>
+            <p>
+              I&apos;m someone who enjoys learning new things, challenging myself, and finding creative ways to bring my
+              ideas to life. Whether I&apos;m working on a new project, exploring something I&apos;ve never tried before, or
+              simply spending time with the people I care about, I always try to enjoy the process.
+            </p>
           </section>
 
-          <section>
-            <h3 className="about__h">Away from the keyboard</h3>
-            <p>Gaming (Halo forever), anime and movies, music, and dogs.</p>
-          </section>
+          <p className="about__signoff">I&apos;m still learning, still building, and always looking forward to what&apos;s next.</p>
         </div>
       </div>
     </RetroWindow>
