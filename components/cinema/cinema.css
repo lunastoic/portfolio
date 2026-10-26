@@ -742,11 +742,11 @@ body:has(.cinema) .crt-flicker {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
 }
 
-/* an open app's window, over the wallpaper between the menu bar and the dock */
+/* an open app's window takes up the whole screen under the menu bar, over the files and the dock */
 .mac__window {
   position: absolute;
-  inset: 2.4em 1.2em 4.6em 14.4em; /* in its own (smaller) em: clear of the files */
-  z-index: 2;
+  inset: 1.8em 0 0; /* in its own (smaller) em: just under the menu bar */
+  z-index: 4;
   animation: mac-zoom 0.26s cubic-bezier(0.2, 0.8, 0.25, 1);
   margin: 0;
   font-size: 0.8em;
@@ -771,7 +771,7 @@ body:has(.cinema) .crt-flicker {
 .mac .retro-window__titlebar {
   position: relative;
   justify-content: center;
-  height: 1.9em;
+  height: 2.2em;
   padding: 0 4.6em;
   color: #4a4654;
   background: linear-gradient(#ece9ee, #dcd8e0);
@@ -796,7 +796,7 @@ body:has(.cinema) .crt-flicker {
 /* the close button becomes the red light, with the yellow and green beside it */
 .mac .retro-window__close {
   position: absolute;
-  left: 0.75em;
+  left: calc(var(--dot) * 0.65);
   top: 50%;
   padding: 0;
   font-size: 0;
@@ -809,7 +809,7 @@ body:has(.cinema) .crt-flicker {
 /* the button's own font size is 0, so the lights are sized off the screen */
 .mac .retro-window__close,
 .mac .retro-window__close::after {
-  --dot: calc(var(--screen-w) * 0.021);
+  --dot: calc(var(--screen-w) * 0.03);
   width: var(--dot);
   height: var(--dot);
 }
@@ -824,8 +824,27 @@ body:has(.cinema) .crt-flicker {
   box-shadow: calc(var(--dot) * 1.55) 0 0 #28c840;
 }
 
+/* the red light always shows its x, so it reads as the close button */
+.mac .retro-window__close::before {
+  content: "\00d7";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--dot) * 0.95);
+  font-weight: 700;
+  line-height: 1;
+  color: #7a1410;
+}
+
 .mac .retro-window__close:hover {
   background: #e0443e;
+}
+
+/* filling the screen, the window only keeps its rounding up top */
+.mac__window .retro-window {
+  border-width: 1px 0 0;
+  border-radius: 0.55em 0.55em 0 0;
 }
 
 .mac .retro-window__body {
