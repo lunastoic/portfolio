@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { AppId } from "@/components/types";
-import AboutWindow from "@/components/monitor/AboutWindow";
+import AboutApp from "./AboutApp";
 import ProjectsApp from "./ProjectsApp";
 import ResumeWindow from "@/components/monitor/ResumeWindow";
 import ContactCard from "./ContactCard";
@@ -132,6 +132,11 @@ export default function LofiOS({
   }, [interactive, activeApp, game, selected, close, open]);
 
   const tab = interactive ? 0 : -1;
+  /** Opens an app by name, out of its file on the desktop. */
+  const openApp = (id: DeskApp) => {
+    const i = ITEMS.findIndex((it) => it.id === id);
+    open(i, fileRefs.current[i]);
+  };
   const appName =
     game === "pong" ? "Pong" : game === "doom" ? "DOOM" : activeApp ? ITEMS.find((it) => it.id === activeApp)?.label : "Desktop";
 
@@ -194,7 +199,7 @@ export default function LofiOS({
 
       {activeApp && (
         <div className="lofi__window mac__window" ref={winRef} key={activeApp}>
-          {activeApp === "about" && <AboutWindow onClose={close} />}
+          {activeApp === "about" && <AboutApp onClose={close} onOpen={openApp} />}
           {activeApp === "projects" && <ProjectsApp onClose={close} />}
           {activeApp === "resume" && <ResumeWindow onClose={close} />}
           {activeApp === "contact" && <ContactCard onClose={close} />}

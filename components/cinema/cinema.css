@@ -1426,3 +1426,203 @@ body:has(.cinema) .crt-flicker {
     gap: 0.2em;
   }
 }
+
+/* ---- the About Me window: a profile card beside the story ---- */
+
+.about-window .retro-window__body {
+  container-type: inline-size;
+  padding: 0;
+  overflow: hidden;
+}
+
+.about {
+  display: flex;
+  height: 100%;
+  font-size: 0.8em;
+  line-height: 1.55;
+}
+
+.about__card {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 14em;
+  overflow-y: auto;
+  padding: 1.4em 1em;
+  text-align: center;
+  background: #ebe7ee;
+  border-right: 1px solid #d6d1db;
+}
+
+.about__avatar {
+  display: grid;
+  place-items: center;
+  width: 3.6em;
+  height: 3.6em;
+  font-size: 1.3em;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(140deg, #e8835a, #8c6ad8);
+  border-radius: 50%;
+  box-shadow: 0 0.2em 0.5em rgba(0, 0, 0, 0.2);
+}
+
+.about__name {
+  margin: 0.7em 0 0;
+  font-size: 1.25em;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0;
+  color: var(--green-bright);
+}
+
+.about__role {
+  margin: 0.15em 0 0;
+  font-weight: 600;
+  color: var(--green-mid);
+}
+
+.about__facts {
+  list-style: none;
+  margin: 1em 0 0;
+  padding: 0;
+  font-size: 0.88em;
+  color: #6d6777;
+}
+
+.about__facts li {
+  margin: 0.15em 0;
+}
+
+.about__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+  width: 100%;
+  margin-top: 1.3em;
+}
+
+.about__btn {
+  padding: 0.4em 0.8em;
+  font: inherit;
+  font-weight: 600;
+  color: var(--green-bright);
+  background: #fff;
+  border: 1px solid #d6d1db;
+  border-radius: 0.5em;
+}
+
+.about__btn:hover {
+  background: #f4f2f6;
+}
+
+.about__btn--main,
+.about__btn--main:hover {
+  color: #fff;
+  background: var(--green-mid);
+  border-color: transparent;
+}
+
+.about__body {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 1.1em 1.4em 1.6em;
+  color: var(--green);
+}
+
+.about__body p {
+  margin: 0;
+}
+
+.about__body section + section {
+  margin-top: 1.3em;
+}
+
+.about__h {
+  margin: 0 0 0.45em;
+  font-size: 1.1em;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--green-bright);
+}
+
+.about__lead {
+  font-size: 1.05em;
+}
+
+.about__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6em;
+}
+
+.about__tile {
+  padding: 0.6em 0.8em;
+  font-size: 0.92em;
+  background: #fff;
+  border: 1px solid #e2dde6;
+  border-radius: 0.6em;
+}
+
+.about__tile-title {
+  margin-bottom: 0.15em !important;
+  font-weight: 700;
+  color: var(--green-bright);
+}
+
+.about__skills {
+  display: grid;
+  gap: 0.45em;
+  margin: 0;
+}
+
+.about__skill-row {
+  display: grid;
+  grid-template-columns: 6.5em 1fr;
+  align-items: baseline;
+  gap: 0.6em;
+}
+
+.about__skill-row dt {
+  font-size: 0.85em;
+  font-weight: 600;
+  color: #6d6777;
+}
+
+.about__skill-row dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em;
+  margin: 0;
+}
+
+/* a narrow screen (a phone): the card goes on top and everything stacks */
+@container (max-width: 560px) {
+  .about {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .about__card {
+    width: auto;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid #d6d1db;
+  }
+  .about__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .about__body {
+    overflow: visible;
+  }
+  .about__grid {
+    grid-template-columns: 1fr;
+  }
+  .about__skill-row {
+    grid-template-columns: 1fr;
+    gap: 0.2em;
+  }
+}
