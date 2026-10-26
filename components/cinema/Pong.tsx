@@ -63,8 +63,10 @@ export default function Pong() {
       const k = e.key;
       if (k === "ArrowUp" || k === "w" || k === "W") s.keys.up = down;
       else if (k === "ArrowDown" || k === "s" || k === "S") s.keys.down = down;
-      else if (k === " " && down) serve();
-      else return;
+      else if (k === " ") {
+        // handled on the way up too, so Space can't also press a focused button
+        if (down && !e.repeat) serve();
+      } else return;
       e.preventDefault();
       s.aim = null; // the keys take over from the pointer
     };
@@ -106,6 +108,7 @@ export default function Pong() {
       s.cpu = clampPad(s.cpu + Math.sign(d) * Math.min(Math.abs(d), 62 * dt));
       if (s.serving) return;
 
+      const was = s.bx;
       s.bx += s.vx * dt;
       s.by += s.vy * dt;
       if (s.by < 2) {
@@ -116,12 +119,16 @@ export default function Pong() {
         s.by = H - 2 - BALL;
         s.vy = -Math.abs(s.vy);
       }
-      if (s.vx < 0 && s.bx <= 6 + PAD_W && s.bx >= 4 && s.by + BALL > s.you && s.by < s.you + PAD_H) {
-        s.bx = 6 + PAD_W;
+      // the paddles' faces; a ball that crossed one this frame hits it, however far it moved, so it never slips through
+      const LEFT = 4 + PAD_W;
+      const RIGHT = W - 4 - PAD_W;
+      const meets = (pad: number) => s.by + BALL > pad && s.by < pad + PAD_H;
+      if (s.vx < 0 && was >= LEFT && s.bx < LEFT && meets(s.you)) {
+        s.bx = LEFT;
         hit(s.you, 1);
       }
-      if (s.vx > 0 && s.bx + BALL >= W - 6 - PAD_W && s.bx <= W - 4 && s.by + BALL > s.cpu && s.by < s.cpu + PAD_H) {
-        s.bx = W - 6 - PAD_W - BALL;
+      if (s.vx > 0 && was + BALL <= RIGHT && s.bx + BALL > RIGHT && meets(s.cpu)) {
+        s.bx = RIGHT - BALL;
         hit(s.cpu, -1);
       }
       if (s.bx < -BALL || s.bx > W) {
@@ -148,6 +155,10 @@ export default function Pong() {
     };
     const text = (t: string, y: number) => {
       const x0 = Math.round(W / 2 - (t.length * 4 - 1) / 2);
+      // a clear band behind the words, so the centre line doesn't run through them
+      ctx.fillStyle = COURT;
+      ctx.fillRect(x0 - 2, y - 2, t.length * 4 + 3, 9);
+      ctx.fillStyle = INK;
       [...t].forEach((c, j) => {
         const bits = FONT[c] ?? FONT[" "];
         for (let i = 0; i < 15; i++) if (bits[i] === "1") ctx.fillRect(x0 + j * 4 + (i % 3), y + Math.floor(i / 3), 1, 1);
