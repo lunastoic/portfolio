@@ -41,7 +41,7 @@ export default function ProjectsApp({ onClose }: { onClose: () => void }) {
     <RetroWindow title="Projects" onClose={onClose} className="proj-window">
       <div className="proj">
         <nav className="proj__side" aria-label="Projects">
-          <p className="proj__side-head">Built solo · AI-assisted</p>
+          <p className="proj__side-head">Projects</p>
           <ul className="proj__list">
             {deskProjects.map((q, i) => (
               <li key={q.id}>
