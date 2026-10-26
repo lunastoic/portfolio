@@ -18,17 +18,11 @@ const SKILLS = [
 ];
 
 /**
- * The desk computer's About Me window: a profile card on the left (name, role, where, school, and buttons on to the
- * other apps) and the story on the right: a short intro, what I build, my skills grouped, and what I'm into away
+ * The desk computer's About Me window: a profile card on the left (name, role, where, school) and the story on the
+ * right: a short intro, what I build, my skills grouped, and what I'm into away
  * from the keyboard. On a narrow screen the card sits on top.
  */
-export default function AboutApp({
-  onClose,
-  onOpen,
-}: {
-  onClose: () => void;
-  onOpen: (app: "projects" | "resume" | "contact") => void;
-}) {
+export default function AboutApp({ onClose }: { onClose: () => void }) {
   return (
     <RetroWindow title="About Me" onClose={onClose} className="about-window">
       <div className="about">
@@ -44,17 +38,6 @@ export default function AboutApp({
             <li>CSU Dominguez Hills</li>
             <li>First-generation graduate</li>
           </ul>
-          <div className="about__actions">
-            <button type="button" className="about__btn about__btn--main" onClick={() => onOpen("projects")}>
-              See my projects
-            </button>
-            <button type="button" className="about__btn" onClick={() => onOpen("resume")}>
-              Resume
-            </button>
-            <button type="button" className="about__btn" onClick={() => onOpen("contact")}>
-              Contact
-            </button>
-          </div>
         </aside>
 
         <div className="about__body">

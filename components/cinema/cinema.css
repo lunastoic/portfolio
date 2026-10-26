@@ -1495,35 +1495,6 @@ body:has(.cinema) .crt-flicker {
   margin: 0.15em 0;
 }
 
-.about__actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45em;
-  width: 100%;
-  margin-top: 1.3em;
-}
-
-.about__btn {
-  padding: 0.4em 0.8em;
-  font: inherit;
-  font-weight: 600;
-  color: var(--green-bright);
-  background: #fff;
-  border: 1px solid #d6d1db;
-  border-radius: 0.5em;
-}
-
-.about__btn:hover {
-  background: #f4f2f6;
-}
-
-.about__btn--main,
-.about__btn--main:hover {
-  color: #fff;
-  background: var(--green-mid);
-  border-color: transparent;
-}
-
 .about__body {
   flex: 1;
   min-width: 0;
@@ -1609,11 +1580,6 @@ body:has(.cinema) .crt-flicker {
     overflow: visible;
     border-right: 0;
     border-bottom: 1px solid #d6d1db;
-  }
-  .about__actions {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
   }
   .about__body {
     overflow: visible;
