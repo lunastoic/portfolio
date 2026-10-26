@@ -499,45 +499,9 @@ body:has(.cinema) .crt-flicker {
   animation: lofi-in 0.25s steps(3);
 }
 
-/* phones: the seated screen is only about 280px wide, so everything packs tighter, one line each */
+/* phones: the seated screen is only about 280px wide, so everything is a little bigger on it */
 .cinema[data-layout="mobile"] .lofi {
-  padding: 3% 4% 2.5%;
   font-size: calc(var(--screen-w) * 0.04);
-}
-
-.cinema[data-layout="mobile"] .lofi__name {
-  font-size: 1.55em;
-}
-
-.cinema[data-layout="mobile"] .lofi__title {
-  font-size: 0.95em;
-}
-
-.cinema[data-layout="mobile"] .lofi__body {
-  gap: 3%;
-  margin: 0.25em 0;
-}
-
-.cinema[data-layout="mobile"] .lofi__art {
-  width: 30%;
-}
-
-.cinema[data-layout="mobile"] .lofi__menu {
-  gap: 0.1em;
-}
-
-.cinema[data-layout="mobile"] .lofi__item {
-  padding: 0.1em 0.4em 0.1em 0.25em;
-  font-size: 1.02em;
-  white-space: nowrap;
-}
-
-.cinema[data-layout="mobile"] .lofi__footer {
-  font-size: 0.85em;
-}
-
-.cinema[data-layout="mobile"] .lofi__rule {
-  margin: 0.3em 0;
 }
 
 /* CONTACT.EXE on the desk's computer: a business card */
@@ -617,89 +581,321 @@ body:has(.cinema) .crt-flicker {
   to { opacity: 1; }
 }
 
-.lofi__bar,
-.lofi__footer {
-  display: flex;
-  justify-content: space-between;
-  gap: 1em;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
+/* ==========================================================================
+   The desktop, Mac style: menu bar, wallpaper, desktop icons, dock, and
+   v1's windows re-dressed in light Mac chrome
+   ========================================================================== */
+
+.lofi.mac {
+  /* v1's window chrome reads these: dark text on a light window, blue for its accents */
+  --green: #34313d;
+  --green-bright: #17151d;
+  --green-mid: #3d73d6;
+  --green-dim: #c9c4d1;
+  --green-faint: #e3dfe8;
+  --bg-screen: #f7f5f2;
+  --bg: #ffffff;
+  --accent-rgb: 61, 115, 214;
+  padding: 0;
+  font-size: calc(var(--screen-w) * 0.03);
+  color: #fff;
+  background: #1d1838 url("/cinema/wallpaper.png") center / cover no-repeat;
+  image-rendering: pixelated;
 }
 
-.lofi__rule {
-  height: 0.09em;
-  min-height: 2px;
-  margin: 0.45em 0;
-  background: repeating-linear-gradient(to right, var(--lofi-text) 0 0.5em, transparent 0.5em 0.85em);
-}
-
-.lofi__name {
-  margin-top: 0.1em;
-  font-size: 2em;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  line-height: 1.1;
-  color: #b9f7a4;
-}
-
-.lofi__title {
-  margin-top: 0.15em;
-  white-space: nowrap;
-  font-size: 1.05em;
-  letter-spacing: 0.06em;
-}
-
-.lofi__body {
-  flex: 1;
-  min-height: 0;
+.mac__menubar {
+  position: relative;
+  z-index: 3;
   display: flex;
   align-items: center;
-  gap: 4%;
-  margin: 0.4em 0;
+  gap: 1.1em;
+  height: 1.75em;
+  padding: 0 0.9em;
+  font-size: 0.82em;
+  white-space: nowrap;
+  color: #fff;
+  background: rgba(24, 18, 44, 0.55);
+  backdrop-filter: blur(4px);
 }
 
-.lofi__art {
-  width: 40%;
-  height: auto;
-  image-rendering: pixelated;
-  flex: none;
+.mac__moon {
+  font-size: 1.15em;
+  line-height: 1;
+  color: #f6d98e;
 }
 
-.lofi__body nav {
+.mac__app {
+  font-weight: 700;
+}
+
+.mac__menu {
+  opacity: 0.9;
+}
+
+.mac__spacer {
   flex: 1;
-  min-width: 0;
 }
 
-.lofi__menu {
+.mac__icons {
+  position: absolute;
+  top: 2.6em;
+  right: 0.9em;
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.2em;
+  gap: 0.6em;
 }
 
-.lofi__item {
+.mac__icon {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.5em;
-  width: 100%;
-  padding: 0.16em 0.6em 0.16em 0.35em;
-  font-size: 1.2em;
-  letter-spacing: 0.03em;
-  text-align: left;
+  gap: 0.25em;
+  width: 4.6em;
+  padding: 0.3em 0.1em;
+  color: #fff;
+  border-radius: 0.3em;
+}
+
+.mac__icon:hover,
+.mac__icon:focus-visible {
+  outline: none;
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.mac__glyph {
+  display: grid;
+  place-items: center;
+  width: 2.2em;
+  height: 1.9em;
+}
+
+.mac__glyph .lofi__icon {
+  width: 2.2em;
+  height: 1.9em;
+}
+
+.mac__glyph--folder {
+  color: #7fb4f2;
+}
+
+.mac__glyph--document {
+  color: #f4f1ec;
+}
+
+.mac__icon-label {
+  padding: 0 0.3em;
+  font-size: 0.75em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* an open app's window, over the wallpaper between the menu bar and the dock */
+.mac__window {
+  position: absolute;
+  inset: 2.4em 7.5em 4.6em 1.6em;
+  z-index: 2;
+  margin: 0;
+  font-size: 0.8em;
+  color: var(--green);
+}
+
+.mac .retro-window {
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 0.55em;
+  box-shadow: 0 0.6em 1.6em rgba(10, 6, 24, 0.55);
+  animation: mac-open 0.18s ease-out;
+  transform-origin: 50% 100%;
+  image-rendering: auto;
+}
+
+.mac .retro-window__titlebar {
+  position: relative;
+  justify-content: center;
+  height: 1.9em;
+  padding: 0 4.6em;
+  color: #4a4654;
+  background: linear-gradient(#ece9ee, #dcd8e0);
+  border-bottom: 1px solid #c3bec9;
+  letter-spacing: 0.02em;
+}
+
+.mac .retro-window__title {
+  font-weight: 600;
+}
+
+/* focus lands on the title when a window opens, so it needs no ring */
+.mac .retro-window__title:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.mac .retro-window__title > span[aria-hidden] {
+  display: none;
+}
+
+/* the close button becomes the red light, with the yellow and green beside it */
+.mac .retro-window__close {
+  position: absolute;
+  left: 0.75em;
+  top: 50%;
+  padding: 0;
+  font-size: 0;
+  border-radius: 50%;
+  background: #ff5f57;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  transform: translateY(-50%);
+}
+
+/* the button's own font size is 0, so the lights are sized off the screen */
+.mac .retro-window__close,
+.mac .retro-window__close::after {
+  --dot: calc(var(--screen-w) * 0.021);
+  width: var(--dot);
+  height: var(--dot);
+}
+
+.mac .retro-window__close::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: calc(var(--dot) * 1.55);
+  border-radius: 50%;
+  background: #febc2e;
+  box-shadow: calc(var(--dot) * 1.55) 0 0 #28c840;
+}
+
+.mac .retro-window__close:hover {
+  background: #e0443e;
+}
+
+.mac .retro-window__body {
+  color: var(--green);
+  background: var(--bg-screen);
+}
+
+.mac .app-heading {
+  border-bottom-style: solid;
+}
+
+.mac .lofi-card__name {
+  color: var(--green-bright);
+}
+
+.mac .lofi-card__row a {
+  color: var(--green-mid);
+}
+
+.mac .lofi-card__row a:hover,
+.mac .lofi-card__row a:focus-visible {
+  color: #1f4fa8;
+}
+
+/* the coffee popup floats over the whole desktop */
+.mac .retro-window--popup {
+  inset: 12% 22% auto;
+  max-height: 72%;
+  font-size: 0.68em;
+}
+
+.mac__dock {
+  position: absolute;
+  left: 50%;
+  bottom: 0.45em;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.45em;
+  padding: 0.35em 0.5em 0.2em;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0.8em;
+  backdrop-filter: blur(6px);
+}
+
+.mac__dock-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.18em;
+  padding: 0;
+}
+
+.mac__tile {
+  display: grid;
+  place-items: center;
+  width: 2.5em;
+  height: 2.5em;
+  color: #fff;
+  border-radius: 0.6em;
+  box-shadow:
+    inset 0 -0.16em 0 rgba(0, 0, 0, 0.18),
+    0 0.12em 0.3em rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease-out;
+  transform-origin: 50% 100%;
+}
+
+.mac__tile .lofi__icon {
+  width: 1.4em;
+  height: 1.3em;
+}
+
+.mac__tile--coffee {
+  color: #6b3f22;
+  background: #f3e3c4;
+}
+
+.mac__dock-item--active .mac__tile,
+.mac__dock-item:hover .mac__tile,
+.mac__dock-item:focus-visible .mac__tile {
+  transform: scale(1.18) translateY(-0.15em);
+}
+
+.mac__dock-item:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.mac__dot {
+  width: 0.22em;
+  height: 0.22em;
+  border-radius: 50%;
+}
+
+.mac__dot--on {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.mac__dock-rule {
+  align-self: stretch;
+  width: 1px;
+  margin: 0.2em 0.1em 0.5em;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* the app's name floats over its tile while you point at it */
+.mac__tip {
+  position: absolute;
+  bottom: calc(100% + 0.5em);
+  left: 50%;
+  padding: 0.1em 0.5em;
+  font-size: 0.7em;
   white-space: nowrap;
-  color: inherit;
-  border-radius: 0.15em;
+  color: #2a2733;
+  background: rgba(245, 243, 248, 0.92);
+  border-radius: 0.35em;
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
 }
 
-.lofi__item--active {
-  color: var(--lofi-hi-text);
-  background: var(--lofi-hi);
-}
-
-.lofi__cursor {
-  display: inline-block;
-  width: 0.7em;
-  flex: none;
+.mac__dock-item:hover .mac__tip,
+.mac__dock-item:focus-visible .mac__tip {
+  opacity: 1;
 }
 
 .lofi__icon {
@@ -709,20 +905,24 @@ body:has(.cinema) .crt-flicker {
 }
 
 .lofi__window {
-  flex: 1;
-  min-height: 0;
   display: flex;
-  margin: 0.45em 0;
-  font-size: 0.72em;
-  font-weight: 400;
 }
 
-.lofi__prompt {
-  letter-spacing: 0.04em;
+@keyframes mac-open {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(4%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-/* the coffee popup floats over the whole glass */
-.lofi .retro-window--popup {
-  font-size: 0.8em;
-  inset: 12% 10% auto;
+@media (prefers-reduced-motion: reduce) {
+  .mac .retro-window,
+  .mac__tile {
+    animation: none;
+    transition: none;
+  }
 }
