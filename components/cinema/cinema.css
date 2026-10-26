@@ -587,6 +587,8 @@ body:has(.cinema) .crt-flicker {
    ========================================================================== */
 
 .lofi.mac {
+  font-family: var(--font-ui), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 400;
   /* v1's window chrome reads these: dark text on a light window, blue for its accents */
   --green: #34313d;
   --green-bright: #17151d;
@@ -873,6 +875,8 @@ body:has(.cinema) .crt-flicker {
 }
 
 .mac .app-heading {
+  font-weight: 700;
+  letter-spacing: 0.06em;
   border-bottom-style: solid;
 }
 
