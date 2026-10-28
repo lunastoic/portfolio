@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { AppId } from "@/components/types";
 import AboutApp from "./AboutApp";
 import InfoApp from "./InfoApp";
@@ -31,6 +31,15 @@ const SIDE = [GAMES, GAMES + 1];
 // how long a clicked file stays highlighted before its window springs open, ms
 const OPEN_AFTER = 160;
 
+// whether the device has a pointer that hovers (a mouse), as opposed to a touch screen
+const HOVER_QUERY = "(hover: hover)";
+const subscribeHover = (cb: () => void) => {
+  const mq = window.matchMedia(HOVER_QUERY);
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+};
+const canHover = () => window.matchMedia(HOVER_QUERY).matches;
+
 const formatClock = () =>
   new Date().toLocaleTimeString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
 
@@ -52,8 +61,10 @@ export default function LofiOS({
   visit?: number;
 }) {
   const [selected, setSelected] = useState(0);
-  // the file or dock app under the pointer, named in the menu bar; without one (a phone) it names the selected file
+  // the file or dock app under the pointer, named in the menu bar; with a mouse it says File when over nothing,
+  // and on a touch screen (no hover) it names the selected file
   const [hovered, setHovered] = useState<number | null>(null);
+  const mouse = useSyncExternalStore(subscribeHover, canHover, () => true);
   const [activeApp, setActiveApp] = useState<DeskApp | null>(null);
   const [game, setGame] = useState<GameId | null>(null);
   const [clock, setClock] = useState("");
@@ -160,7 +171,7 @@ export default function LofiOS({
       <div className="mac__menubar" aria-hidden="true">
         <span className="mac__moon">☾</span>
         <span className="mac__app">{appName}</span>
-        <span className="mac__menu">{ITEMS[hovered ?? selected].file}</span>
+        <span className="mac__menu">{hovered !== null ? ITEMS[hovered].file : mouse ? "File" : ITEMS[selected].file}</span>
         <span className="mac__menu mac__menu--wide">Edit</span>
         <span className="mac__menu mac__menu--wide">View</span>
         <span className="mac__menu mac__menu--wide">Window</span>
