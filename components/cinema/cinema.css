@@ -660,10 +660,20 @@ body:has(.cinema) .crt-flicker {
   gap: 0.8em;
 }
 
-/* the dock only repeats the files (and the games folder, already top right), so on a phone it steps aside and the
-   big numbered files keep the screen to themselves */
+/* a phone: the dock and the files' tiles shrink so the dock clears file 4; the number badges and names keep their size */
 .cinema[data-layout="mobile"] .mac__dock {
-  display: none;
+  font-size: 0.8em;
+}
+
+.cinema[data-layout="mobile"] .mac__files .mac__file-icon {
+  width: 2.8em;
+  height: 2.8em;
+  border-radius: 0.66em;
+}
+
+.cinema[data-layout="mobile"] .mac__files .mac__file-icon .lofi__icon {
+  width: 1.56em;
+  height: 1.4em;
 }
 
 /* the four sections, big numbered files in two columns down the desktop's left */
