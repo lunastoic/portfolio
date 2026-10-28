@@ -131,11 +131,11 @@ export default function ResumeWindow({ onClose }: { onClose: () => void }) {
     <RetroWindow title="RESUME.EXE" onClose={onClose}>
       <div className="app-content">
         <div className="resume-download">
-          <PixelButton href={RESUME_URL} download variant="solid">
-            ↓ DOWNLOAD RESUME.PDF
-          </PixelButton>
           <PixelButton onClick={() => setView("viewer")}>
             ▤ VIEW RESUME.PDF
+          </PixelButton>
+          <PixelButton href={RESUME_URL} download variant="solid">
+            ↓ DOWNLOAD RESUME.PDF
           </PixelButton>
         </div>
 
