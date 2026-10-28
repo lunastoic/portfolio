@@ -163,6 +163,7 @@ export default function LofiOS({
     return () => window.removeEventListener("keydown", onKey);
   }, [interactive, activeApp, game, selected, close, open]);
 
+  const current = hovered !== null ? ITEMS[hovered].file : mouse ? "File" : ITEMS[selected ?? 0].file;
   const tab = interactive ? 0 : -1;
   const appName =
     game === "pong" ? "Pong" : game === "doom" ? "DOOM" : activeApp ? ITEMS.find((it) => it.id === activeApp)?.label : "Desktop";
@@ -172,7 +173,15 @@ export default function LofiOS({
       <div className="mac__menubar" aria-hidden="true">
         <span className="mac__moon">☾</span>
         <span className="mac__app">{appName}</span>
-        <span className="mac__menu">{hovered !== null ? ITEMS[hovered].file : mouse ? "File" : ITEMS[selected ?? 0].file}</span>
+        {/* every name sits in the same cell, only the current one shown, so the slot is always as wide as the
+            longest and the name and clock never shift as you point around */}
+        <span className="mac__menu mac__menu--slot">
+          {["File", ...ITEMS.map((it) => it.file)].map((name) => (
+            <span key={name} hidden={name !== current} className="mac__slot-name">
+              {name}
+            </span>
+          ))}
+        </span>
         <span className="mac__menu mac__menu--wide">Edit</span>
         <span className="mac__menu mac__menu--wide">View</span>
         <span className="mac__menu mac__menu--wide">Window</span>

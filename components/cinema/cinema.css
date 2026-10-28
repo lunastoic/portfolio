@@ -637,9 +637,27 @@ body:has(.cinema) .crt-flicker {
   flex: 1;
 }
 
+.mac__menu--slot {
+  display: inline-grid;
+}
+
+.mac__slot-name {
+  grid-area: 1 / 1;
+}
+
+/* hidden names still hold their width, just unseen */
+.mac__slot-name[hidden] {
+  display: block;
+  visibility: hidden;
+}
+
 /* a phone's screen is too narrow for every menu: the extras go so the name and clock fit */
 .cinema[data-layout="mobile"] .mac__menu--wide {
   display: none;
+}
+
+.cinema[data-layout="mobile"] .mac__menubar {
+  gap: 0.8em;
 }
 
 /* the four sections, big numbered files in two columns down the desktop's left */
