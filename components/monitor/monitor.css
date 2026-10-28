@@ -496,6 +496,21 @@
   padding-bottom: 4px;
 }
 
+/* Phones: shrink the buttons so View and Download stay side by side */
+@media (max-width: 600px) {
+  .resume-download {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .resume-download .pixel-btn {
+    font-size: 0.72em;
+    padding: 0.3em 0.6em 0.25em;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+}
+
 /* Read-only PDF viewer */
 .resume-viewer {
   height: 100%;
