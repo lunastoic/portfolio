@@ -60,9 +60,10 @@ export default function LofiOS({
   /** Bumped on each stand-up: the screen goes back to a fresh desktop in place, without blinking off. */
   visit?: number;
 }) {
-  const [selected, setSelected] = useState(0);
+  // nothing is selected until you point at, click or arrow to a file
+  const [selected, setSelected] = useState<number | null>(null);
   // the file or dock app under the pointer, named in the menu bar; with a mouse it says File when over nothing,
-  // and on a touch screen (no hover) it names the selected file
+  // and on a touch screen (no hover) it names the selected file, About Me before one is picked
   const [hovered, setHovered] = useState<number | null>(null);
   const mouse = useSyncExternalStore(subscribeHover, canHover, () => true);
   const [activeApp, setActiveApp] = useState<DeskApp | null>(null);
@@ -102,7 +103,7 @@ export default function LofiOS({
     lastVisit.current = visit;
     clearTimeout(timer.current);
     from.current = null;
-    setSelected(0);
+    setSelected(null);
     setHovered(null);
     close();
   }, [visit, close]);
@@ -150,11 +151,11 @@ export default function LofiOS({
       if (activeApp) return;
       if (e.key === "ArrowRight" || e.key === "ArrowDown") {
         e.preventDefault();
-        setSelected((i) => (i + 1) % MAIN);
+        setSelected((i) => (i === null ? 0 : (i + 1) % MAIN));
       } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
         e.preventDefault();
-        setSelected((i) => (i + MAIN - 1) % MAIN);
-      } else if (e.key === "Enter") {
+        setSelected((i) => (i === null ? MAIN - 1 : (i + MAIN - 1) % MAIN));
+      } else if (e.key === "Enter" && selected !== null) {
         open(selected, fileRefs.current[selected], OPEN_AFTER);
       }
     };
@@ -171,7 +172,7 @@ export default function LofiOS({
       <div className="mac__menubar" aria-hidden="true">
         <span className="mac__moon">☾</span>
         <span className="mac__app">{appName}</span>
-        <span className="mac__menu">{hovered !== null ? ITEMS[hovered].file : mouse ? "File" : ITEMS[selected].file}</span>
+        <span className="mac__menu">{hovered !== null ? ITEMS[hovered].file : mouse ? "File" : ITEMS[selected ?? 0].file}</span>
         <span className="mac__menu mac__menu--wide">Edit</span>
         <span className="mac__menu mac__menu--wide">View</span>
         <span className="mac__menu mac__menu--wide">Window</span>
