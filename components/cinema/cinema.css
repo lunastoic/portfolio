@@ -258,7 +258,6 @@
   text-align: center;
   color: #2a1208;
   pointer-events: none;
-  -webkit-font-smoothing: none;
 }
 
 /* seated, the props are just part of the picture: clicks fall through to the stage */

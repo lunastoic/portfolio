@@ -117,8 +117,9 @@ body {
   font-family: var(--font-term);
   font-size: 18px;
   line-height: 1.25;
-  -webkit-font-smoothing: none;
-  text-rendering: optimizeSpeed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 ::selection {
