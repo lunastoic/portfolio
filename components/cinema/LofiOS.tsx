@@ -44,9 +44,12 @@ const formatClock = () =>
  */
 export default function LofiOS({
   interactive = true,
+  visit = 0,
 }: {
   /** Standing back, the screen just shows; keys and clicks only reach it once you sit down. */
   interactive?: boolean;
+  /** Bumped on each stand-up: the screen goes back to a fresh desktop in place, without blinking off. */
+  visit?: number;
 }) {
   const [selected, setSelected] = useState(0);
   const [activeApp, setActiveApp] = useState<DeskApp | null>(null);
@@ -78,6 +81,17 @@ export default function LofiOS({
   const from = useRef<[number, number] | null>(null);
   const timer = useRef(0);
   useEffect(() => () => clearTimeout(timer.current), []);
+
+  // a fresh desktop for the next visit, set before the frame paints so the old window never flashes
+  const lastVisit = useRef(visit);
+  useLayoutEffect(() => {
+    if (lastVisit.current === visit) return;
+    lastVisit.current = visit;
+    clearTimeout(timer.current);
+    from.current = null;
+    setSelected(0);
+    close();
+  }, [visit, close]);
 
   /** Opens item i out of the element it was opened from, after a moment highlighted if it's a file. */
   const open = useCallback((i: number, el: Element | null | undefined, wait = 0) => {

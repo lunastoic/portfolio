@@ -1164,7 +1164,7 @@ export default function CinemaScene() {
               } as CSSProperties
             }
           >
-            <LofiOS key={visits} interactive={pose === "seated"} />
+            <LofiOS visit={visits} interactive={pose === "seated"} />
           </div>
         )}
       </div>
