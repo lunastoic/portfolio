@@ -20,7 +20,7 @@ export default function ContactCard({ onClose }: { onClose: () => void }) {
         <div className="lofi-card__head">
           <p className="lofi-card__name">CHRISTOPHER LUNA</p>
           <p className="lofi-card__title">SOFTWARE ENGINEER</p>
-          <p className="lofi-card__place">ANAHEIM, CA 92806</p>
+          <p className="lofi-card__place">ORANGE COUNTY, CA</p>
         </div>
         <dl className="lofi-card__rows">
           {ROWS.filter((r) => r.href).map((r) => (

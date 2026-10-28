@@ -33,7 +33,7 @@ export default function AboutApp({ onClose }: { onClose: () => void }) {
           <h2 className="about__name">Christopher Luna</h2>
           <p className="about__role">Software Engineer</p>
           <ul className="about__facts">
-            <li>Anaheim, CA</li>
+            <li>Orange County, CA</li>
             <li>B.S. Computer Science</li>
             <li>
               <span className="about__csu">CSU</span> <span className="about__dh">Dominguez Hills</span>

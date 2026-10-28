@@ -175,7 +175,7 @@ const SPINE = "#d9b77a";
 const WALL_TEXT: WallText[] = [
   { lines: ["CHRISTOPHER LUNA"], x: 937, y: 56, size: 40, color: NAME_GOLD, weight: 700, track: 0.06 },
   { lines: ["LUNA_CHRISTOPHER98@HOTMAIL.COM"], x: 937, y: 97.5, size: 17.5, color: "#e9b468", weight: 500, track: 0.06 },
-  { lines: ["ANAHEIM, CA 92806"], x: 937, y: 119, size: 13.3, color: "#e9b468", weight: 500, track: 0.08 },
+  { lines: ["ORANGE COUNTY, CA"], x: 937, y: 119, size: 13.3, color: "#e9b468", weight: 500, track: 0.08 },
   // the school in its colours, CSU burgundy and DH gold, then the degree in the name's colour
   {
     lines: [[{ text: "CALIFORNIA STATE UNIVERSITY, ", color: CSU_BURGUNDY }, { text: "DOMINGUEZ HILLS", color: DH_GOLD }]],
