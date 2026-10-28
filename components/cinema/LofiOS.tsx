@@ -52,6 +52,8 @@ export default function LofiOS({
   visit?: number;
 }) {
   const [selected, setSelected] = useState(0);
+  // the file or dock app under the pointer, named in the menu bar; without one (a phone) it names the selected file
+  const [hovered, setHovered] = useState<number | null>(null);
   const [activeApp, setActiveApp] = useState<DeskApp | null>(null);
   const [game, setGame] = useState<GameId | null>(null);
   const [clock, setClock] = useState("");
@@ -90,6 +92,7 @@ export default function LofiOS({
     clearTimeout(timer.current);
     from.current = null;
     setSelected(0);
+    setHovered(null);
     close();
   }, [visit, close]);
 
@@ -157,7 +160,7 @@ export default function LofiOS({
       <div className="mac__menubar" aria-hidden="true">
         <span className="mac__moon">☾</span>
         <span className="mac__app">{appName}</span>
-        <span className="mac__menu">File</span>
+        <span className="mac__menu">{ITEMS[hovered ?? selected].file}</span>
         <span className="mac__menu mac__menu--wide">Edit</span>
         <span className="mac__menu mac__menu--wide">View</span>
         <span className="mac__menu mac__menu--wide">Window</span>
@@ -178,6 +181,8 @@ export default function LofiOS({
               tabIndex={tab}
               aria-label={`${i + 1}. Open ${item.label}`}
               onFocus={() => setSelected(i)}
+              onMouseEnter={() => setHovered(i)}
+              onMouseLeave={() => setHovered(null)}
               onClick={(e) => open(i, e.currentTarget, OPEN_AFTER)}
             >
               <span className="mac__file-icon" style={{ background: item.tile }}>
@@ -203,6 +208,8 @@ export default function LofiOS({
               className={`mac__file mac__file--side ${selected === i ? "mac__file--selected" : ""}`}
               tabIndex={tab}
               aria-label={`Open ${ITEMS[i].label}`}
+              onMouseEnter={() => setHovered(i)}
+              onMouseLeave={() => setHovered(null)}
               onClick={(e) => open(i, e.currentTarget, OPEN_AFTER)}
             >
               <span className="mac__file-icon" style={{ background: ITEMS[i].tile }}>
@@ -233,7 +240,11 @@ export default function LofiOS({
             className={`mac__dock-item ${i === selected ? "mac__dock-item--active" : ""}`}
             tabIndex={tab}
             aria-label={`${i + 1}. ${item.label}`}
-            onMouseEnter={() => setSelected(i)}
+            onMouseEnter={() => {
+              setSelected(i);
+              setHovered(i);
+            }}
+            onMouseLeave={() => setHovered(null)}
             onFocus={() => setSelected(i)}
             onClick={(e) => open(i, e.currentTarget)}
           >
@@ -252,6 +263,8 @@ export default function LofiOS({
           className="mac__dock-item"
           tabIndex={tab}
           aria-label="Games"
+          onMouseEnter={() => setHovered(GAMES)}
+          onMouseLeave={() => setHovered(null)}
           onClick={(e) => open(GAMES, e.currentTarget)}
         >
           <span className="mac__tip" aria-hidden="true">
