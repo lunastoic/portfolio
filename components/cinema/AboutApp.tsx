@@ -82,7 +82,7 @@ export default function AboutApp({ onClose }: { onClose: () => void }) {
           </section>
 
           <section>
-            <h3 className="about__h">What I build</h3>
+            <h3 className="about__h">What I've built</h3>
             <div className="about__grid">
               {WHAT_I_BUILD.map((w) => (
                 <div key={w.title} className="about__tile">
