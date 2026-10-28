@@ -158,11 +158,11 @@ export default function LofiOS({
         <span className="mac__moon">☾</span>
         <span className="mac__app">{appName}</span>
         <span className="mac__menu">File</span>
-        <span className="mac__menu">Edit</span>
-        <span className="mac__menu">View</span>
+        <span className="mac__menu mac__menu--wide">Edit</span>
+        <span className="mac__menu mac__menu--wide">View</span>
         <span className="mac__menu mac__menu--wide">Window</span>
         <span className="mac__spacer" />
-        <span className="mac__menu mac__menu--wide">Christopher Luna</span>
+        <span className="mac__menu">Christopher Luna</span>
         <span>{clock}</span>
       </div>
 

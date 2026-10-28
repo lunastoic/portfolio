@@ -637,6 +637,11 @@ body:has(.cinema) .crt-flicker {
   flex: 1;
 }
 
+/* a phone's screen is too narrow for every menu: the extras go so the name and clock fit */
+.cinema[data-layout="mobile"] .mac__menu--wide {
+  display: none;
+}
+
 /* the four sections, big numbered files in two columns down the desktop's left */
 .mac__files {
   position: absolute;
