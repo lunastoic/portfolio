@@ -785,6 +785,9 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   }
   // ------------------------------------------------ light
   const out = new Uint8ClampedArray(WW * RH * 4);
+  // the decks keep their own colours in the dark: the monitor's glow lights the wall above it, but tinting the low
+  // deck turned its plum blue-grey (the high one sits out of reach), so they only go dark under the room's night
+  const deckRamps = new Set(['deckA', 'deckB', 'deckAText', 'deckBText', 'deckWood'].map((nm) => rampId.get(nm)).filter((r) => r !== undefined));
   for (let Y = -OT; Y < H + OB; Y++) for (let X = 0; X < WW; X++) {
     const i = (Y + OT) * WW + X, o = i * 4;
     out[o + 3] = 255;
@@ -800,7 +803,8 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
       else lamp = Math.exp(-((Math.hypot((x - 68) / 2.5, (y - 199) / 0.75) / 42) ** 2));
     }
     const dxs = Math.max(170 - x, 0, x - 277), dys = Math.max(87 - y, 0, y - 153);
-    const mon = Math.exp(-((Math.hypot(dxs, dys * 1.15) / 20) ** 2)) * (on ? 0.4 : 1);
+    const onDeck = deckRamps.has(r) && y < 80; // deckWood is the skirting too, far below
+    const mon = onDeck && !on ? 0 : Math.exp(-((Math.hypot(dxs, dys * 1.15) / 20) ** 2)) * (on ? 0.4 : 1);
     // the lava lamp: a soft pink pool on the wall round its glass, and one on the desk at its foot
     const lava = !lavaOn ? 0 : onWall(x, y) ? Math.exp(-((Math.hypot(x - 310, (y - 160) * 0.85) / 40) ** 2)) : Math.exp(-((Math.hypot((x - 310) / 2.4, (y - 199) / 0.8) / 24) ** 2));
     const shift = (on ? lamp * 2.3 - 0.25 + theme.ambient : -1.05 + theme.ambient + mon * 0.9) + lava * (on ? 0.7 : 1.5);
