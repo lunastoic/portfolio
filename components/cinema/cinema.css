@@ -754,11 +754,11 @@ body:has(.cinema) .crt-flicker {
   height: 1.7em;
 }
 
-/* the games folder and the info file: smaller icons down the top right, where a Mac keeps loose files */
+/* the games folder and the info file: smaller icons in the bottom right, beside the dock and clear of the edges */
 .mac__side {
   position: absolute;
-  top: 2.5em;
   right: 0.9em;
+  bottom: 0.9em;
   z-index: 1;
   list-style: none;
   display: flex;
