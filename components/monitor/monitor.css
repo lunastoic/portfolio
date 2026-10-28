@@ -312,6 +312,15 @@
   color: var(--green-mid);
 }
 
+.resume-list {
+  gap: 10px;
+}
+
+.resume-gap {
+  display: block;
+  height: 6px;
+}
+
 .resume-bullets {
   list-style: none;
   margin: 4px 0 0 1.2em;

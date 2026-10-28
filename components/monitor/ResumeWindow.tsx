@@ -147,11 +147,12 @@ export default function ResumeWindow({ onClose }: { onClose: () => void }) {
         <p>
           B.S., FOCUS ON COMPUTER SCIENCE — 2025
           <br />
+          <span className="resume-gap" />
           California State University, Dominguez Hills — Carson, CA
         </p>
 
         <h2 className="app-heading">&gt; PROJECTS</h2>
-        <ul className="app-list">
+        <ul className="app-list resume-list">
           {resumeProjects.map((p) => (
             <li key={p.title}>
               <strong>{p.title}</strong> — {p.text}
@@ -167,7 +168,7 @@ export default function ResumeWindow({ onClose }: { onClose: () => void }) {
         </ul>
 
         <h2 className="app-heading">&gt; WORK EXPERIENCE</h2>
-        <ul className="app-list">
+        <ul className="app-list resume-list">
           {experience.map((job) => (
             <li key={job.role}>
               <strong>{job.role}</strong> — {job.place}, {job.city}
@@ -183,7 +184,7 @@ export default function ResumeWindow({ onClose }: { onClose: () => void }) {
         </ul>
 
         <h2 className="app-heading">&gt; SKILLS &amp; QUALIFICATIONS</h2>
-        <ul className="app-list">
+        <ul className="app-list resume-list">
           <li>
             Languages &amp; Frameworks: Python, Java, SQL, Swift, JavaScript, TypeScript, React, Next.js, React
             Native, Expo
