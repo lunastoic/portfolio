@@ -74,6 +74,11 @@ export default function AboutApp({ onClose }: { onClose: () => void }) {
               enjoy both the technical and creative sides of development, especially finding ways to make websites and
               applications feel unique, interactive, and easy to use.
             </p>
+            <p>
+              I&apos;m someone who enjoys learning new things, challenging myself, and finding creative ways to bring my
+              ideas to life. Whether I&apos;m working on a new project, exploring something I&apos;ve never tried before, or
+              simply spending time with the people I care about, I always try to enjoy the process.
+            </p>
           </section>
 
           <section>
@@ -118,11 +123,6 @@ export default function AboutApp({ onClose }: { onClose: () => void }) {
             <p>
               My favorite movie is <em>Interstellar</em>. There&apos;s something about its combination of science, space
               exploration, storytelling, and the unknown that has always stuck with me.
-            </p>
-            <p>
-              I&apos;m someone who enjoys learning new things, challenging myself, and finding creative ways to bring my
-              ideas to life. Whether I&apos;m working on a new project, exploring something I&apos;ve never tried before, or
-              simply spending time with the people I care about, I always try to enjoy the process.
             </p>
           </section>
 
