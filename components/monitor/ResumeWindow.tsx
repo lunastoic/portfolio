@@ -7,6 +7,61 @@ import RetroWindow from "./RetroWindow";
 
 const RESUME_URL = "/resume/Christopher_Luna_Resume.pdf";
 
+// Mirrors the PDF — keep these in sync when the resume changes.
+const resumeProjects = [
+  {
+    title: "Blackjack Card Counting App",
+    text: "iOS app that teaches card counting through simulated gameplay.",
+    tools: "Swift, SwiftUI, Xcode",
+  },
+  {
+    title: "Blackjack Card Counting Website",
+    text: "Web version of the app with interactive graphics and real-time stats.",
+    tools: "React, Redux, D3.js, CanvasJS, Node.js, Express.js, MongoDB",
+  },
+  {
+    title: "Sport Shoe Database",
+    text: "Group senior project designing and querying a structured SQL database with business rules, ER diagrams, and custom entities/tables.",
+    tools: "SQL, MySQL Workbench, ER Modeling",
+  },
+  {
+    title: "Student Portal Website",
+    text: "Full-stack site for student login, assignments, and schedule management.",
+    tools: "React, Django, REST API",
+  },
+  {
+    title: "3D Drone Simulator",
+    text: "Simulates drone routing and 3D visualization for path planning.",
+    tools: "Java, JavaFX, Eclipse",
+  },
+];
+
+const experience = [
+  {
+    role: "Designated School Official",
+    place: "Living Water University",
+    city: "Santa Ana, CA",
+    dates: "October 2025 to Present",
+    bullets: [
+      "Managed SEVIS records and Form I-20 processing for F-1/F-2 students, including transfers, endorsements, CPT, program updates, and dependent requests.",
+      "Advised students on F-1 compliance requirements and coordinated with campus departments to resolve documentation, enrollment, and immigration-related matters.",
+    ],
+  },
+  {
+    role: "Stock Supervisor",
+    place: "Vans",
+    city: "Orange, CA",
+    dates: "July 2018 - February 2026",
+    bullets: [
+      "Coordinated schedules & task assignments, effectively balancing personnel & resources allocation.",
+      "Ensured accurate product scanning and integration into the inventory system.",
+      "Managed overnight shifts to meet specific store requirements.",
+      "Protected company assets & complied with safety, security & shrink policies",
+      "Coached team members to elevate performance during peak sale seasons",
+    ],
+  },
+];
+
 /**
  * RESUME.EXE — on-screen resume, PDF download, and a read-only PDF viewer
  * that opens the file "on the computer".
@@ -84,24 +139,26 @@ export default function ResumeWindow({ onClose }: { onClose: () => void }) {
           </PixelButton>
         </div>
 
-        <h2 className="app-heading">&gt; EDUCATION</h2>
         <p>
-          B.S. COMPUTER SCIENCE
-          <br />
-          California State University, Dominguez Hills
+          <a href="mailto:luna_christopher98@hotmail.com">luna_christopher98@hotmail.com</a>
         </p>
 
-        <h2 className="app-heading">&gt; TECHNICAL SKILLS</h2>
-        <ul className="app-list">
-          <li>Languages: TypeScript, JavaScript, Python, HTML, CSS</li>
-          <li>Front End: React, Next.js, Responsive Design</li>
-          <li>Mobile: React Native, mobile game development</li>
-          <li>Back End: Node.js, REST APIs</li>
-          <li>Tools: Git, GitHub, VS Code</li>
-        </ul>
+        <h2 className="app-heading">&gt; EDUCATION</h2>
+        <p>
+          B.S., FOCUS ON COMPUTER SCIENCE — 2025
+          <br />
+          California State University, Dominguez Hills — Carson, CA
+        </p>
 
         <h2 className="app-heading">&gt; PROJECTS</h2>
         <ul className="app-list">
+          {resumeProjects.map((p) => (
+            <li key={p.title}>
+              <strong>{p.title}</strong> — {p.text}
+              <br />
+              Tools: {p.tools}
+            </li>
+          ))}
           {projects.map((p) => (
             <li key={p.id}>
               <strong>{p.title}</strong> — {p.tagline}
@@ -109,14 +166,36 @@ export default function ResumeWindow({ onClose }: { onClose: () => void }) {
           ))}
         </ul>
 
-        <h2 className="app-heading">&gt; EXPERIENCE</h2>
+        <h2 className="app-heading">&gt; WORK EXPERIENCE</h2>
+        <ul className="app-list">
+          {experience.map((job) => (
+            <li key={job.role}>
+              <strong>{job.role}</strong> — {job.place}, {job.city}
+              <br />
+              {job.dates}
+              <ul className="resume-bullets">
+                {job.bullets.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+
+        <h2 className="app-heading">&gt; SKILLS &amp; QUALIFICATIONS</h2>
         <ul className="app-list">
           <li>
-            {/* Placeholder — replace with real experience entries */}
-            Software Engineering Projects — Independent &amp; Academic
-            <br />
-            Designed, built, and shipped full stack, front end, and mobile
-            applications end to end.
+            Languages &amp; Frameworks: Python, Java, SQL, Swift, JavaScript, TypeScript, React, Next.js, React
+            Native, Expo
+          </li>
+          <li>Tools &amp; Platforms: Git, GitHub, Vercel, Prisma, PostgreSQL, Neon, Expo, Cursor, Claude Code</li>
+          <li>
+            Development Skills: Web/mobile development, responsive UI, database management, API integration,
+            authentication, debugging, and deployment
+          </li>
+          <li>
+            Professional Skills: Technical troubleshooting, communication, documentation, student support,
+            compliance, and cross-department coordination
           </li>
         </ul>
       </div>

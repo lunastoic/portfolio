@@ -312,6 +312,16 @@
   color: var(--green-mid);
 }
 
+.resume-bullets {
+  list-style: none;
+  margin: 4px 0 0 1.2em;
+}
+
+.resume-bullets li::before {
+  content: "- ";
+  color: var(--green-mid);
+}
+
 .app-tags {
   display: flex;
   flex-wrap: wrap;
