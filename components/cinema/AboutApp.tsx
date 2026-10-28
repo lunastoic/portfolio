@@ -114,15 +114,16 @@ export default function AboutApp({ onClose }: { onClose: () => void }) {
           <section>
             <h3 className="about__h">Outside of coding</h3>
             <p>
-              <strong>There&apos;s a lot more to me than sitting behind a computer.</strong>
+              <strong>There&apos;s a lot more to me than just sitting behind a computer all day.</strong>
             </p>
             <p>
-              I love spending quality time with my family, hanging out with friends, and making memories with my dog,
-              Tessie. I also enjoy video games, movies, and anything that sparks my curiosity.
+              I love spending quality time with my family, hanging out with friends, and being with my dog, Tessie, who
+              is a Siberian husky mixed with a Welsh corgi. I also enjoy video games such as Battlefield, Minecraft and
+              some Call of Duty here and there but mostly been on the Battlefield grind for when I do have spare time.
             </p>
             <p>
-              My favorite movie is <em>Interstellar</em>. There&apos;s something about its combination of science, space
-              exploration, storytelling, and the unknown that has always stuck with me.
+              Apart from gaming, my favorite movie of all time is <em>Interstellar</em>. There&apos;s something about its
+              combination of science, space exploration, storytelling, and the unknown that has always stuck with me.
             </p>
           </section>
 
