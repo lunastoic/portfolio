@@ -55,12 +55,22 @@ export default function AboutApp({ onClose }: { onClose: () => void }) {
               where I earned my Bachelor of Science in Computer Science.
             </p>
             <p>
-              I&apos;ve always been fascinated by technology and how things work. What I enjoy most about programming is
-              being able to take an idea, start with a blank screen, and turn it into something people can actually use.
+              I&apos;ve always been fascinated by technology and figuring out how things work. Growing up, I loved putting
+              things together, especially the LEGO sets my parents would get me. There was always something satisfying
+              about starting with a bunch of individual pieces and slowly watching them change from an idea into a real
+              thing. I think that&apos;s where my interest in programming really started. I still build things piece by
+              piece, just with code now. The only difference is LEGO always came with instructions and a really nice
+              picture of how it&apos;s supposed to look.
+            </p>
+            <p>
+              That&apos;s what I enjoy most about programming: being able to take an idea, especially one that could solve
+              a real-world problem, and figure out how to bring it to life. Just like building with LEGO, you start with an
+              idea, experiment with different pieces, make mistakes along the way, and eventually create something that
+              actually works.
             </p>
             <p>
               Since graduating, I&apos;ve been working on a variety of personal projects, from building full-stack websites
-              for small businesses to developing mobile applications and experimenting with creative web experiences. I
+              for small businesses to developing mobile apps and experimenting with creative web experiences. I
               enjoy both the technical and creative sides of development, especially finding ways to make websites and
               applications feel unique, interactive, and easy to use.
             </p>
