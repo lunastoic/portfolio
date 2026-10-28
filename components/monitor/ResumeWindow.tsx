@@ -140,6 +140,8 @@ export default function ResumeWindow({ onClose }: { onClose: () => void }) {
         </div>
 
         <p>
+          <strong>Christopher Luna</strong>
+          <br />
           <a href="mailto:luna_christopher98@hotmail.com">luna_christopher98@hotmail.com</a>
         </p>
 
