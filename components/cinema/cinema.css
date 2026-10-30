@@ -914,6 +914,34 @@ body:has(.cinema) .crt-flicker {
   border-radius: 0.55em 0.55em 0 0;
 }
 
+/* an upright phone: the window drops down past the bottom of the screen and stops once it covers the three books */
+.cinema__screen[data-drop] {
+  overflow: visible;
+}
+
+.cinema__screen[data-drop] > .lofi {
+  border-radius: inherit;
+}
+
+.cinema__screen[data-drop] .mac__window {
+  bottom: calc(-1 * var(--drop));
+  animation: mac-drop 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cinema__screen[data-drop] .mac__window .retro-window {
+  border-width: 1px;
+  border-radius: 0.55em;
+}
+
+@keyframes mac-drop {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
 .mac .retro-window__body {
   color: var(--green);
   background: var(--bg-screen);
@@ -1067,6 +1095,7 @@ body:has(.cinema) .crt-flicker {
 @media (prefers-reduced-motion: reduce) {
   .mac .retro-window,
   .mac__window,
+  .cinema__screen[data-drop] .mac__window,
   .mac__tile,
   .mac__file-icon {
     animation: none;

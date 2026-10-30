@@ -173,7 +173,7 @@ const NAME_GOLD = "#f6bb5c";
 // art px: the room is drawn on a grid of 3 art px per pixel, 1920 / 461 art px per u (scripts/pixel-room.js)
 const SPINE = "#d9b77a";
 const WALL_TEXT: WallText[] = [
-  { lines: ["CHRISTOPHER LUNA"], x: 937, y: 56, size: 40, color: NAME_GOLD, weight: 700, track: 0.06 },
+  { lines: ["CHRISTOPHER E LUNA"], x: 937, y: 56, size: 36, color: NAME_GOLD, weight: 700, track: 0.06 },
   { lines: ["LUNA_CHRISTOPHER98@HOTMAIL.COM"], x: 937, y: 97.5, size: 17.5, color: "#e9b468", weight: 500, track: 0.06 },
   { lines: ["ORANGE COUNTY, CA"], x: 937, y: 119, size: 13.3, color: "#e9b468", weight: 500, track: 0.08 },
   // the school in its colours, CSU burgundy and DH gold, then the degree in the name's colour
@@ -313,6 +313,10 @@ const BAND_BOTTOM = art.bands.bottom.px;
 
 /** Standing on an upright phone, the width shows both decks and the whole monitor (u 138..311 of the room's 461). */
 const PORTRAIT_COLUMN = [(138 / 461) * art.size.width, (311 / 461) * art.size.width];
+
+/** Art px: the bottom edge of the three books under the monitor. On an upright phone an open window drops past the
+ *  screen to here, covering the books. */
+const BOOKS_BOTTOM = 830;
 
 /** Art px of room painted on past each side of the painting (public/cinema/side-*.png). */
 const SIDE_PX = art.sides.px;
@@ -1153,6 +1157,7 @@ export default function CinemaScene() {
         {screen && seatScreen && (
           <div
             className="cinema__screen"
+            data-drop={portrait || undefined}
             style={
               {
                 left: 0,
@@ -1161,6 +1166,7 @@ export default function CinemaScene() {
                 height: seatScreen.h,
                 transform: `translate(${screen.x}px, ${screen.y}px) scale(${screen.w / seatScreen.w})`,
                 "--screen-w": `${seatScreen.w}px`,
+                "--drop": `${((BOOKS_BOTTOM - art.screenPx[3]) / (art.screenPx[3] - art.screenPx[1])) * seatScreen.h}px`,
               } as CSSProperties
             }
           >

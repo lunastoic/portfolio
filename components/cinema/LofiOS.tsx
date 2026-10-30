@@ -186,7 +186,7 @@ export default function LofiOS({
         <span className="mac__menu mac__menu--wide">View</span>
         <span className="mac__menu mac__menu--wide">Window</span>
         <span className="mac__spacer" />
-        <span className="mac__menu">Christopher Luna</span>
+        <span className="mac__menu">Christopher E Luna</span>
         <span>{clock}</span>
       </div>
 
