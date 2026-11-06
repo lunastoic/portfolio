@@ -134,15 +134,19 @@ const NOTE_SCATTER = [10, 3, 14]; // a landed note's spread: Â± art px across, Â
 const NOTE_EYE = 1600;
 const NOTE_SETTLE = 80; // art px above its landing spot where it starts to lie down
 
-/** What each sticky note says, in the order they come off the wall: a real to-do list. */
-const NOTE_TEXTS = [
-  ["WRITE", "TESTS"],
-  ["FIX NAV", "ON MOBILE"],
+/** One line of a sticky note: plain words, or a line of ASCII art kept in the monospace font with its spaces. */
+type NoteLine = string | { mono: string };
+
+/** What each sticky note says, in the order they come off the wall: a real to-do list, then two notes that pin
+ *  down the two tree searches, each with the tree and the order it visits the nodes in. */
+const NOTE_TEXTS: NoteLine[][] = [
+  ["FEED", "TESSIE"],
+  ["TOUCH", "GRASS"],
   ["DRINK", "WATER"],
-  ["UPDATE", "RESUME"],
-  ["STANDUP", "10:00"],
-  ["PUSH", "TO MAIN"],
-  ["GYM", "6 PM"],
+  ["COMMIT", "CHANGES!!"],
+  ["GET USER", "FEEDBACK"],
+  ["DFS=PLUNGE", { mono: "  A  " }, { mono: " B C " }, { mono: "D   E" }, "A-B-D-C-E"],
+  ["BFS=RIPPLE", { mono: "  A  " }, { mono: " B C " }, { mono: "D   E" }, "A-B-C-D-E"],
 ];
 
 /**
@@ -459,13 +463,21 @@ const pctBox = (r: PctBox): CSSProperties => ({
 
 function NoteFace({ index }: { index: number }) {
   const n = art.notes.length;
+  const lines = NOTE_TEXTS[index % NOTE_TEXTS.length];
+  const tree = lines.some((line) => typeof line !== "string");
   return (
     <>
       <Image src={art.notes[index % n]} alt="" fill unoptimized draggable={false} />
-      <span className="cinema__note-text" aria-hidden="true">
-        {NOTE_TEXTS[index % NOTE_TEXTS.length].map((line, i) => (
-          <span key={i}>{line}</span>
-        ))}
+      <span className={`cinema__note-text${tree ? " cinema__note-text--tree" : ""}`} aria-hidden="true">
+        {lines.map((line, i) =>
+          typeof line === "string" ? (
+            <span key={i}>{line}</span>
+          ) : (
+            <span key={i} className="cinema__note-mono">
+              {line.mono}
+            </span>
+          ),
+        )}
       </span>
     </>
   );

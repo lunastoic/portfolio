@@ -260,6 +260,24 @@
   pointer-events: none;
 }
 
+/* a note that draws a little tree: five lines, packed tighter and sat up the paper, clear of the folded corner */
+.cinema__note-text--tree {
+  justify-content: flex-start;
+  padding-top: 2%;
+  line-height: 0.95;
+}
+
+/* a line of ASCII art on a note (the tree): the monospace pixel font with its spaces kept, scaled up so its thin
+   narrow letters match the square type round them, on a tight pitch so the tree stays compact */
+.cinema__note-mono {
+  font-family: var(--font-term), monospace;
+  font-weight: 400;
+  font-size: 1.3em;
+  line-height: 0.72;
+  white-space: pre;
+  letter-spacing: 0;
+}
+
 /* seated, the props are just part of the picture: clicks fall through to the stage */
 .cinema:not(.cinema--standing) .cinema__sprite {
   pointer-events: none;
