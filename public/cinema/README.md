@@ -8,7 +8,8 @@ room is 1920 x 948. The things that move are left out of the backdrop and cut ou
 room with the thing differs from the room without it): `cut-mug.png`, `cut-note-1…7.png` (the
 sticky note in seven colours) and `cut-pen-1…3.png` (each pen in the cat cup). The coffee's steam (`Steam.tsx`), the lava lamp
 (`components/cinema/LavaLamp.tsx`) and the headset's cable (`HeadsetCable.tsx`) are drawn live on the page, so
-`room.json` only says where they go. The backdrops: `room.png` and `desk-off.png` (desk lamp on / off) and
+`room.json` only says where they go. The picture in the frame on the wall is Tessie, drawn as pixel art from a photo by
+`scripts/wall-picture.py` (into `scripts/wall-picture.js`, which the renderer draws). The backdrops: `room.png` and `desk-off.png` (desk lamp on / off) and
 `room-lava-off.png` and `desk-off-lava-off.png` (the lava lamp's light gone as well), and the `side-*` strips for very
 wide windows (the same drawing carried on past each edge), and the `band-top` / `band-bottom` pair (lit and `-off`) for phones held upright: more wall above the decks, and below the desk's front edge the dark under it, the skirting and the floor. `room.json` holds every place the scene uses: the
 screen's glass, the decks, the mug and its coffee spill, the note and where it lands, the pens' pivots, the lamp's

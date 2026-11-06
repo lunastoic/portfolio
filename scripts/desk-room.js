@@ -13,6 +13,12 @@ function rampFrom(h) {
   return [[0.4, -6, 2, 10], [0.62, -3, 1, 5], [0.82, 0, 0, 0], [1, 4, 2, -2], [1.2, 14, 8, -6]].map(([f, dr, dg, db]) => [clamp(r * f + dr, 0, 255), clamp(g * f + dg, 0, 255), clamp(b * f + db, 0, 255)]);
 }
 const R = (list) => list.map(hex);
+/** rampFrom's five steps, scaled so the middle one is the colour itself (for drawn pictures that must keep their colours). */
+function rampAround(h) {
+  const [r, g, b] = hex(h).map((v) => v / 0.82);
+  return [[0.4, -6, 2, 10], [0.62, -3, 1, 5], [0.82, 0, 0, 0], [1, 4, 2, -2], [1.2, 14, 8, -6]].map(([f, dr, dg, db]) => [clamp(Math.round(r * f + dr), 0, 255), clamp(Math.round(g * f + dg), 0, 255), clamp(Math.round(b * f + db), 0, 255)]);
+}
+const WALL_PICTURE = require('./wall-picture.js');
 
 const SHARED = {
   ink: R(['#0a0504', '#0e0806', '#130b08', '#180f0a', '#1e130d']),
@@ -50,11 +56,12 @@ const SHARED = {
   corgiBlack: R(['#0c0a0c', '#1a1618', '#2a2426', '#3c3436', '#504648']), corgiTan: R(['#5a2208', '#843614', '#a8501e', '#c4662a', '#dc8240']),
   corgiWhite: R(['#a8a098', '#cac2b8', '#e6dfd4', '#f6f0e6', '#ffffff']),
   bookA: rampFrom('#2c6444'), bookB: rampFrom('#284476'), bookC: rampFrom('#8a2c20'),
-  sky: R(['#1a1030', '#26183e', '#33204e', '#432a60', '#583878']), hills: rampFrom('#3a8a84'), pine: rampFrom('#1c4a38'), moon: rampFrom('#f0b866'),
   frame: rampFrom('#3a2416'), pad: rampFrom('#202830'), mouse: rampFrom('#22342a'),
   btnY: rampFrom('#f2c84a'), btnB: rampFrom('#e04848'), btnX: rampFrom('#4a7ae0'), btnA: rampFrom('#4ac060'),
   penA: rampFrom('#6a4a2a'), penB: rampFrom('#2a2a30'), penC: rampFrom('#34509a'), navy: rampFrom('#24345e'),
 };
+// the wall picture's colours, as wall<letter> (its rows name them by letter)
+WALL_PICTURE.PALETTE.forEach((h, i) => { SHARED[`wall${'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'[i]}`] = rampAround(h); });
 
 // 3 x 5, row by row
 const GLYPHS = {"0":"####.##.##.####","1":".#.##..#..#.###","4":"#.##.####..#..#","9":"####.####..###.","A":".#.#.#####.##.#","B":"##.#.###.#.###.","C":".###..#..#...##","D":"##.#.##.##.###.","E":"####..##.#..###","F":"####..##.#..#..","G":".###..#.##.#.##","H":"#.##.#####.##.#","I":"###.#..#..#.###","J":"..#..#..##.#.#.","K":"#.##.###.#.##.#","L":"#..#..#..#..###","M":"#.########.##.#","N":"##.#.##.##.##.#","O":".#.#.##.##.#.#.","P":"##.#.###.#..#..","Q":".#.#.##.###..##","R":"##.#.###.#.##.#","S":".###...#...###.","T":"###.#..#..#..#.","U":"#.##.##.##.####","V":"#.##.##.##.#.#.","W":"#.##.########.#","X":"#.##.#.#.#.##.#","Y":"#.##.#.#..#..#.","Z":"###..#.#.#..###",".":".............#.",":":"....#.....#....","_":"............###",">":"#...#...#.#.#..","&":".#.#.#.#.#.#.##","/":"..#..#.#.#..#..","\\":"#..#...#...#..#","-":"......###......"," ":"...............","!":".#..#..#.....#."};
@@ -478,12 +485,13 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
 
   // ------------------------------------------------ the poster
   shape([344, 85, 380, 131], rect(344, 85, 380, 131), 'frame', (x, y) => (x < 346 || y < 87 ? 0.8 : x > 378 || y > 129 ? 0.2 : 0.5));
-  shape([347.4, 88.4, 376.6, 127.6], rect(347.4, 88.4, 376.6, 127.6), 'sky', vg(88, 128, 0.15, 0.95), { outline: false });
-  for (const [x, y] of [[352, 92], [372, 104], [358, 99], [350, 106], [369, 92], [362, 107]]) put(pxX(x), px(y), 'moon', 0.95, true);
-  shape([362, 91, 371, 101], (x, y) => ell(367, 96, 4.2, 4.2)(x, y) && !ell(369.2, 94.6, 3.6, 3.6)(x, y), 'moon', 0.8, { outline: false, emit: true });
-  const hills = [[347.4, 127.6], [347.4, 117], [356, 108], [363, 116], [370, 109], [376.6, 116], [376.6, 127.6]];
-  shape(bb(hills), poly(hills), 'hills', (x, y) => (y < 112 ? 0.95 : vg(108, 128, 0.7, 0.2)(x, y)), { outline: false });
-  for (const [cx, h] of [[351, 9], [374, 8], [360, 6], [366, 7]]) shape([cx - 3, 127.6 - h, cx + 3, 127.6], poly([[cx, 127.6 - h], [cx + 2.6, 127.6], [cx - 2.6, 127.6]]), 'pine', (x) => (x < cx ? 0.55 : 0.25), { outline: false });
+  // Tessie (scripts/wall-picture.js), one pixel a pixel in the frame. Each colour has its own ramp with that colour as
+  // its middle step and a shade that lands on it in the lamp's light (lit by the room without dither, emit 3), so with
+  // the lamp off she drops a step darker and cooler under the room's night, as the moon-and-hills picture there did.
+  {
+    const FX = pxX(347.4), FY = px(88.4), s = (2 + 0.25 - theme.ambient) / 4;
+    WALL_PICTURE.ROWS.forEach((row, r) => [...row].forEach((k, c) => put(FX + c, FY + r, `wall${k}`, s, 3)));
+  }
 
   // ------------------------------------------------ the headset, on a hook on the right side wall
   // A drawn sprite (HEADSET), level with the middle of the poster, its band over a hook hidden behind it. Lit by the room without
