@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   title: "Christopher Luna — Software Engineer",
 };
 
-/** Home: the lo-fi pixel desk (v2). */
+/** Home: the lo-fi pixel desk. */
 export default function Home() {
   return (
     <main className={`${oxanium.variable} ${inter.variable}`}>

@@ -465,12 +465,6 @@
   }
 }
 
-/* The global CRT scanline overlay is a v1 device */
-body:has(.cinema) .crt-overlay,
-body:has(.cinema) .crt-flicker {
-  display: none;
-}
-
 /* ==========================================================================
    LUNA_OS, lo-fi edition — everything scales with the screen width
    ========================================================================== */

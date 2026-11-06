@@ -1,5 +1,5 @@
 /**
- * The projects shown in the desk computer's Projects window (v2). v1 keeps its own list in projects.ts.
+ * The projects shown in the desk computer's Projects window. The resume window lists its own in projects.ts.
  * Everything here is taken from the projects' repos; keep it to what the code actually does.
  */
 export interface DeskProject {
