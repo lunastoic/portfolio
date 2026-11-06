@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 import "./dev-switch.css";
 
 const VERSIONS = [
-  { href: "/", label: "V1" },
-  { href: "/v2", label: "V2" },
+  { href: "/v1", label: "V1" },
+  { href: "/", label: "V2" },
 ];
 
 /** Development-only toggle between the scene versions. Rendered by the root layout in dev builds. */
