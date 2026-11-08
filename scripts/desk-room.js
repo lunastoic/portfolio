@@ -308,7 +308,7 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   /** A shape in u: its mask, its ramp and shade (constants or functions of u), outlined in ink by default. */
   const shape = (box, mask, ramp, shade = 0.5, o = {}) => {
     const X0 = Math.max(0, Math.floor(box[0] * K) + OX - 1), X1 = Math.min(WW - 1, Math.ceil(box[2] * K) + OX + 1);
-    const Y0 = Math.max(0, Math.floor(box[1] * K) - 1), Y1 = Math.min(H - 1, Math.ceil(box[3] * K) + 1);
+    const Y0 = Math.max(-OT, Math.floor(box[1] * K) - 1), Y1 = Math.min(H - 1, Math.ceil(box[3] * K) + 1); // up into the rows drawn above the room, when there are any
     const m = (X, Y) => mask((X - OX + 0.5) / K, (Y + 0.5) / K);
     const own = !ANC; // a shape that isn't part of a bigger object takes its light at its own foot
     if (own) ANC = [(box[0] + box[2]) / 2, box[3] - 0.5];
@@ -347,25 +347,50 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   const vg = (y0, y1, a, b) => (x, y) => a + (b - a) * clamp((y - y0) / (y1 - y0), 0, 1);
 
   // ------------------------------------------------ wall and desk
-  const DESK = 190, CL = 45, CR = 418, SLOPE = 0.38; // SLOPE: the crease's drop per u out from the corner (toward the eye's vanishing point)
+  // opt.phone: the phones' room, a closet framed like the portrait mockup (narrower side walls, a ceiling just over
+  // the decks, the desk on four legs); the desktop's room is drawn without it
+  const PHONE = !!opt.phone;
+  const DESK = 190, CL = PHONE ? 30 : 45, CR = PHONE ? 433 : 418, SLOPE = 0.38; // SLOPE: the crease's drop per u out from the corner (toward the eye's vanishing point)
   const crease = (x) => (x < CL ? DESK + (CL - x) * SLOPE : x > CR ? DESK + (x - CR) * SLOPE : DESK);
   const onWall = (x, y) => y < crease(x);
+  // the ceiling (u above the room's top, so only the phones' band above the room reaches it), just over the decks; its
+  // edges with the side walls and the floor's run out gently, as the mockup draws the closet from further back
+  const CEILING = -80, CROWN = 7, CSLOPE = 1.0;
+  const ceilingLine = (x) => (x < CL ? CEILING - (CL - x) * CSLOPE : x > CR ? CEILING - (x - CR) * CSLOPE : CEILING);
   // below the desk's front edge (drawn on for phones): its front board, the dark under the desk, the skirting along
   // the wall and the floorboards running toward you
   const APRON = LH + 8, SKIRT = LH + 46, FLOOR = LH + 52;
+  const FSLOPE = 0.45; // the floor's edges with the side walls
   for (let Y = -OT; Y < H + OB; Y++) for (let X = 0; X < WW; X++) {
     const x = (X - OX + 0.5) / K, y = (Y + 0.5) / K;
     if (y >= LH) {
+      const side = x < CL || x > CR, sideFloor = FLOOR + (x < CL ? CL - x : x > CR ? x - CR : 0) * FSLOPE;
       if (y < APRON) put(X, Y, 'desk', y > APRON - 1.2 ? 0.04 : 0.2 + 0.06 * Math.sin(x * 0.19 + 2 * Math.sin(y * 0.9)));
-      else if (y < SKIRT) put(X, Y, 'wall', (y < APRON + 3 ? 0 : 0.06) + (hash(X - OX, Y, 7) > 0.93 ? 0.06 : 0));
+      else if (side && y < sideFloor) {
+        // a side wall, in the shade under the desk: its corner with the back wall, and its skirting on the slant
+        if (Math.abs(x - CL) < 0.6 || Math.abs(x - CR) < 0.6) put(X, Y, 'ink', 0.3);
+        else if (y > sideFloor - (FLOOR - SKIRT)) put(X, Y, 'deckWood', y < sideFloor - (FLOOR - SKIRT) + 1 ? 0.22 : y > sideFloor - 1 ? 0.03 : 0.08);
+        else put(X, Y, 'wall', (y < APRON + 3 ? 0.02 : 0.1) + (hash(X - OX, Y, 7) > 0.93 ? 0.05 : 0));
+      } else if (y < SKIRT) put(X, Y, 'wall', (y < APRON + 3 ? 0.02 : 0.15) + (hash(X - OX, Y, 7) > 0.93 ? 0.06 : 0));
       else if (y < FLOOR) put(X, Y, 'deckWood', y < SKIRT + 1 ? 0.3 : y > FLOOR - 1 ? 0.04 : 0.12);
       else {
-        // boards in perspective: their seams run out from the corner below the eye, the joins across them space out
-        // as they come toward you
-        const d = y - FLOOR + 6, seam = ((((x - 230) * 40) / d) % 14 + 14) % 14, row = Math.floor(Math.log(d) * 9);
-        const joint = Math.abs(((((x * 40) / d + row * 23) % 61) + 61) % 61) < 0.9;
-        put(X, Y, 'desk', seam < 0.8 || joint ? 0.05 : 0.17 + 0.05 * Math.sin(x * 0.11 + row * 1.3) + (hash((X - OX) >> 2, Y >> 1, row) > 0.9 ? -0.06 : 0));
+        // boards running across the room, parallel to the wall, seen through the room's camera (CAM below): a board
+        // BOARD u wide at depth z shows (CAM[1] - y)-proportionally nearer the eye, so the rows widen toward you, and
+        // the joins along each board are staggered row by row and close up toward the vanishing point with depth
+        const BOARD = 9, z = 400 - (400 * (FLOOR - 118.6)) / (y - 118.6), k = 400 / (400 - z);
+        const zb = z / BOARD, row = Math.floor(zb), along = (x - 230) / k + 230 + row * 37;
+        const seam = zb - row < 0.06 * k || zb - row > 1 - 0.03 * k, joint = Math.abs(((along % 83) + 83) % 83) < 0.45 * k;
+        put(X, Y, 'desk', seam || joint ? 0.05 : 0.17 + 0.04 * Math.sin(along * 0.09 + row * 1.7) - 0.04 * hash(Math.floor(along / 83), row, 5) + (hash((X - OX) >> 2, Y >> 1, row) > 0.9 ? -0.05 : 0));
       }
+      continue;
+    }
+    // the closet's ceiling, far above (drawn on for phones): its edges with the side walls run up and out toward the
+    // eye's vanishing point as the desk's creases run down and out, and a trim like the skirting runs under it
+    if (y < ceilingLine(x) + CROWN) {
+      const c = ceilingLine(x);
+      if (y < c - 0.6) put(X, Y, 'wall', 0.26 + 0.1 * clamp((y - c + 140) / 140, 0, 1) + (hash((X - OX) >> 2, Y >> 1, 11) > 0.93 ? 0.03 : 0));
+      else if (y < c + 0.6) put(X, Y, 'ink', 0.3);
+      else { const t = y - c; put(X, Y, 'deckWood', t > CROWN - 1 ? 0.04 : t < 1.4 ? 0.62 : t < 4.6 ? 0.36 : t < 5.4 ? 0.55 : 0.18); }
       continue;
     }
     if (onWall(x, y)) {
@@ -385,6 +410,21 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
       else if (ry > 8.1 || joint) s = 0.12;
       else if (ry < 1) s += 0.1;
       put(X, Y, 'desk', s);
+    }
+  }
+
+  // the desk's four legs (only below its front edge, so only the phones' band shows them): square posts at its ends,
+  // the back pair by the side walls' corners standing on the floor's back edge, the front pair nearer the room's
+  // edges and a little lower, standing on the floor nearer you; [left, right, foot] in u
+  if (OB > 0) {
+    const legs = [[CL + 6, CL + 13, FLOOR + 2], [CR - 13, CR - 6, FLOOR + 2], [4, 16, FLOOR + 40], [445, 457, FLOOR + 40]]; // back pair first
+    for (const [l, r, foot] of legs) {
+      const X0 = Math.round(l * K) + OX, X1 = Math.round(r * K) + OX, Y0 = Math.round(APRON * K), Y1 = Math.round(foot * K);
+      for (let Y = Y1 - 1; Y <= Y1 + 2; Y++) for (let X = X0 - 3; X <= X1 + 3; X++) { const i = (Y + OT) * WW + X; if (Y >= -OT && Y < H + OB && X >= 0 && X < WW && RB[i] >= 0) SB[i] = Math.max(0, SB[i] - 0.08); }
+      for (let Y = Y0; Y <= Y1; Y++) for (let X = X0; X <= X1; X++) {
+        const edge = X === X0 || X === X1 || Y === Y1, f = (X - X0) / Math.max(1, X1 - X0);
+        put(X, Y, edge ? 'ink' : 'desk', edge ? 0.3 : (f < 0.34 ? 0.5 : f < 0.7 ? 0.34 : 0.18) - (Y - Y0 < 3 ? 0.12 : 0)); // lit from the lamp's side, the top in the desk's shadow
+      }
     }
   }
 
@@ -473,8 +513,11 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   };
 
   // ------------------------------------------------ the decks
+  // opt.deckLift: pixel rows the decks and their studs sit higher (the phones' room, for more wall between the low
+  // deck and the monitor); whole rows, in fours, so their dither lands as it does unlifted
+  const DL = (opt.deckLift || 0) / K;
   // the studs they rest on: in toward the middle, but not centred under it
-  for (const [x, y] of [[192, 39], [252, 39], [192, 78.5], [252, 78.5]]) shape([x, y, x + 6, y + 3], rect(x, y, x + 6, y + 3), 'silver', vg(y, y + 3, 0.8, 0.3));
+  for (const [x, y0] of [[192, 39], [252, 39], [192, 78.5], [252, 78.5]]) { const y = y0 - DL; shape([x, y, x + 6, y + 3], rect(x, y, x + 6, y + 3), 'silver', vg(y, y + 3, 0.8, 0.3)); }
   const deckShade = (y0, y1, sheen) => (x, y) => (y < y0 + 2 ? 0.9 : y > y1 - 2.6 ? 0.16 : 0.58 - 0.18 * ((y - y0) / (y1 - y0)) + (Math.abs(x - y * 1.4 - sheen) < 3 ? 0.14 : 0));
   // a deck without its trucks and wheels: the maple ply shows as a rim round the printed face, and the bolt holes
   // the trucks hang from go through it, four at each end
@@ -484,8 +527,8 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
     const cy = (y0 + y1) / 2;
     for (const hx of [x0 + 19, x0 + 24, x1 - 24, x1 - 19]) for (const hy of [cy - 3, cy + 3]) shape([hx - 1.4, hy - 1.4, hx + 1.4, hy + 1.4], ell(hx, hy, 1.05, 1.05), 'ink', 0.2, { outline: false });
   };
-  deck(146, 2, 304, 39, 'deckA', 120);
-  deck(145, 42, 303, 78.5, 'deckB', 175);
+  deck(146, 2 - DL, 304, 39 - DL, 'deckA', 120 - 1.4 * DL); // the sheen keeps its place on the deck
+  deck(145, 42 - DL, 303, 78.5 - DL, 'deckB', 175 - 1.4 * DL);
 
   // ------------------------------------------------ the poster
   shape([344, 85, 380, 131], rect(344, 85, 380, 131), 'frame', (x, y) => (x < 346 || y < 87 ? 0.8 : x > 378 || y > 129 ? 0.2 : 0.5));

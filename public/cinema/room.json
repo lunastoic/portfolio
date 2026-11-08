@@ -1102,16 +1102,34 @@
     }
   },
   "bands": {
+    "side": 36,
     "top": {
-      "px": 264,
+      "px": 1848,
       "over": 15,
       "on": "/cinema/band-top.png",
       "off": "/cinema/band-top-off.png"
     },
     "bottom": {
-      "px": 501,
+      "px": 1665,
       "on": "/cinema/band-bottom.png",
       "off": "/cinema/band-bottom-off.png"
+    }
+  },
+  "phone": {
+    "image": "room-phone.png",
+    "lampOff": "/cinema/desk-off-phone.png",
+    "lavaOff": {
+      "on": "/cinema/room-lava-off-phone.png",
+      "off": "/cinema/desk-off-lava-off-phone.png"
+    },
+    "deckDy": -24,
+    "floorPx": 1162,
+    "sides": {
+      "px": 36,
+      "left": "/cinema/side-left-phone.png",
+      "right": "/cinema/side-right-phone.png",
+      "leftOff": "/cinema/side-left-phone-off.png",
+      "rightOff": "/cinema/side-right-phone-off.png"
     }
   }
 }

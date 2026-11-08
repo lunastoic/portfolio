@@ -70,8 +70,21 @@ interface Manifest {
   /** The room drawn on above (more wall) and below (the desk's front, the dark under it, the floor), for phones held
    *  upright, lit and unlit; the top band reaches `over` art px down into the room. */
   bands: {
+    /** Art px the bands reach past each side of the room. */
+    side?: number;
     top: { px: number; over: number; on: string; off: string };
     bottom: { px: number; on: string; off: string };
+  };
+  /** The phones' room, held upright: framed like a closet (a ceiling over the decks, the desk on four legs, the
+   *  floor), the decks `deckDy` art px higher than on desktop; its own backdrops and the slivers beside them. */
+  phone?: {
+    image: string;
+    lampOff: string;
+    lavaOff: { on: string; off: string };
+    deckDy: number;
+    /** Art px from the room's top to the floor's back edge: the standing view frames on it. */
+    floorPx: number;
+    sides: { px: number; left: string; right: string; leftOff: string; rightOff: string };
   };
   /** The room again with the lava lamp's light gone, desk lamp on and off, laid over the room as it switches off. */
   lavaOff: { on: string; off: string };
@@ -93,6 +106,9 @@ const art = manifestJson as unknown as Manifest;
 
 const SIT_MS = 1700;
 const STAND_MS = 1400;
+/** On an upright phone you stand across the room, so sitting down is a walk to the desk first (and back). */
+const WALK_SIT_MS = 2600;
+const WALK_STAND_MS = 2100;
 /** Seated, the painted screen stands this tall relative to the viewport. */
 const SEAT_FRACTION: Record<LayoutKey, number> = { desktop: 0.78, mobile: 0.72 };
 /** Seated, the crop starts at least this far (art px) below the decks, so they stay out of view. */
@@ -176,6 +192,8 @@ const DH_GOLD = "#fcbe11";
 const NAME_GOLD = "#f6bb5c";
 // art px: the room is drawn on a grid of 3 art px per pixel, 1920 / 461 art px per u (scripts/pixel-room.js)
 const SPINE = "#d9b77a";
+/** Art px: the words above this are on the decks (the rest are the book spines). */
+const DECK_TEXT_BELOW = 400;
 const WALL_TEXT: WallText[] = [
   { lines: ["CHRISTOPHER E LUNA"], x: 937, y: 56, size: 36, color: NAME_GOLD, weight: 700, track: 0.06 },
   { lines: ["LUNA_CHRISTOPHER98@HOTMAIL.COM"], x: 937, y: 97.5, size: 17.5, color: "#e9b468", weight: 500, track: 0.06 },
@@ -192,9 +210,9 @@ const WALL_TEXT: WallText[] = [
   { lines: ["DATA STRUCTURES & ALGORITHMS"], x: 722.6, y: 778.8, size: 17.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
   { lines: ["COMPUTER ORGANIZATION"], x: 722.6, y: 812.1, size: 17.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
 ];
-const wallTextStyle = (t: WallText): CSSProperties => ({
+const wallTextStyle = (t: WallText, deckDy = 0): CSSProperties => ({
   left: `${((t.x + (art.textDx ?? 0)) / art.size.width) * 100}%`,
-  top: `${(t.y / art.size.height) * 100}%`,
+  top: `${((t.y + (t.y < DECK_TEXT_BELOW ? deckDy : 0)) / art.size.height) * 100}%`,
   fontSize: `${(t.size / art.size.width) * 100}cqw`,
   color: t.color,
   fontWeight: t.weight ?? 600,
@@ -236,6 +254,8 @@ interface Stage extends Rect {
 interface Cam {
   dy: number;
   zoom: number;
+  /** The walk's sway, side to side (px). */
+  dx?: number;
 }
 const CAM_REST: Cam = { dy: 0, zoom: 1 };
 
@@ -315,8 +335,8 @@ const isPortrait = (vw: number, vh: number) => vh > vw * 1.15;
 const BAND_TOP = art.bands.top.px - art.bands.top.over;
 const BAND_BOTTOM = art.bands.bottom.px;
 
-/** Standing on an upright phone, the width shows both decks and the whole monitor (u 138..311 of the room's 461). */
-const PORTRAIT_COLUMN = [(138 / 461) * art.size.width, (311 / 461) * art.size.width];
+/** Art px the phones' bands and side slivers reach past each side of the room. */
+const PHONE_SIDE = art.bands.side ?? 0;
 
 /** Art px: the bottom edge of the three books under the monitor. On an upright phone an open window drops past the
  *  screen to here, covering the books. */
@@ -354,15 +374,15 @@ function portraitPlace(vw: number, vh: number, scale: number, cx: number, cy: nu
 }
 
 /**
- * Standing back on an upright phone: both decks and the whole monitor fill the width (the lamp and the Xbox fall
- * off the sides), and the room drawn on above and below fills the height, the room a little above the middle.
+ * Standing back on an upright phone, across the room: the whole closet fills the width (its side walls, the desk end
+ * to end), the ceiling above and the floor below, the floor's back edge 68% of the way down (the portrait mockup).
  */
 function portraitStanding(vw: number, vh: number): Stage {
-  const { height: H } = art.size;
-  const [c0, c1] = PORTRAIT_COLUMN;
-  // as wide as the column, unless the phone is so tall that the bands would run out
-  const scale = Math.max(vw / (c1 - c0), vh / (H + BAND_TOP + BAND_BOTTOM));
-  return portraitPlace(vw, vh, scale, (c0 + c1) / 2, H * 0.56);
+  const { width: W, height: H } = art.size;
+  const scale = vw / (W + 2 * PHONE_SIDE);
+  const floor = art.phone?.floorPx ?? H;
+  const y = Math.min(BAND_TOP * scale, Math.max(vh - (H + BAND_BOTTOM) * scale, 0.68 * vh - floor * scale));
+  return { x: PHONE_SIDE * scale, y, w: W * scale, h: H * scale, scale };
 }
 
 /**
@@ -454,6 +474,25 @@ function sitPath(u: number, rising: boolean, vh: number): { p: number; cam: Cam 
   return { p, cam: { dy, zoom: 1 + (dy * 2.1) / vh } };
 }
 
+/** Steps taken on the walk to the desk. */
+const WALK_STEPS = 4;
+
+/**
+ * The same move on an upright phone, where you stand across the room: you walk to the desk, each step a small dip
+ * of the head and a sway that die away as you arrive, then lower into the chair. Standing up walks you back.
+ */
+function walkPath(u: number, rising: boolean, vw: number, vh: number): { p: number; cam: Cam } {
+  const v = rising ? 1 - u : u;
+  const p = easeInOut(v);
+  const w = Math.min(1, v / 0.8); // the walk; the last stretch is sitting down
+  const fade = 1 - w;
+  const bob = ((1 - Math.cos(2 * Math.PI * WALK_STEPS * w)) / 2) * fade * 0.014 * vh;
+  const dx = Math.sin(Math.PI * WALK_STEPS * w) * fade * 0.008 * vw;
+  const s = Math.min(1, Math.max(0, (v - 0.72) / 0.28));
+  const dy = Math.sin(Math.PI * s) ** 2 * 0.03 * vh - bob;
+  return { p, cam: { dy, dx, zoom: 1 + Math.max((Math.abs(dy) * 2.1) / vh, (Math.abs(dx) * 2.1) / vw) } };
+}
+
 const pctBox = (r: PctBox): CSSProperties => ({
   left: `${r.left}%`,
   top: `${r.top}%`,
@@ -543,14 +582,20 @@ export default function CinemaScene() {
   // Reveal the art once its image is in: the load event, or the image was
   // already complete when attached (cached / decoded before hydration), or
   // a short timeout so a slow network never leaves the room black.
-  const loaded = loadedImage === art.image;
+  // an upright phone has its own room (the closet framing, the decks higher), so wait for that one there
+  const phone = vp.w > 0 && isPortrait(vp.w, vp.h) ? art.phone : undefined;
+  const roomImage = phone ? phone.image : art.image;
+  const loaded = loadedImage === roomImage;
   useEffect(() => {
-    const t = setTimeout(() => setLoadedImage(art.image), 4000);
+    const t = setTimeout(() => setLoadedImage(roomImage), 4000);
     return () => clearTimeout(t);
-  }, []);
-  const attachBackdrop = useCallback((img: HTMLImageElement | null) => {
-    if (img?.complete && img.naturalWidth > 0) setLoadedImage(art.image);
-  }, []);
+  }, [roomImage]);
+  const attachBackdrop = useCallback(
+    (img: HTMLImageElement | null) => {
+      if (img?.complete && img.naturalWidth > 0) setLoadedImage(roomImage);
+    },
+    [roomImage],
+  );
 
   /* ---------------- sit down / stand up ---------------- */
 
@@ -569,7 +614,8 @@ export default function CinemaScene() {
       onDone();
       return;
     }
-    const duration = rising ? STAND_MS : SIT_MS;
+    const walk = isPortrait(window.innerWidth, window.innerHeight);
+    const duration = walk ? (rising ? WALK_STAND_MS : WALK_SIT_MS) : rising ? STAND_MS : SIT_MS;
     const start = performance.now();
     const finish = () => {
       cancelAnimationFrame(rafRef.current);
@@ -580,7 +626,7 @@ export default function CinemaScene() {
     const step = (now: number) => {
       const u = Math.min(1, (now - start) / duration);
       if (u >= 1) return finish();
-      const { p, cam: c } = sitPath(u, rising, window.innerHeight);
+      const { p, cam: c } = walk ? walkPath(u, rising, window.innerWidth, window.innerHeight) : sitPath(u, rising, window.innerHeight);
       set(p, c);
       rafRef.current = requestAnimationFrame(step);
     };
@@ -902,13 +948,17 @@ export default function CinemaScene() {
     cam === CAM_REST
       ? undefined
       : {
-          transform: `translateY(${cam.dy.toFixed(1)}px) scale(${cam.zoom.toFixed(4)})`,
+          transform: `translate(${(cam.dx ?? 0).toFixed(1)}px, ${cam.dy.toFixed(1)}px) scale(${cam.zoom.toFixed(4)})`,
         };
   const standingTab = pose === "standing" ? 0 : -1;
   // the unlit room fades in over the lit one as the lamp goes off (with a flicker, restarted by the key)
   const offClass = `cinema__off${lampOn ? "" : " is-off"}${lampSwitches ? " is-switching" : ""}`;
-  const sideWidth = `${(SIDE_PX / art.size.width) * 100}%`;
   const portrait = ready && isPortrait(vp.w, vp.h);
+  // upright, the room beside it is the phones' own sliver (the bands' width); otherwise the desktop's wide strips
+  const sides = phone ? phone.sides : art.sides;
+  const sideWidth = `${((phone ? phone.sides.px : SIDE_PX) / art.size.width) * 100}%`;
+  const deckDy = phone ? phone.deckDy : 0;
+  const bandSpan: CSSProperties = { left: `${(-PHONE_SIDE / art.size.width) * 100}%`, width: `${((art.size.width + 2 * PHONE_SIDE) / art.size.width) * 100}%` };
   const bandTop = `${(art.bands.top.px / art.size.height) * 100}%`;
   const bandTopOver = `${(art.bands.top.over / art.size.height) * 100}%`;
   const bandBottom = `${(BAND_BOTTOM / art.size.height) * 100}%`;
@@ -925,7 +975,8 @@ export default function CinemaScene() {
           onClick={pose === "seated" ? standUp : undefined}
         >
           <Image
-            src={`/cinema/${art.image}`}
+            key={roomImage}
+            src={`/cinema/${roomImage}`}
             alt=""
             fill
             priority
@@ -934,24 +985,24 @@ export default function CinemaScene() {
             draggable={false}
             className="cinema__backdrop"
             ref={attachBackdrop}
-            onLoad={() => setLoadedImage(art.image)}
-            onError={() => setLoadedImage(art.image)}
+            onLoad={() => setLoadedImage(roomImage)}
+            onError={() => setLoadedImage(roomImage)}
           />
           {/* The room with the lava lamp's light gone, faded in as it switches off */}
-          <Image src={art.lavaOff.on} alt="" fill unoptimized sizes="100vw" draggable={false} className={`cinema__backdrop cinema__lava-dark${lavaOn ? "" : " is-shown"}`} />
+          <Image src={(phone ?? art).lavaOff.on} alt="" fill unoptimized sizes="100vw" draggable={false} className={`cinema__backdrop cinema__lava-dark${lavaOn ? "" : " is-shown"}`} />
           {/* The same room with the lamp off: the cone on the wall and the beam on the desk gone, the
               bulb dark, the monitor's green (and the lava lamp's pink, while it's on) the light that's left */}
           <div key={`off-${lampSwitches}`} className={offClass}>
-            <Image src={art.lamp.off} alt="" fill unoptimized sizes="100vw" draggable={false} className="cinema__backdrop" />
-            <Image src={art.lavaOff.off} alt="" fill unoptimized sizes="100vw" draggable={false} className={`cinema__backdrop cinema__lava-dark${lavaOn ? "" : " is-shown"}`} />
+            <Image src={phone ? phone.lampOff : art.lamp.off} alt="" fill unoptimized sizes="100vw" draggable={false} className="cinema__backdrop" />
+            <Image src={(phone ?? art).lavaOff.off} alt="" fill unoptimized sizes="100vw" draggable={false} className={`cinema__backdrop cinema__lava-dark${lavaOn ? "" : " is-shown"}`} />
           </div>
 
           {/* The room past the painting's edges, for wide windows, lit and unlit */}
-          <div className="cinema__side cinema__side--left" style={{ width: sideWidth, backgroundImage: `url(${art.sides.left})` }} aria-hidden="true">
-            <div key={`side-l-${lampSwitches}`} className={offClass} style={{ backgroundImage: `url(${art.sides.leftOff})` }} />
+          <div className="cinema__side cinema__side--left" style={{ width: sideWidth, backgroundImage: `url(${sides.left})` }} aria-hidden="true">
+            <div key={`side-l-${lampSwitches}`} className={offClass} style={{ backgroundImage: `url(${sides.leftOff})` }} />
           </div>
-          <div className="cinema__side cinema__side--right" style={{ width: sideWidth, backgroundImage: `url(${art.sides.right})` }} aria-hidden="true">
-            <div key={`side-r-${lampSwitches}`} className={offClass} style={{ backgroundImage: `url(${art.sides.rightOff})` }} />
+          <div className="cinema__side cinema__side--right" style={{ width: sideWidth, backgroundImage: `url(${sides.right})` }} aria-hidden="true">
+            <div key={`side-r-${lampSwitches}`} className={offClass} style={{ backgroundImage: `url(${sides.rightOff})` }} />
           </div>
 
           {/* The room above and below, for phones held upright, lit and unlit */}
@@ -959,14 +1010,14 @@ export default function CinemaScene() {
             <>
               <div
                 className="cinema__band"
-                style={{ bottom: `calc(100% - ${bandTopOver})`, height: bandTop, backgroundImage: `url(${art.bands.top.on})` }}
+                style={{ ...bandSpan, bottom: `calc(100% - ${bandTopOver})`, height: bandTop, backgroundImage: `url(${art.bands.top.on})` }}
                 aria-hidden="true"
               >
                 <div key={`band-t-${lampSwitches}`} className={offClass} style={{ backgroundImage: `url(${art.bands.top.off})` }} />
               </div>
               <div
                 className="cinema__band"
-                style={{ top: "100%", height: bandBottom, backgroundImage: `url(${art.bands.bottom.on})` }}
+                style={{ ...bandSpan, top: "100%", height: bandBottom, backgroundImage: `url(${art.bands.bottom.on})` }}
                 aria-hidden="true"
               >
                 <div key={`band-b-${lampSwitches}`} className={offClass} style={{ backgroundImage: `url(${art.bands.bottom.off})` }} />
@@ -979,7 +1030,7 @@ export default function CinemaScene() {
             <p
               key={t.lines.map((l) => (typeof l === "string" ? l : l.map((r) => r.text).join(""))).join(" ")}
               className={`cinema__wall-text${t.edged ? " cinema__wall-gold" : ""}${t.y > 500 ? " cinema__wall-text--desk" : ""}`}
-              style={wallTextStyle(t)}
+              style={wallTextStyle(t, deckDy)}
             >
               {t.lines.map((line, i) => (
                 <span key={i}>
