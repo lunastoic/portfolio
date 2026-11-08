@@ -25,6 +25,7 @@ function rampAround(h) {
 const WALL_PICTURE = require('./wall-picture.js');
 
 const SHARED = {
+  steel: R(['#0b0b0f', '#15151b', '#212128', '#2f2f38', '#4a4a55']), // the desk's black metal frame (the phones' room)
   ink: R(['#0a0504', '#0e0806', '#130b08', '#180f0a', '#1e130d']),
   bronze: R(['#2a160a', '#4e2c12', '#7a4a22', '#a8703a', '#dcae6c']),
   glassOn: R(['#d9822c', '#f2b04e', '#ffd274', '#ffe8a4', '#fff8dc']),
@@ -413,19 +414,38 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
     }
   }
 
-  // the desk's four legs (only below its front edge, so only the phones' band shows them): square posts at its ends,
-  // the back pair by the side walls' corners standing on the floor's back edge, the front pair nearer the room's
-  // edges and a little lower, standing on the floor nearer you; [left, right, foot] in u
+  // the desk's frame (only below its front edge, so only the phones' band shows it): four square legs of black metal
+  // tube, the back pair by the side walls' corners on the floor's back edge, the front pair nearer the room's edges and
+  // lower, on the floor nearer you; and on each side a bar of the same tube low down, from the front leg back to the
+  // back one (front and back pairs run toward the vanishing point, so the bars slant). In u, as the screen sees it.
   if (OB > 0) {
-    const legs = [[CL + 6, CL + 13, FLOOR + 2], [CR - 13, CR - 6, FLOOR + 2], [4, 16, FLOOR + 40], [445, 457, FLOOR + 40]]; // back pair first
-    for (const [l, r, foot] of legs) {
-      const X0 = Math.round(l * K) + OX, X1 = Math.round(r * K) + OX, Y0 = Math.round(APRON * K), Y1 = Math.round(foot * K);
-      for (let Y = Y1 - 1; Y <= Y1 + 2; Y++) for (let X = X0 - 3; X <= X1 + 3; X++) { const i = (Y + OT) * WW + X; if (Y >= -OT && Y < H + OB && X >= 0 && X < WW && RB[i] >= 0) SB[i] = Math.max(0, SB[i] - 0.08); }
+    /** A filled polygon (u), outlined in ink where it meets anything else; shade(f, y) with f across it, 0..1. */
+    const fill = (pts, shade) => {
+      const [bx0, by0, bx1, by1] = bb(pts), inside = poly(pts);
+      const X0 = Math.floor(bx0 * K) + OX - 1, X1 = Math.ceil(bx1 * K) + OX + 1, Y0 = Math.floor(by0 * K) - 1, Y1 = Math.ceil(by1 * K) + 1;
+      const m = (X, Y) => inside((X - OX + 0.5) / K, (Y + 0.5) / K);
       for (let Y = Y0; Y <= Y1; Y++) for (let X = X0; X <= X1; X++) {
-        const edge = X === X0 || X === X1 || Y === Y1, f = (X - X0) / Math.max(1, X1 - X0);
-        put(X, Y, edge ? 'ink' : 'desk', edge ? 0.3 : (f < 0.34 ? 0.5 : f < 0.7 ? 0.34 : 0.18) - (Y - Y0 < 3 ? 0.12 : 0)); // lit from the lamp's side, the top in the desk's shadow
+        if (!m(X, Y)) continue;
+        const edge = !(m(X - 1, Y) && m(X + 1, Y) && m(X, Y - 1) && m(X, Y + 1));
+        put(X, Y, edge ? 'ink' : 'steel', edge ? 0.3 : shade(((X - OX + 0.5) / K - bx0) / Math.max(0.5, bx1 - bx0), (Y + 0.5) / K));
       }
-    }
+    };
+    // a square tube seen face on: its lamp-side edge catches the light, the far side in shade, the top under the desk
+    const tube = (f, y, top) => (y < top + 2 ? 0.14 : f < 0.22 ? 0.66 : f < 0.5 ? 0.42 : 0.24);
+    const leg = (l, r, foot) => {
+      // contact shadow on the floor round its foot
+      for (let Y = Math.round(foot * K) - 1; Y <= Math.round(foot * K) + 2; Y++) for (let X = Math.round(l * K) + OX - 3; X <= Math.round(r * K) + OX + 3; X++) { const i = (Y + OT) * WW + X; if (Y >= -OT && Y < H + OB && X >= 0 && X < WW && RB[i] >= 0 && !EB[i]) SB[i] = Math.max(0, SB[i] - 0.08); }
+      fill([[l, APRON], [r, APRON], [r, foot], [l, foot]], (f, y) => tube(f, y, APRON));
+      fill([[l - 0.7, foot - 1.6], [r + 0.7, foot - 1.6], [r + 0.7, foot], [l - 0.7, foot]], () => 0.1); // its foot
+    };
+    // the bar between a front leg (its inner face at xf, foot yf) and a back leg (inner face xb, foot yb), a little
+    // above the floor, thicker at the front where it's nearer
+    const bar = (xf, yf, xb, yb) => fill([[xf, yf - 11], [xb, yb - 6.5], [xb, yb - 2], [xf, yf - 3.5]], (f, y) => (y < (yf - 11) + (yb - yf + 4.5) * f + 1.6 ? 0.62 : y > (yf - 3.5) + (yb - yf + 1.5) * f - 1.4 ? 0.16 : 0.34));
+    const BACK = FLOOR + 2, FRONT = FLOOR + 40;
+    const [bl, br] = [[CL + 6, CL + 13], [CR - 13, CR - 6]], [fl, fr] = [[4, 16], [445, 457]];
+    leg(bl[0], bl[1], BACK); leg(br[0], br[1], BACK); // the back pair first
+    bar(fl[1], FRONT, bl[0], BACK); bar(fr[0], FRONT, br[1], BACK); // the side bars, from each front leg to the back leg's near face
+    leg(fl[0], fl[1], FRONT); leg(fr[0], fr[1], FRONT);
   }
 
   // ------------------------------------------------ the camera, the lights, and the things modelled in 3D

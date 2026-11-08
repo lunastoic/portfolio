@@ -1211,7 +1211,11 @@ export default function CinemaScene() {
 
           <div
             className="cinema__dark"
-            style={portrait ? { top: `-${(BAND_TOP / art.size.height) * 100}%`, bottom: `-${bandBottom}` } : undefined}
+            style={
+              portrait
+                ? { top: `-${(BAND_TOP / art.size.height) * 100}%`, bottom: `-${bandBottom}`, left: bandSpan.left, right: bandSpan.left }
+                : undefined
+            }
             aria-hidden="true"
           />
         </div>
