@@ -1122,8 +1122,8 @@
       "on": "/cinema/room-lava-off-phone.png",
       "off": "/cinema/desk-off-lava-off-phone.png"
     },
-    "deckDy": -36,
-    "deckScale": 1.3,
+    "deckDy": -60,
+    "deckScale": 1.45,
     "deckAnchor": [
       937.1,
       339.4

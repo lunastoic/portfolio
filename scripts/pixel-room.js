@@ -19,7 +19,7 @@ const WS = W + 2 * SIDE; // the whole drawing's width, pixels
 // for phones held upright: pixels of room drawn above it (440 u: the wall, the ceiling over it) and below it (400 u: the desk's front, the dark
 // under it, the skirting and the floor); the top band runs OVER pixels down into the room, over the shadow along its top edge
 const TOP = Math.round(440 * K), BOTTOM = Math.round(400 * K), OVER = 5; // tall enough for the tallest phones: the ceiling above, the floor below
-const DECK_LIFT = 12, DECK_SCALE = 1.3; // the phones' decks: this many pixel rows higher and this much bigger, for more wall between the low deck and the monitor
+const DECK_LIFT = 20, DECK_SCALE = 1.45; // the phones' decks: this many pixel rows higher and this much bigger, for more wall between the low deck and the monitor
 const BAND_SIDE = 12; // pixels the phones' bands reach past each side of the room, so the tablet and the controller fit with wall round them
 const F = K * S; // art px per u
 const AW = W * S, AH = H * S; // the art's size
