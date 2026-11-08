@@ -1842,3 +1842,19 @@
 .info__note a {
   color: var(--green-mid);
 }
+
+/* On a phone the room is small, so the narrow things you can tap (the lava lamp, the headset's cable, the cat cup)
+   get a wider touch area round the drawing: an empty box past the button's edges, which takes the tap but shows
+   nothing. The stage is laid out big and scaled down, so the box is sized in cqw (the stage's width, which on a phone
+   is the screen's): 3cqw is about 12 px of screen either side, 1cqw about 4 px. The cup grows to its left only, so it
+   doesn't reach over the mug beside it; the mug, the note and the lamp are already wide enough. */
+.cinema--phone .cinema__lava::after,
+.cinema--phone .cinema__cable::after,
+.cinema--phone .cinema__hotspot--pens::after {
+  content: "";
+  position: absolute;
+  inset: -1cqw -3cqw;
+}
+.cinema--phone .cinema__hotspot--pens::after {
+  right: 0;
+}
