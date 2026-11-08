@@ -10,7 +10,7 @@
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
-const { drawRoom, THEMES, W, H, K } = require('./desk-room.js');
+const { drawRoom, THEMES, W, H, K, MONITOR_DROP: MD } = require('./desk-room.js');
 
 const CIN = path.join(__dirname, '..', 'public', 'cinema');
 const S = 3; // site art px per pixel
@@ -99,7 +99,7 @@ async function cut(withIt, withoutIt, file) {
   const p = (v) => v * S; // pixels to art px
   const pct = ([x0, y0, x1, y1]) => ({ left: +((x0 / AW) * 100).toFixed(3), top: +((y0 / AH) * 100).toFixed(3), width: +(((x1 - x0) / AW) * 100).toFixed(3), height: +(((y1 - y0) / AH) * 100).toFixed(3) });
   const m = JSON.parse(fs.readFileSync(path.join(CIN, 'room.json'), 'utf8'));
-  const GLASS = [u(170.5), u(87.5), u(276.5), u(152.5)];
+  const GLASS = [u(170.5), u(87.5 + MD), u(276.5), u(152.5 + MD)];
 
   // the mug: its cut-out, and the coffee spill's canvas round it (canvas px = art px), set so the mug's body starts 110
   // in and its rim sits 79 down, as the spill was laid out (the body is 106..136 u across, its rim at 155 u, its base
@@ -149,7 +149,7 @@ async function cut(withIt, withoutIt, file) {
     size: { width: AW, height: AH },
     textDx: 0,
     screenPx: GLASS,
-    monitorPct: pct([u(161), u(81), u(284), u(160)]),
+    monitorPct: pct([u(161), u(81 + MD), u(284), u(160 + MD)]),
     decksPct: [pct([u(146), u(2), u(304), u(39)]), pct([u(145), u(42), u(303), u(78.5)])],
     lamp: { off: '/cinema/desk-off.png', hitPct: pct([u(34), u(102), u(95), u(197)]) },
     lavaOff: { on: '/cinema/room-lava-off.png', off: '/cinema/desk-off-lava-off.png' },

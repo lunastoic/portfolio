@@ -2,6 +2,10 @@
 // Shapes are laid out in "u" (the portfolio room's 461 x 227 grid) and drawn on a finer 640 x 316 pixel grid.
 // Every pixel stores a material ramp and a shade; a light pass picks the ramp step with a Bayer dither.
 const W = 640, H = 316, K = W / 461, LH = 227;
+/** How far the monitor sits below where it was first drawn (u): whole pixel rows (four, so the dither and the
+ *  glass's scanlines land as before), so it moves without changing size,
+ *  and leaves a strip of wall between it and the studs under the low deck. */
+const MONITOR_DROP = 4 / K;
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -530,18 +534,21 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   // tall while the monitor keeps its place under the decks)
   shape([192, 170, 253, 175], rect(193, 170.6, 252, 174.6), 'bezel', (x, y) => (y < 171.8 ? 0.85 : y > 173.6 ? 0.18 : cyl(222.5, 29.5, 0.3)(x)));
   shape([210, 158, 235, 172], rect(211.5, 158, 233.5, 171), 'bezel', (x, y) => cyl(222.5, 11, 0.35)(x) + (Math.abs(y - 164) < 0.6 ? -0.25 : 0));
-  shape([161, 81, 284, 160], rect(161, 81, 284, 160), 'bezel', (x, y) => (x < 163.2 || y < 83.2 ? 0.9 : x > 281.8 || y > 157.8 ? 0.14 : 0.5 - (y - 83) * 0.002));
-  shape([165, 84.5, 280.5, 156], (x, y) => rect(165, 84.5, 280.5, 156)(x, y) && !rect(167.5, 86.4, 278, 154)(x, y), 'bezelRim', (x, y) => (x < 166.5 || y < 85.8 ? 0.85 : 0.35), { outline: false });
-  const SX0 = pxX(170), SY0 = px(87), SX1 = pxX(277), SY1 = px(153);
-  for (let Y = SY0; Y <= SY1; Y++) for (let X = SX0; X <= SX1; X++) {
-    const edge = X === SX0 || Y === SY0 || X === SX1 || Y === SY1;
-    const cx = (X - (SX0 + SX1) / 2) / ((SX1 - SX0) / 2), cy = (Y - (SY0 + SY1) / 2) / ((SY1 - SY0) / 2);
-    const v = 0.43 - 0.2 * (cx * cx + cy * cy) - (Y % 2 ? 0.05 : 0);
-    put(X, Y, edge ? 'ink' : 'screen', edge ? 0.3 : clamp(v, 0, 0.43) * 0.75, !edge);
+  {
+    const d = MONITOR_DROP; // the screen and its bezel hang a little lower than first drawn; its stand stays
+    shape([161, 81 + d, 284, 160 + d], rect(161, 81 + d, 284, 160 + d), 'bezel', (x, y) => (x < 163.2 || y < 83.2 + d ? 0.9 : x > 281.8 || y > 157.8 + d ? 0.14 : 0.5 - (y - d - 83) * 0.002));
+    shape([165, 84.5 + d, 280.5, 156 + d], (x, y) => rect(165, 84.5 + d, 280.5, 156 + d)(x, y) && !rect(167.5, 86.4 + d, 278, 154 + d)(x, y), 'bezelRim', (x, y) => (x < 166.5 || y < 85.8 + d ? 0.85 : 0.35), { outline: false });
+    const SX0 = pxX(170), SY0 = px(87) + 4, SX1 = pxX(277), SY1 = px(153) + 4; // MONITOR_DROP's four rows
+    for (let Y = SY0; Y <= SY1; Y++) for (let X = SX0; X <= SX1; X++) {
+      const edge = X === SX0 || Y === SY0 || X === SX1 || Y === SY1;
+      const cx = (X - (SX0 + SX1) / 2) / ((SX1 - SX0) / 2), cy = (Y - (SY0 + SY1) / 2) / ((SY1 - SY0) / 2);
+      const v = 0.43 - 0.2 * (cx * cx + cy * cy) - (Y % 2 ? 0.05 : 0);
+      put(X, Y, edge ? 'ink' : 'screen', edge ? 0.3 : clamp(v, 0, 0.43) * 0.75, !edge);
+    }
+    // what's on the glass is the live screen, laid over it on the page (LUNA_OS, as on the portfolio)
+    for (const x of [172, 176, 180]) put(pxX(x), px(158) + 4, 'silver', 0.4);
+    put(pxX(277), px(158) + 4, 'ledGreen', 0.8, true); put(pxX(277) + 1, px(158) + 4, 'ledGreen', 0.8, true);
   }
-  // what's on the glass is the live screen, laid over it on the page (LUNA_OS, as on the portfolio)
-  for (const x of [172, 176, 180]) put(pxX(x), px(158), 'silver', 0.4);
-  put(pxX(277), px(158), 'ledGreen', 0.8, true); put(pxX(277) + 1, px(158), 'ledGreen', 0.8, true);
   ANC = null;
 
   // ------------------------------------------------ the books
@@ -810,7 +817,7 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
       if (onWall(x, y)) { const dy = y - 134; lamp = Math.exp(-((Math.hypot((x - 64.5) / 1.2, dy / (dy < 0 ? 0.7 : 1.05)) / 56) ** 2)); }
       else lamp = Math.exp(-((Math.hypot((x - 68) / 2.5, (y - 199) / 0.75) / 42) ** 2));
     }
-    const dxs = Math.max(170 - x, 0, x - 277), dys = Math.max(87 - y, 0, y - 153);
+    const dxs = Math.max(170 - x, 0, x - 277), dys = Math.max(87 + MONITOR_DROP - y, 0, y - 153 - MONITOR_DROP);
     const onDeck = deckRamps.has(r) && y < 80; // deckWood is the skirting too, far below
     const mon = onDeck && !on ? 0 : Math.exp(-((Math.hypot(dxs, dys * 1.15) / 20) ** 2)) * (on ? 0.4 : 1);
     // the lava lamp: a soft pink pool on the wall round its glass, and one on the desk at its foot
@@ -881,5 +888,5 @@ const THEMES = [
   },
 ];
 
-if (typeof module !== 'undefined') module.exports = { drawRoom, controllerImage, drawControllerHD, THEMES, SHARED, W, H, K };
+if (typeof module !== 'undefined') module.exports = { MONITOR_DROP, drawRoom, controllerImage, drawControllerHD, THEMES, SHARED, W, H, K };
 
