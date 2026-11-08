@@ -27,8 +27,8 @@ function rampAround(h) {
 const WALL_PICTURE = require('./wall-picture.js');
 
 const SHARED = {
-  ceiling: R(['#6a6258', '#857c70', '#a0968a', '#b8aea2', '#cfc6ba']), // the phones' closet: a muted warm greige ceiling, lighter than the wall but not glaring
-  floorWood: R(['#3a2212', '#58361e', '#7a5030', '#9c6c46', '#c08e62']), // and brown floorboards, a plainer wood than the desk's orange
+  ceiling: R(['#5a5349', '#726a5f', '#8a8176', '#9f9589', '#b4aa9e']), // the phones' closet: a muted warm greige ceiling, only a little lighter than the wall
+  floorWood: R(['#2a1810', '#43291a', '#5c3c24', '#765232', '#946c48']), // and dark brown floorboards, a plainer wood than the desk's orange
   steel: R(['#0b0b0f', '#15151b', '#212128', '#2f2f38', '#4a4a55']), // the desk's black metal frame (the phones' room)
   ink: R(['#0a0504', '#0e0806', '#130b08', '#180f0a', '#1e130d']),
   bronze: R(['#2a160a', '#4e2c12', '#7a4a22', '#a8703a', '#dcae6c']),
