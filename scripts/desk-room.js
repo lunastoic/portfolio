@@ -27,8 +27,8 @@ function rampAround(h) {
 const WALL_PICTURE = require('./wall-picture.js');
 
 const SHARED = {
-  ceiling: R(['#8f8b85', '#b5b1ab', '#d6d2cc', '#ece9e3', '#fbf9f5']), // the phones' closet: a white ceiling
-  floorGray: R(['#4c4e50', '#717476', '#96999b', '#b6b9ba', '#d2d5d6']), // and light Nardo-grey floorboards
+  ceiling: R(['#8c857a', '#b1a99c', '#d2cbbd', '#e8e2d5', '#f6f2ea']), // the phones' closet: an off-white ceiling, warm like old plaster
+  floorWood: R(['#3a2212', '#58361e', '#7a5030', '#9c6c46', '#c08e62']), // and brown floorboards, a plainer wood than the desk's orange
   steel: R(['#0b0b0f', '#15151b', '#212128', '#2f2f38', '#4a4a55']), // the desk's black metal frame (the phones' room)
   ink: R(['#0a0504', '#0e0806', '#130b08', '#180f0a', '#1e130d']),
   bronze: R(['#2a160a', '#4e2c12', '#7a4a22', '#a8703a', '#dcae6c']),
@@ -385,7 +385,7 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
         const BOARD = 9, z = 400 - (400 * (FLOOR - 118.6)) / (y - 118.6), k = 400 / (400 - z);
         const zb = z / BOARD, row = Math.floor(zb), along = (x - 230) / k + 230 + row * 37;
         const seam = zb - row < 0.06 * k || zb - row > 1 - 0.03 * k, joint = Math.abs(((along % 83) + 83) % 83) < 0.45 * k;
-        put(X, Y, 'floorGray', seam || joint ? 0.28 : 0.6 + 0.05 * Math.sin(along * 0.09 + row * 1.7) - 0.06 * hash(Math.floor(along / 83), row, 5) + (hash((X - OX) >> 2, Y >> 1, row) > 0.9 ? -0.06 : 0));
+        put(X, Y, 'floorWood', seam || joint ? 0.28 : 0.6 + 0.05 * Math.sin(along * 0.09 + row * 1.7) - 0.06 * hash(Math.floor(along / 83), row, 5) + (hash((X - OX) >> 2, Y >> 1, row) > 0.9 ? -0.06 : 0));
       }
       continue;
     }
@@ -393,7 +393,7 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
     // eye's vanishing point as the desk's creases run down and out, and a trim like the skirting runs under it
     if (y < ceilingLine(x) + CROWN) {
       const c = ceilingLine(x);
-      if (y < c - 0.6) put(X, Y, 'ceiling', 0.58 + 0.12 * clamp((y - c + 140) / 140, 0, 1) + (hash((X - OX) >> 2, Y >> 1, 11) > 0.93 ? 0.03 : 0)); // white, a touch brighter at its back edge
+      if (y < c - 0.6) put(X, Y, 'ceiling', 0.58 + 0.12 * clamp((y - c + 140) / 140, 0, 1) + (hash((X - OX) >> 2, Y >> 1, 11) > 0.93 ? 0.03 : 0)); // off-white, a touch brighter at its back edge
       else if (y < c + 0.6) put(X, Y, 'ink', 0.3);
       else { const t = y - c; put(X, Y, 'deckWood', t > CROWN - 1 ? 0.04 : t < 1.4 ? 0.62 : t < 4.6 ? 0.36 : t < 5.4 ? 0.55 : 0.18); }
       continue;
@@ -883,9 +883,9 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   // the decks keep their own colours in the dark: the monitor's glow lights the wall above it, but tinting the low
   // deck turned its plum blue-grey (the high one sits out of reach), so they only go dark under the room's night
   const deckRamps = new Set(['deckA', 'deckB', 'deckAText', 'deckBText', 'deckWood'].map((nm) => rampId.get(nm)).filter((r) => r !== undefined));
-  // the phones' white ceiling and grey floor are far from every light: with the lamp off they go as dark as the room
+  // the phones' off-white ceiling and brown floor are far from every light: with the lamp off they go as dark as the room
   // round them, where the night's one step down alone would leave them pale
-  const farRamps = new Set(['ceiling', 'floorGray'].map((nm) => rampId.get(nm)).filter((r) => r !== undefined));
+  const farRamps = new Set(['ceiling', 'floorWood'].map((nm) => rampId.get(nm)).filter((r) => r !== undefined));
   for (let Y = -OT; Y < H + OB; Y++) for (let X = 0; X < WW; X++) {
     const i = (Y + OT) * WW + X, o = i * 4;
     out[o + 3] = 255;
