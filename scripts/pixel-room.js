@@ -49,11 +49,12 @@ async function save(px, file, [x0, x1] = [SIDE, SIDE + W], width = WS) {
   await sharp(buf, { raw: { width: w, height: H, channels: 4 } }).resize(w * S, H * S, { kernel: 'nearest' }).png({ compressionLevel: 9 }).toFile(path.join(CIN, file));
 }
 
-/** Rows y0..y1 and columns x0..x1 of a drawing `width` px wide, scaled up to art px. */
-async function saveRows(px, file, [x0, x1], [y0, y1], width = WS) {
+/** Rows y0..y1 and columns x0..x1 of a drawing `width` px wide, scaled up to art px (or left at `scale` px per pixel). */
+async function saveRows(px, file, [x0, x1], [y0, y1], width = WS, scale = S) {
   const w = x1 - x0, h = y1 - y0, buf = Buffer.alloc(w * h * 4);
   for (let y = 0; y < h; y++) Buffer.from(px.buffer, ((y0 + y) * width + x0) * 4, w * 4).copy(buf, y * w * 4);
-  await sharp(buf, { raw: { width: w, height: h, channels: 4 } }).resize(w * S, h * S, { kernel: 'nearest' }).png({ compressionLevel: 9 }).toFile(path.join(CIN, file));
+  const img = sharp(buf, { raw: { width: w, height: h, channels: 4 } });
+  await (scale === 1 ? img : img.resize(w * scale, h * scale, { kernel: 'nearest' })).png({ compressionLevel: 9 }).toFile(path.join(CIN, file));
 }
 
 /** A thing on its own: the pixels where the room with it differs from the room without it (its shadow comes along),
@@ -88,19 +89,22 @@ async function cut(withIt, withoutIt, file, box) {
   await save(dark, 'side-left-off.png', [0, SIDE]);
   await save(dark, 'side-right-off.png', [SIDE + W, WS]);
   // the phones' room, held upright: the decks DECK_LIFT rows higher, and the room above and below it (the ceiling,
-  // the desk's legs, the floor); its own four backdrops, and the bands lit and unlit
+  // the desk's legs, the floor); its own four backdrops, and the bands lit and unlit. All of it at one px per pixel
+  // (not art px): the scene draws them pixelated and scales them anyway, and at art px the set decoded to some 80 MB,
+  // which crashed Safari on an iPhone as it zoomed in to sit down
+  const P1 = 1;
   const tall = { top: TOP, bottom: BOTTOM, deckLift: DECK_LIFT, deckScale: DECK_SCALE, deckDx: DECK_DX, phone: true }, ROOM_ROWS = [TOP, TOP + H], ROOM_COLS = [SIDE, SIDE + W];
   const phoneLit = render(true, true, MOVING, tall), phoneDark = render(false, true, MOVING, tall);
-  await saveRows(phoneLit, 'room-phone.png', ROOM_COLS, ROOM_ROWS);
-  await saveRows(phoneDark, 'desk-off-phone.png', ROOM_COLS, ROOM_ROWS);
-  await saveRows(render(true, false, MOVING, tall), 'room-lava-off-phone.png', ROOM_COLS, ROOM_ROWS);
-  await saveRows(render(false, false, MOVING, tall), 'desk-off-lava-off-phone.png', ROOM_COLS, ROOM_ROWS);
+  await saveRows(phoneLit, 'room-phone.png', ROOM_COLS, ROOM_ROWS, WS, P1);
+  await saveRows(phoneDark, 'desk-off-phone.png', ROOM_COLS, ROOM_ROWS, WS, P1);
+  await saveRows(render(true, false, MOVING, tall), 'room-lava-off-phone.png', ROOM_COLS, ROOM_ROWS, WS, P1);
+  await saveRows(render(false, false, MOVING, tall), 'desk-off-lava-off-phone.png', ROOM_COLS, ROOM_ROWS, WS, P1);
   for (const [px, tag] of [[phoneLit, ''], [phoneDark, '-off']]) {
     // the slivers of room beside it (the bands' width), its own: the phones' side walls stand further out
-    await saveRows(px, `side-left-phone${tag}.png`, [SIDE - BAND_SIDE, SIDE], ROOM_ROWS);
-    await saveRows(px, `side-right-phone${tag}.png`, [SIDE + W, SIDE + W + BAND_SIDE], ROOM_ROWS);
-    await saveRows(px, `band-top${tag}.png`, [SIDE - BAND_SIDE, SIDE + W + BAND_SIDE], [0, TOP + OVER]);
-    await saveRows(px, `band-bottom${tag}.png`, [SIDE - BAND_SIDE, SIDE + W + BAND_SIDE], [TOP + H, TOP + H + BOTTOM]);
+    await saveRows(px, `side-left-phone${tag}.png`, [SIDE - BAND_SIDE, SIDE], ROOM_ROWS, WS, P1);
+    await saveRows(px, `side-right-phone${tag}.png`, [SIDE + W, SIDE + W + BAND_SIDE], ROOM_ROWS, WS, P1);
+    await saveRows(px, `band-top${tag}.png`, [SIDE - BAND_SIDE, SIDE + W + BAND_SIDE], [0, TOP + OVER], WS, P1);
+    await saveRows(px, `band-bottom${tag}.png`, [SIDE - BAND_SIDE, SIDE + W + BAND_SIDE], [TOP + H, TOP + H + BOTTOM], WS, P1);
   }
 
   // ---- the things that move, each cut out lit (the scene dims them with the lamp)

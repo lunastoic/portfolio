@@ -77,9 +77,15 @@
   inset: 0;
   z-index: 1;
   opacity: 0;
+  visibility: hidden; /* fully transparent, so not painted or composited at all (a phone's Safari has little memory to spare) */
   background-size: 100% 100%;
   image-rendering: pixelated;
   pointer-events: none;
+}
+
+.cinema__off.is-off,
+.cinema__off.is-switching {
+  visibility: visible;
 }
 
 .cinema__off.is-off {
@@ -346,11 +352,14 @@
    and out as it warms up again */
 .cinema__lava-dark {
   opacity: 0;
-  transition: opacity 1.2s ease;
+  visibility: hidden; /* as .cinema__off: hidden once faded out, shown the moment it starts to fade in */
+  transition: opacity 1.2s ease, visibility 0s linear 1.2s;
 }
 
 .cinema__lava-dark.is-shown {
   opacity: 1;
+  visibility: visible;
+  transition: opacity 1.2s ease, visibility 0s;
 }
 
 /* the headset's cable: a live pixel canvas from the hook to the controller; tap it and it sways */
