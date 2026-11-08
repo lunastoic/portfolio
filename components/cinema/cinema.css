@@ -661,6 +661,9 @@
   white-space: nowrap;
   color: #fff;
   background: rgba(24, 18, 44, 0.55);
+}
+/* the blur behind it only off phones: see the phone rules at the end */
+.cinema:not(.cinema--phone) .mac__menubar {
   backdrop-filter: blur(4px);
 }
 
@@ -1024,6 +1027,8 @@
   background: rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 0.8em;
+}
+.cinema:not(.cinema--phone) .mac__dock {
   backdrop-filter: blur(6px);
 }
 
@@ -1866,4 +1871,20 @@
 }
 .cinema--phone .cinema__hotspot--pens::after {
   right: 0;
+}
+
+/* On a phone, nothing that makes Safari render offscreen textures inside the zoomed, scaled stage: no backdrop blurs
+   on the menu bar and the dock (their blur rules above are scoped off phones, since the CSS minifier drops a
+   `backdrop-filter: none`; a touch more tint instead), and the room's edge darkness as a plain gradient rather than a
+   90 px blurred shadow redrawn at every step of the walk. A WebContent process that runs out of GPU memory is killed,
+   which shows as "A problem repeatedly occurred". */
+.cinema--phone .mac__menubar {
+  background: rgba(24, 18, 44, 0.8);
+}
+.cinema--phone .mac__dock {
+  background: rgba(255, 255, 255, 0.32);
+}
+.cinema--phone .cinema__dark {
+  box-shadow: none;
+  background: radial-gradient(ellipse at 50% 50%, rgba(11, 8, 7, 0) 58%, rgba(11, 8, 7, 0.5) 100%);
 }
