@@ -358,9 +358,9 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   const DESK = 190, CL = PHONE ? 30 : 45, CR = PHONE ? 433 : 418, SLOPE = 0.38; // SLOPE: the crease's drop per u out from the corner (toward the eye's vanishing point)
   const crease = (x) => (x < CL ? DESK + (CL - x) * SLOPE : x > CR ? DESK + (x - CR) * SLOPE : DESK);
   const onWall = (x, y) => y < crease(x);
-  // the ceiling (u above the room's top, so only the phones' band above the room reaches it), just over the decks; its
+  // the ceiling (u above the room's top, so only the phones' band above the room reaches it), a way over the decks; its
   // edges with the side walls and the floor's run out gently, as the mockup draws the closet from further back
-  const CEILING = -80, CROWN = 7, CSLOPE = 1.0;
+  const CEILING = -120, CROWN = 7, CSLOPE = 1.0;
   const ceilingLine = (x) => (x < CL ? CEILING - (CL - x) * CSLOPE : x > CR ? CEILING - (x - CR) * CSLOPE : CEILING);
   // below the desk's front edge (drawn on for phones): its front board, the dark under the desk, the skirting along
   // the wall and the floorboards running toward you
@@ -537,13 +537,13 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   };
 
   // ------------------------------------------------ the decks
-  // opt.deckScale / opt.deckLift (the phones' room): the decks and their studs drawn DECK_SCALE times as big, grown
-  // up from the foot of the low deck's studs (DECK_ANCHOR, u), and deckLift pixel rows higher, for more wall between
-  // the low deck and the monitor. Each is drawn at its new size (its masks and shading read back in the deck's own
+  // opt.deckScale / opt.deckLift / opt.deckDx (the phones' room): the decks and their studs drawn DECK_SCALE times as big,
+  // grown up from the foot of the low deck's studs (DECK_ANCHOR, u), deckLift pixel rows higher (midway between the
+  // ceiling's crown and the monitor) and deckDx pixel columns right (centred across the phones' closet). Each is drawn at its new size (its masks and shading read back in the deck's own
   // u), so its lines stay one pixel; unscaled and unlifted it is the desktop's drawing exactly.
-  const DS = opt.deckScale || 1, DL = (opt.deckLift || 0) / K, [DAX, DAY] = DECK_ANCHOR;
-  const tx = (x) => DAX + (x - DAX) * DS, ty = (y) => DAY - (DAY - y) * DS - DL;
-  const ix = (x) => DAX + (x - DAX) / DS, iy = (y) => DAY - (DAY - y - DL) / DS;
+  const DS = opt.deckScale || 1, DL = (opt.deckLift || 0) / K, DX = (opt.deckDx || 0) / K, [DAX, DAY] = DECK_ANCHOR;
+  const tx = (x) => DAX + (x - DAX) * DS + DX, ty = (y) => DAY - (DAY - y) * DS - DL;
+  const ix = (x) => DAX + (x - DAX - DX) / DS, iy = (y) => DAY - (DAY - y - DL) / DS;
   const back = (f) => (typeof f === 'function' ? (x, y, X, Y) => f(ix(x), iy(y), X, Y) : f);
   const dshape = (box, mask, ramp, shade, o) => shape([tx(box[0]), ty(box[1]), tx(box[2]), ty(box[3])], back(mask), ramp, back(shade), o);
   // the studs they rest on: in toward the middle, but not centred under it

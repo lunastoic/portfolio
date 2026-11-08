@@ -88,6 +88,8 @@ interface Manifest {
     /** The decks drawn this much bigger, grown from deckAnchor (art px), before deckDy lifts them. */
     deckScale?: number;
     deckAnchor?: number[];
+    /** And this much further right (art px), centred across the closet. */
+    deckDx?: number;
     /** Art px from the room's top to the floor's back edge: the standing view frames on it. */
     floorPx: number;
     sides: { px: number; left: string; right: string; leftOff: string; rightOff: string };
@@ -223,8 +225,9 @@ interface DeckPlace {
   scale: number;
   anchor: number[];
   dy: number;
+  dx: number;
 }
-const DECKS_AS_DRAWN: DeckPlace = { scale: 1, anchor: [0, 0], dy: 0 };
+const DECKS_AS_DRAWN: DeckPlace = { scale: 1, anchor: [0, 0], dy: 0, dx: 0 };
 /**
  * The decks' words on an upright phone, where the room is small: bigger, the school's name over two lines so each
  * half can grow, the small print bold. Placed on the decks as drawn on desktop (art px); the phones' bigger, higher
@@ -251,7 +254,7 @@ const SPINE_TEXT = (): WallText[] => WALL_TEXT.filter((t) => t.y >= DECK_TEXT_BE
 const wallTextStyle = (t: WallText, deck: DeckPlace = DECKS_AS_DRAWN): CSSProperties => {
   // the words on the decks follow them (on phones, bigger and higher); the spines' stay put
   const d = t.y < DECK_TEXT_BELOW ? deck : DECKS_AS_DRAWN;
-  const x = d.anchor[0] + (t.x - d.anchor[0]) * d.scale, y = d.anchor[1] - (d.anchor[1] - t.y) * d.scale + d.dy;
+  const x = d.anchor[0] + (t.x - d.anchor[0]) * d.scale + d.dx, y = d.anchor[1] - (d.anchor[1] - t.y) * d.scale + d.dy;
   return wallTextAt(t, x, y, t.size * d.scale);
 };
 const wallTextAt = (t: WallText, x: number, y: number, size: number): CSSProperties => ({
@@ -1010,7 +1013,7 @@ export default function CinemaScene() {
   // upright, the room beside it is the phones' own sliver (the bands' width); otherwise the desktop's wide strips
   const sides = phone ? phone.sides : art.sides;
   const sideWidth = `${((phone ? phone.sides.px : SIDE_PX) / art.size.width) * 100}%`;
-  const deckPlace: DeckPlace = phone ? { scale: phone.deckScale ?? 1, anchor: phone.deckAnchor ?? [0, 0], dy: phone.deckDy } : DECKS_AS_DRAWN;
+  const deckPlace: DeckPlace = phone ? { scale: phone.deckScale ?? 1, anchor: phone.deckAnchor ?? [0, 0], dy: phone.deckDy, dx: phone.deckDx ?? 0 } : DECKS_AS_DRAWN;
   const bandSpan: CSSProperties = { left: `${(-PHONE_SIDE / art.size.width) * 100}%`, width: `${((art.size.width + 2 * PHONE_SIDE) / art.size.width) * 100}%` };
   const bandTop = `${(art.bands.top.px / art.size.height) * 100}%`;
   const bandTopOver = `${(art.bands.top.over / art.size.height) * 100}%`;
@@ -1081,7 +1084,7 @@ export default function CinemaScene() {
           {/* The words on the decks and the book spines */}
           {(phone ? [...PHONE_DECK_TEXT, ...SPINE_TEXT()] : WALL_TEXT).map((t) => (
             <p
-              key={t.lines.map((l) => (typeof l === "string" ? l : l.map((r) => r.text).join(""))).join(" ")}
+              key={`${t.y}:${t.lines.map((l) => (typeof l === "string" ? l : l.map((r) => r.text).join(""))).join(" ")}`} // the words plus where they hang: a deck line and a spine can share the words
               className={`cinema__wall-text${t.edged ? " cinema__wall-gold" : ""}${t.y > 500 ? " cinema__wall-text--desk" : ""}`}
               style={wallTextStyle(t, deckPlace)}
             >
