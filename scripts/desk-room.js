@@ -559,13 +559,17 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   deck(145, 42, 303, 78.5, 'deckB', 175);
 
   // ------------------------------------------------ the poster
-  shape([344, 85, 380, 131], rect(344, 85, 380, 131), 'frame', (x, y) => (x < 346 || y < 87 ? 0.8 : x > 378 || y > 129 ? 0.2 : 0.5));
-  // Tessie (scripts/wall-picture.js), one pixel a pixel in the frame. Each colour has its own ramp with that colour as
-  // its middle step and a shade that lands on it in the lamp's light (lit by the room without dither, emit 3), so with
-  // the lamp off she drops a step darker and cooler under the room's night, as the moon-and-hills picture there did.
+  // Tessie (scripts/wall-picture.js), one pixel a pixel in the frame, the frame round her; the phones' room hangs her
+  // bigger (her 65 x 86 drawing), about the same middle. Each colour has its own ramp with that colour as its middle
+  // step and a shade that lands on it in the lamp's light (lit by the room without dither, emit 3), so with the lamp
+  // off she drops a step darker and cooler under the room's night, as the moon-and-hills picture there did.
   {
-    const FX = pxX(347.4), FY = px(88.4), s = (2 + 0.25 - theme.ambient) / 4;
-    WALL_PICTURE.ROWS.forEach((row, r) => [...row].forEach((k, c) => put(FX + c, FY + r, `wall${k}`, s, 3)));
+    const rows = PHONE ? WALL_PICTURE.PHONE_ROWS : WALL_PICTURE.ROWS, PW = rows[0].length, PHT = rows.length;
+    const FX = PHONE ? pxX(362) - Math.round(PW / 2) : pxX(347.4), FY = PHONE ? px(108) - Math.round(PHT / 2) : px(88.4);
+    const [fx0, fy0, fx1, fy1] = PHONE ? [(FX - OX) / K - 3.4, FY / K - 3.4, (FX - OX + PW) / K + 3.4, (FY + PHT) / K + 3.4] : [344, 85, 380, 131];
+    shape([fx0, fy0, fx1, fy1], rect(fx0, fy0, fx1, fy1), 'frame', (x, y) => (x < fx0 + 2 || y < fy0 + 2 ? 0.8 : x > fx1 - 2 || y > fy1 - 2 ? 0.2 : 0.5));
+    const s = (2 + 0.25 - theme.ambient) / 4;
+    rows.forEach((row, r) => [...row].forEach((k, c) => put(FX + c, FY + r, `wall${k}`, s, 3)));
   }
 
   // ------------------------------------------------ the headset, on a hook on the right side wall

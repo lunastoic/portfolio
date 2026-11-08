@@ -1,6 +1,7 @@
 """
 The picture in the frame on the wall: Tessie, from a photo (scripts/art/tessie.png), drawn as pixel art at the frame's
-own size (41 x 54 room pixels). Writes scripts/wall-picture.js, which scripts/desk-room.js draws into the frame; then
+own size (41 x 54 room pixels). Writes scripts/wall-picture.js (41 x 54 for desktop and 65 x 86 for the phones' bigger frame), which
+scripts/desk-room.js draws into the frame; then
 run `node scripts/pixel-room.js` to rebuild the room images.
 
   * she is cut out of the lawn by colour (grass is green-yellow and saturated, she is black, white, tan and pink) and
@@ -16,7 +17,8 @@ from PIL import Image, ImageFilter, ImageDraw
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC, OUT = os.path.join(HERE, 'art', 'tessie.png'), os.path.join(HERE, 'wall-picture.js')
-W, H = 41, 54
+W, H = 41, 54  # the frame's inside on desktop, room pixels
+PW, PH = 65, 86  # on phones, where the picture hangs bigger
 x0, y0, x1, y1 = 38, 50, 576, 759  # the crop: all of her, with grass round every side (tessie.png is cut from the photo at 400, 450)
 
 GRASS = [(30, 52, 30), (48, 74, 34), (78, 100, 38), (122, 128, 42), (170, 160, 58)]
@@ -36,47 +38,53 @@ img = np.asarray(full.crop((x0, y0, x1, y1))).astype(float)
 lawn = np.asarray(full.crop((x0, y0, x1, y1)).filter(ImageFilter.GaussianBlur(28))).astype(float)
 petals = ((hue >= 20) & (hue <= 45) & (sat > 150))[y0:y1, x0:x1]
 pinkish = ((hue > 300) | (hue < 10))[y0:y1, x0:x1]
-cw, ch = img.shape[1] / W, img.shape[0] / H
+def draw(W, H):
+    cw, ch = img.shape[1] / W, img.shape[0] / H
 
-def ramp_pick(ramp, t, x, y):
-    f = t * (len(ramp) - 1); i = int(f)
-    if i >= len(ramp) - 1: return ramp[-1]
-    return ramp[i + 1] if f - i > (BAYER[y % 4][x % 4] + 0.5) / 16 else ramp[i]
+    def ramp_pick(ramp, t, x, y):
+        f = t * (len(ramp) - 1); i = int(f)
+        if i >= len(ramp) - 1: return ramp[-1]
+        return ramp[i + 1] if f - i > (BAYER[y % 4][x % 4] + 0.5) / 16 else ramp[i]
 
-names = [n for n in DOG if n != 'eye']
-pal = np.array([DOG[n] for n in names], float)
-grid = [[None] * W for _ in range(H)]
-isdog = np.zeros((H, W), bool)
-for y in range(H):
-    for x in range(W):
-        a, b, c, d = int(x * cw), int((x + 1) * cw), int(y * ch), int((y + 1) * ch)
-        dm = dog[c:d, a:b]
-        if dm.mean() > 0.45:
-            isdog[y, x] = True
-            col = np.median(img[c:d, a:b][dm], axis=0)
-            col = col * 0.82 if col.mean() < 120 else col * 1.05  # black fur stays black in the sun, white stays white
-            name = names[int(np.argmin(((pal - col) ** 2).sum(1)))]
-            if name in ('w0', 'w1') and pinkish[c:d, a:b].mean() > 0.35: name = 'p2'  # the harness's light specks
-            grid[y][x] = DOG[name]
-        else:
-            lum = (lawn[c:d, a:b].mean(axis=(0, 1)) * [0.3, 0.59, 0.11]).sum()
-            t = float(np.clip((lum - 40) / 120, 0, 1))
-            grid[y][x] = PETAL if petals[c:d, a:b].mean() > 0.42 and (x * 7 + y * 13) % 3 == 0 else ramp_pick(GRASS, t, x, y)
-for y in range(H):
-    for x in range(W):
-        if not isdog[y, x] and any(0 <= y + dy < H and 0 <= x + dx < W and isdog[y + dy, x + dx] for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
-            grid[y][x] = OUTLINE
-for X, Y, col in ((168, 342, DOG['eye']), (232, 355, DOG['eye']), (182, 403, DOG['k0'])):
-    grid[int((Y - y0) / ch)][int((X - x0) / cw)] = col
+    names = [n for n in DOG if n != 'eye']
+    pal = np.array([DOG[n] for n in names], float)
+    grid = [[None] * W for _ in range(H)]
+    isdog = np.zeros((H, W), bool)
+    for y in range(H):
+        for x in range(W):
+            a, b, c, d = int(x * cw), int((x + 1) * cw), int(y * ch), int((y + 1) * ch)
+            dm = dog[c:d, a:b]
+            if dm.mean() > 0.45:
+                isdog[y, x] = True
+                col = np.median(img[c:d, a:b][dm], axis=0)
+                col = col * 0.82 if col.mean() < 120 else col * 1.05  # black fur stays black in the sun, white stays white
+                name = names[int(np.argmin(((pal - col) ** 2).sum(1)))]
+                if name in ('w0', 'w1') and pinkish[c:d, a:b].mean() > 0.35: name = 'p2'  # the harness's light specks
+                grid[y][x] = DOG[name]
+            else:
+                lum = (lawn[c:d, a:b].mean(axis=(0, 1)) * [0.3, 0.59, 0.11]).sum()
+                t = float(np.clip((lum - 40) / 120, 0, 1))
+                grid[y][x] = PETAL if petals[c:d, a:b].mean() > 0.42 and (x * 7 + y * 13) % 3 == 0 else ramp_pick(GRASS, t, x, y)
+    for y in range(H):
+        for x in range(W):
+            if not isdog[y, x] and any(0 <= y + dy < H and 0 <= x + dx < W and isdog[y + dy, x + dx] for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                grid[y][x] = OUTLINE
+    for X, Y, col in ((168, 342, DOG['eye']), (232, 355, DOG['eye']), (182, 403, DOG['k0'])):
+        grid[int((Y - y0) / ch)][int((X - x0) / cw)] = col
+    return grid
 
-colours = sorted({c for row in grid for c in row})
+grid, phone = draw(W, H), draw(PW, PH)
+colours = sorted({c for g in (grid, phone) for row in g for c in row})
 KEYS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 hexes = ['#%02x%02x%02x' % c for c in colours]
 rows = [''.join(KEYS[colours.index(c)] for c in row) for row in grid]
+phone_rows = [''.join(KEYS[colours.index(c)] for c in row) for row in phone]
 with open(OUT, 'w') as f:
     f.write('// Generated by scripts/wall-picture.py from scripts/art/tessie.png: Tessie, the picture in the frame on the wall.\n')
     f.write('// One letter a room pixel, ' + str(W) + ' x ' + str(H) + '; each letter is a colour in PALETTE (how she looks with the lamp on).\n')
     f.write('const PALETTE = ' + repr(hexes).replace("'", "'") + ';\n')
     f.write('const ROWS = [\n' + ''.join("  '" + r + "',\n" for r in rows) + '];\n')
-    f.write('module.exports = { PALETTE, ROWS };\n')
+    f.write('// The same picture drawn at ' + str(PW) + ' x ' + str(PH) + ', for the phones\' bigger frame.\n')
+    f.write('const PHONE_ROWS = [\n' + ''.join("  '" + r + "',\n" for r in phone_rows) + '];\n')
+    f.write('module.exports = { PALETTE, ROWS, PHONE_ROWS };\n')
 print('wrote', OUT, len(colours), 'colours')

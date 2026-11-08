@@ -260,6 +260,13 @@
   pointer-events: none;
 }
 
+/* on an upright phone the notes hang bigger; their words go a touch bolder and darker to read on a small screen */
+.cinema--phone .cinema__note-text {
+  font-weight: 700;
+  color: #1c0b04;
+  letter-spacing: 0.03em;
+}
+
 /* a note that draws a little tree: five lines, packed tighter and sat up the paper, clear of the folded corner */
 .cinema__note-text--tree {
   justify-content: flex-start;

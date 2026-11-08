@@ -220,6 +220,26 @@ interface DeckPlace {
   dy: number;
 }
 const DECKS_AS_DRAWN: DeckPlace = { scale: 1, anchor: [0, 0], dy: 0 };
+/**
+ * The decks' words on an upright phone, where the room is small: bigger, the school's name over two lines so each
+ * half can grow, the small print bold. Placed on the decks as drawn on desktop (art px); the phones' bigger, higher
+ * decks carry them along (DeckPlace).
+ */
+const PHONE_DECK_TEXT: WallText[] = [
+  // the top deck: the name, the place between the rows of bolt holes, the email along the deck's wider low edge
+  { lines: ["CHRISTOPHER E LUNA"], x: 937, y: 46, size: 36, color: NAME_GOLD, weight: 700, track: 0.06 },
+  { lines: ["ORANGE COUNTY, CA"], x: 937, y: 78, size: 20, color: "#e9b468", weight: 700, track: 0.08 },
+  { lines: ["LUNA_CHRISTOPHER98@HOTMAIL.COM"], x: 937, y: 117, size: 27, color: "#e9b468", weight: 600, track: 0.03 },
+  // the low deck: the school over two lines, then the degree over two, short enough to sit between the holes
+  { lines: [[{ text: "CALIFORNIA STATE UNIVERSITY,", color: CSU_BURGUNDY }]], x: 933, y: 198, size: 24, color: CSU_BURGUNDY, weight: 700, track: 0.05 },
+  { lines: [[{ text: "DOMINGUEZ HILLS", color: DH_GOLD }]], x: 933, y: 224, size: 24, color: DH_GOLD, weight: 700, track: 0.06 },
+  { lines: ["BACHELOR OF SCIENCE"], x: 933, y: 251, size: 20, color: NAME_GOLD, weight: 700, track: 0.06, edged: true },
+  { lines: ["COMPUTER SCIENCE"], x: 933, y: 273, size: 20, color: NAME_GOLD, weight: 700, track: 0.06, edged: true },
+  { lines: ["FIRST GEN"], x: 933, y: 295, size: 16, color: NAME_GOLD, weight: 700, track: 0.1, edged: true },
+];
+/** The spines' words, the same on every screen. */
+const SPINE_TEXT = (): WallText[] => WALL_TEXT.filter((t) => t.y >= DECK_TEXT_BELOW);
+
 const wallTextStyle = (t: WallText, deck: DeckPlace = DECKS_AS_DRAWN): CSSProperties => {
   // the words on the decks follow them (on phones, bigger and higher); the spines' stay put
   const d = t.y < DECK_TEXT_BELOW ? deck : DECKS_AS_DRAWN;
@@ -508,6 +528,11 @@ function walkPath(u: number, rising: boolean, vw: number, vh: number): { p: numb
   const dy = Math.sin(Math.PI * s) ** 2 * 0.03 * vh - bob;
   return { p, cam: { dy, dx, zoom: 1 + Math.max((Math.abs(dy) * 2.1) / vh, (Math.abs(dx) * 2.1) / vw) } };
 }
+
+/** How much bigger the sticky notes hang on an upright phone. */
+const PHONE_NOTE_SCALE = 1.5;
+/** A box grown `k` times about the middle of its top edge (it stays pinned where it hangs). */
+const growFromTop = (r: PctBox, k: number): PctBox => ({ left: r.left + (r.width * (1 - k)) / 2, top: r.top, width: r.width * k, height: r.height * k });
 
 const pctBox = (r: PctBox): CSSProperties => ({
   left: `${r.left}%`,
@@ -955,11 +980,14 @@ export default function CinemaScene() {
     `cinema--${pose}`,
     ready && loaded ? "cinema--ready" : "",
     lampOn ? "" : "cinema--lamp-off",
+    phone ? "cinema--phone" : "",
   ]
     .filter(Boolean)
     .join(" ");
   const spill = art.props.mug?.spill;
   const note = art.props.note;
+  // upright, the notes hang half again as big from the same top edge, so their words read on a small screen
+  const noteBox = note ? (phone ? growFromTop(note.boxPct, PHONE_NOTE_SCALE) : note.boxPct) : null;
   const camStyle: CSSProperties | undefined =
     cam === CAM_REST
       ? undefined
@@ -1042,7 +1070,7 @@ export default function CinemaScene() {
           )}
 
           {/* The words on the decks and the book spines */}
-          {WALL_TEXT.map((t) => (
+          {(phone ? [...PHONE_DECK_TEXT, ...SPINE_TEXT()] : WALL_TEXT).map((t) => (
             <p
               key={t.lines.map((l) => (typeof l === "string" ? l : l.map((r) => r.text).join(""))).join(" ")}
               className={`cinema__wall-text${t.edged ? " cinema__wall-gold" : ""}${t.y > 500 ? " cinema__wall-text--desk" : ""}`}
@@ -1067,7 +1095,7 @@ export default function CinemaScene() {
             <>
               <div
                 className="cinema__sprite cinema__sprite--note cinema__note-under"
-                style={pctBox(note.boxPct)}
+                style={pctBox(noteBox ?? note.boxPct)}
                 aria-hidden="true"
               >
                 <NoteFace index={noteIndex + 1} />
@@ -1076,7 +1104,7 @@ export default function CinemaScene() {
                 key={`note-${noteIndex}`}
                 type="button"
                 className="cinema__sprite cinema__sprite--note"
-                style={pctBox(note.boxPct)}
+                style={pctBox(noteBox ?? note.boxPct)}
                 onClick={peelNote}
                 tabIndex={standingTab}
                 aria-label={SPRITE_LABEL.note}
@@ -1092,7 +1120,7 @@ export default function CinemaScene() {
                     else noteRefs.current.delete(id);
                   }}
                   className="cinema__sprite cinema__sprite--note cinema__note-falling"
-                  style={{ ...pctBox(note.boxPct), transformOrigin: "50% 3%" }}
+                  style={{ ...pctBox(noteBox ?? note.boxPct), transformOrigin: "50% 3%" }}
                   aria-hidden="true"
                 >
                   <NoteFace index={index} />
