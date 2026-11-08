@@ -58,6 +58,16 @@
     }
   ],
   "props": {
+    "cup": {
+      "file": "/cinema/cut-cup.png",
+      "off": "/cinema/cut-cup-off.png",
+      "boxPct": {
+        "left": 18.281,
+        "top": 72.468,
+        "width": 5.781,
+        "height": 13.291
+      }
+    },
     "mug": {
       "file": "/cinema/cut-mug.png",
       "boxPx": [

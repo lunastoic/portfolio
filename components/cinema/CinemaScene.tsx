@@ -56,7 +56,10 @@ interface Manifest {
   focalPoint: number[];
   monitorPct: PctBox;
   decksPct: PctBox[];
-  props: Partial<Record<PropKey, Prop>>;
+  props: Partial<Record<PropKey, Prop>> & {
+    /** The cat pencil cup, cut out lit and unlit, set in front of the notes that fall behind it. */
+    cup?: { file: string; off: string; boxPct: PctBox };
+  };
   notes: string[];
   lamp: {
     /** The whole painting again with the lamp switched off, laid over the lit one. */
@@ -149,6 +152,8 @@ const NOTE_SWAY_W = 5.2; // rad/s
 const NOTE_LAND_Y = art.noteLand.dy; // art px below the wall spot: its top edge on the desk's back edge, behind the mug
 const NOTE_LAND_X = art.noteLand.dx; // art px it glides across on the way down: its middle behind the mug's body
 const NOTE_SCATTER = [10, 3, 14]; // a landed note's spread: ± art px across, ± art px deep, ± degrees
+const NOTE_PILE = 2.5; // art px each landed note lies nearer the wall than the one under it
+const NOTE_PILE_MAX = 6; // the pile stops climbing after this many, so it never rises out from behind the mug
 /** The eye's distance for the note's tilt, art px: far, so a note lying on the desk is a strip, not a wedge. */
 const NOTE_EYE = 1600;
 const NOTE_SETTLE = 80; // art px above its landing spot where it starts to lie down
@@ -230,12 +235,15 @@ const PHONE_DECK_TEXT: WallText[] = [
   { lines: ["CHRISTOPHER E LUNA"], x: 937, y: 46, size: 36, color: NAME_GOLD, weight: 700, track: 0.06 },
   { lines: ["ORANGE COUNTY, CA"], x: 937, y: 78, size: 20, color: "#e9b468", weight: 700, track: 0.08 },
   { lines: ["LUNA_CHRISTOPHER98@HOTMAIL.COM"], x: 937, y: 117, size: 27, color: "#e9b468", weight: 600, track: 0.03 },
-  // the low deck: the school over two lines, then the degree over two, short enough to sit between the holes
-  { lines: [[{ text: "CALIFORNIA STATE UNIVERSITY,", color: CSU_BURGUNDY }]], x: 933, y: 198, size: 24, color: CSU_BURGUNDY, weight: 700, track: 0.05 },
-  { lines: [[{ text: "DOMINGUEZ HILLS", color: DH_GOLD }]], x: 933, y: 224, size: 24, color: DH_GOLD, weight: 700, track: 0.06 },
-  { lines: ["BACHELOR OF SCIENCE"], x: 933, y: 251, size: 20, color: NAME_GOLD, weight: 700, track: 0.06, edged: true },
-  { lines: ["COMPUTER SCIENCE"], x: 933, y: 273, size: 20, color: NAME_GOLD, weight: 700, track: 0.06, edged: true },
-  { lines: ["FIRST GEN"], x: 933, y: 295, size: 16, color: NAME_GOLD, weight: 700, track: 0.1, edged: true },
+  // the low deck: the school on one line in the heaviest weight, as wide as the deck allows above its bolt holes,
+  // then the degree over two lines, short enough to sit between the holes
+  {
+    lines: [[{ text: "CALIFORNIA STATE UNIVERSITY, ", color: CSU_BURGUNDY }, { text: "DOMINGUEZ HILLS", color: DH_GOLD }]],
+    x: 933, y: 209, size: 21.5, color: CSU_BURGUNDY, weight: 800, track: 0.015,
+  },
+  { lines: ["BACHELOR OF SCIENCE"], x: 933, y: 238, size: 20, color: NAME_GOLD, weight: 700, track: 0.06, edged: true },
+  { lines: ["COMPUTER SCIENCE"], x: 933, y: 261, size: 20, color: NAME_GOLD, weight: 700, track: 0.06, edged: true },
+  { lines: ["FIRST GEN"], x: 933, y: 285, size: 16, color: NAME_GOLD, weight: 700, track: 0.1, edged: true },
 ];
 /** The spines' words, the same on every screen. */
 const SPINE_TEXT = (): WallText[] => WALL_TEXT.filter((t) => t.y >= DECK_TEXT_BELOW);
@@ -896,7 +904,8 @@ export default function CinemaScene() {
         tilt: 0,
         yaw: 0,
         side: Math.random() < 0.5 ? -1 : 1,
-        landY: NOTE_LAND_Y + r() * NOTE_SCATTER[1],
+        // each lands on the pile a little nearer the wall than the last, so a later one lies over the earlier ones
+        landY: NOTE_LAND_Y + r() * NOTE_SCATTER[1] - Math.min(w.notes.length, NOTE_PILE_MAX) * NOTE_PILE,
         landRot: r() * NOTE_SCATTER[2],
         landDx: NOTE_LAND_X + r() * NOTE_SCATTER[0],
       });
@@ -1159,6 +1168,14 @@ export default function CinemaScene() {
               <Image src={file} alt="" fill unoptimized draggable={false} />
             </div>
           ))}
+
+          {/* The cat pencil cup again, over the pens' feet and in front of the notes that land behind it, lit and unlit */}
+          {art.props.cup && (
+            <div className="cinema__cup" style={pctBox(art.props.cup.boxPct)} aria-hidden="true">
+              <Image src={art.props.cup.file} alt="" fill unoptimized draggable={false} />
+              <div key={`cup-${lampSwitches}`} className={offClass} style={{ backgroundImage: `url(${art.props.cup.off})` }} />
+            </div>
+          )}
 
           {/* The props in their places on the painting, each on its own spring */}
           {SPRITE_ORDER.map((k) => {

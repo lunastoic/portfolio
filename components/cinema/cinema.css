@@ -201,7 +201,13 @@
   user-select: none;
 }
 
-/* the sticky notes: the next one waits under the top one; a peeled one falls in front of both */
+/* the sticky notes: the next one waits under the top one; a peeled one falls in front of both. All of them hang
+   and fall behind the things standing on the desk (the pencil cup, its pens, the mug and its steam), so a note
+   lands behind them and never shows through them, on any screen */
+.cinema__sprite--note {
+  z-index: 3;
+}
+
 .cinema__note-under {
   pointer-events: none;
 }
@@ -209,6 +215,17 @@
 .cinema__note-falling {
   pointer-events: none;
   backface-visibility: visible;
+}
+
+/* the cat pencil cup, cut out of the room and set back over it, so the notes fall behind it */
+.cinema__cup {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.cinema__cup img {
+  image-rendering: pixelated;
 }
 
 /* the console, controller and headset: sprites that just sit in the room */

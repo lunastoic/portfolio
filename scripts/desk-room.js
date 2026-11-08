@@ -676,6 +676,8 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
     shape([Math.min(x0, x1) - 2.5, y1 - 1.5, Math.max(x0, x1) + 2.5, y0], thick(x0, y0, x1, y1, 1.4), r, (x) => (x < (x0 + x1) / 2 ? 0.75 : 0.35));
     shape([x1 - 1.6, y1 - 2.2, x1 + 1.6, y1 + 0.8], ell(x1, y1 - 0.6, 1.3, 1.5), 'gold', 0.75, { outline: false });
   }
+  info.cup = [CU0, CUT, CU1, CUB];
+  if (!skip.has('cup')) { // left out to cut it on its own (the scene sets it in front of the peeled notes)
   shape([CU0, CUT, CU1, CUB], rect(CU0, CUT, CU1, CUB), 'clay', (x, y) => cyl(CUM, (CU1 - CU0) / 2, 0.5)(x) + (y < CUT + 2 ? 0.25 : 0));
   shape([CU0 + 1, CUT + 1, CU1 - 1, CUT + 2.4], rect(CU0 + 1.2, CUT + 1.2, CU1 - 1.2, CUT + 2.2), 'clay', 0.12, { outline: false }); // the rim's inside
   // a tri-colour corgi's face on the cup: black ears and crown, tan inside the ears, over the brows and on the cheeks,
@@ -691,6 +693,7 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
     '..wwwnwww..',
     '...wwwww...',
   ], pxX(CUM) - 11, px(CUT + 7), 2, { B: ['corgiBlack', 0.3], t: ['corgiTan', 0.45], w: ['corgiWhite', 0.75], k: ['ink', 0.4], n: ['ink', 0.4] });
+  }
   ANC = null;
 
   // ------------------------------------------------ the lamp, in from the left corner so its base stands clear of the side wall

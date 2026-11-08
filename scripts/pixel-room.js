@@ -58,14 +58,18 @@ async function saveRows(px, file, [x0, x1], [y0, y1], width = WS) {
 
 /** A thing on its own: the pixels where the room with it differs from the room without it (its shadow comes along),
  *  cropped to them. Returns its box in pixels of the art (x0, y0, x1, y1, exclusive). */
-async function cut(withIt, withoutIt, file) {
+/** The pixels where a drawing with a thing differs from one without it, cut out on their own. `box` (pixels, the
+ *  drawing's own columns) keeps only what lies inside it and cuts exactly that rectangle, so two cuts line up. */
+async function cut(withIt, withoutIt, file, box) {
   let X0 = WS, Y0 = H, X1 = -1, Y1 = -1;
+  const inBox = (x, y) => !box || (x >= box[0] && x < box[2] && y >= box[1] && y < box[3]);
   const differs = (i) => withIt[i] !== withoutIt[i] || withIt[i + 1] !== withoutIt[i + 1] || withIt[i + 2] !== withoutIt[i + 2];
-  for (let y = 0; y < H; y++) for (let x = 0; x < WS; x++) if (differs((y * WS + x) * 4)) { X0 = Math.min(X0, x); X1 = Math.max(X1, x); Y0 = Math.min(Y0, y); Y1 = Math.max(Y1, y); }
+  if (box) [X0, Y0, X1, Y1] = [box[0], box[1], box[2] - 1, box[3] - 1];
+  else for (let y = 0; y < H; y++) for (let x = 0; x < WS; x++) if (differs((y * WS + x) * 4)) { X0 = Math.min(X0, x); X1 = Math.max(X1, x); Y0 = Math.min(Y0, y); Y1 = Math.max(Y1, y); }
   const w = X1 - X0 + 1, h = Y1 - Y0 + 1, buf = Buffer.alloc(w * h * 4);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = ((Y0 + y) * WS + X0 + x) * 4, o = (y * w + x) * 4;
-    if (!differs(i)) continue;
+    if (!differs(i) || !inBox(X0 + x, Y0 + y)) continue;
     buf[o] = withIt[i]; buf[o + 1] = withIt[i + 1]; buf[o + 2] = withIt[i + 2]; buf[o + 3] = 255;
   }
   await sharp(buf, { raw: { width: w, height: h, channels: 4 } }).resize(w * S, h * S, { kernel: 'nearest' }).png({ compressionLevel: 9 }).toFile(path.join(CIN, file));
@@ -101,6 +105,11 @@ async function cut(withIt, withoutIt, file) {
 
   // ---- the things that move, each cut out lit (the scene dims them with the lamp)
   const MUG = await cut(render(true, true, without('mug')), lit, 'cut-mug.png');
+  // the cat pencil cup, lit and unlit, cut to the cup itself (not its shadow on the desk): the scene sets it in front
+  // of the notes that fall behind it
+  const [cu0, cut0, cu1, cub] = info.cup, CUP_BOX = [Math.floor(cu0 * K) + SIDE - 1, Math.floor(cut0 * K) - 1, Math.ceil(cu1 * K) + SIDE + 2, Math.ceil(cub * K) + 1];
+  const CUP = await cut(lit, render(true, true, [...MOVING, 'cup']), 'cut-cup.png', CUP_BOX);
+  await cut(dark, render(false, true, [...MOVING, 'cup']), 'cut-cup-off.png', CUP_BOX);
   let NOTE;
   for (let i = 0; i < NOTE_COLOURS.length; i++) NOTE = await cut(render(true, true, without('note'), { noteRamp: NOTE_COLOURS[i] }), lit, `cut-note-${i + 1}.png`);
   const PENS = [];
@@ -203,6 +212,7 @@ async function cut(withIt, withoutIt, file) {
   m.screenPct = pct(GLASS);
   m.focalPoint = [50, +((((GLASS[1] + GLASS[3]) / 2) / AH) * 100).toFixed(2)];
   m.props = {
+    cup: { file: '/cinema/cut-cup.png', off: '/cinema/cut-cup-off.png', boxPct: pct(CUP.map(p)) },
     mug: {
       file: '/cinema/cut-mug.png', boxPx: mugBox, boxPct: pct(mugBox), originPct: [50, +(mugBase * 100).toFixed(2)],
       spill: { boxPct: pct([spillX, spillY, spillX + 295, spillY + 274]), width: 295, height: 274, pivot: [110, Math.round(baseY - spillY)], rim: [108, 79], landY: Math.round(baseY - spillY) - 2, mugLeft: 110 },
