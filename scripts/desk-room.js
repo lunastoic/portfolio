@@ -8,6 +8,9 @@ const W = 640, H = 316, K = W / 461, LH = 227;
 const MONITOR_DROP = 4 / K;
 /** The point the phones' bigger decks grow from (u): the middle of the foot of the low deck's studs. */
 const DECK_ANCHOR = [225, 81.5];
+/** The desk's front edge and the phones' floor along the wall (u, below the room): the legs run between them, LEG u
+ *  longer than the portrait mockup's so the ground sits lower under the same desk. */
+const DESK_FRONT = LH + 8, LEG = 36, PHONE_FLOOR = LH + 52 + LEG;
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -364,7 +367,7 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   const ceilingLine = (x) => (x < CL ? CEILING - (CL - x) * CSLOPE : x > CR ? CEILING - (x - CR) * CSLOPE : CEILING);
   // below the desk's front edge (drawn on for phones): its front board, the dark under the desk, the skirting along
   // the wall and the floorboards running toward you
-  const APRON = LH + 8, SKIRT = LH + 46, FLOOR = LH + 52;
+  const APRON = DESK_FRONT, SKIRT = PHONE_FLOOR - 6, FLOOR = PHONE_FLOOR;
   const FSLOPE = 0.45; // the floor's edges with the side walls
   for (let Y = -OT; Y < H + OB; Y++) for (let X = 0; X < WW; X++) {
     const x = (X - OX + 0.5) / K, y = (Y + 0.5) / K;
@@ -972,5 +975,5 @@ const THEMES = [
   },
 ];
 
-if (typeof module !== 'undefined') module.exports = { MONITOR_DROP, DECK_ANCHOR, drawRoom, controllerImage, drawControllerHD, THEMES, SHARED, W, H, K };
+if (typeof module !== 'undefined') module.exports = { MONITOR_DROP, DECK_ANCHOR, DESK_FRONT, PHONE_FLOOR, drawRoom, controllerImage, drawControllerHD, THEMES, SHARED, W, H, K };
 

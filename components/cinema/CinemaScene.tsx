@@ -91,6 +91,8 @@ interface Manifest {
     /** And this much further right (art px), centred across the closet. */
     deckDx?: number;
     /** Art px from the room's top to the floor's back edge: the standing view frames on it. */
+    /** Art px from the room's top: the desk's front edge (the phones frame on it) and the floor's back edge. */
+    deskPx: number;
     floorPx: number;
     sides: { px: number; left: string; right: string; leftOff: string; rightOff: string };
   };
@@ -422,13 +424,15 @@ function portraitPlace(vw: number, vh: number, scale: number, cx: number, cy: nu
 
 /**
  * Standing back on an upright phone, across the room: the whole closet fills the width (its side walls, the desk end
- * to end), the ceiling above and the floor below, the floor's back edge 68% of the way down (the portrait mockup).
+ * to end), the ceiling above and the floor below, the desk's front edge DESK_DOWN of the way down (where the portrait
+ * mockup's floor rule put it), so the desk stays put however long its legs are drawn.
  */
+const DESK_DOWN = 0.63;
 function portraitStanding(vw: number, vh: number): Stage {
   const { width: W, height: H } = art.size;
   const scale = vw / (W + 2 * PHONE_SIDE);
-  const floor = art.phone?.floorPx ?? H;
-  const y = Math.min(BAND_TOP * scale, Math.max(vh - (H + BAND_BOTTOM) * scale, 0.68 * vh - floor * scale));
+  const desk = art.phone?.deskPx ?? H;
+  const y = Math.min(BAND_TOP * scale, Math.max(vh - (H + BAND_BOTTOM) * scale, DESK_DOWN * vh - desk * scale));
   return { x: PHONE_SIDE * scale, y, w: W * scale, h: H * scale, scale };
 }
 

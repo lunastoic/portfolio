@@ -10,7 +10,7 @@
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
-const { drawRoom, THEMES, W, H, K, MONITOR_DROP: MD, DECK_ANCHOR } = require('./desk-room.js');
+const { drawRoom, THEMES, W, H, K, MONITOR_DROP: MD, DECK_ANCHOR, DESK_FRONT, PHONE_FLOOR } = require('./desk-room.js');
 
 const CIN = path.join(__dirname, '..', 'public', 'cinema');
 const S = 3; // site art px per pixel
@@ -184,7 +184,8 @@ async function cut(withIt, withoutIt, file, box) {
       deckDx: DECK_DX * S, // art px right, so the decks sit centred across the closet (they hang a little left of the room's middle)
       deckScale: DECK_SCALE,
       deckAnchor: DECK_ANCHOR.map((v) => +(v * F).toFixed(1)), // art px: the decks' words grow from here too
-      floorPx: +(F * (227 + 52)).toFixed(1), // the floor's back edge (art px from the room's top): the phones frame on it
+      deskPx: +(F * DESK_FRONT).toFixed(1), // the desk's front edge (art px from the room's top): the phones frame on it
+      floorPx: +(F * PHONE_FLOOR).toFixed(1), // the floor's back edge, where the wall meets it
       sides: { px: BAND_SIDE * S, left: '/cinema/side-left-phone.png', right: '/cinema/side-right-phone.png', leftOff: '/cinema/side-left-phone-off.png', rightOff: '/cinema/side-right-phone-off.png' },
     },
     bands: {

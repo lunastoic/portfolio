@@ -1139,7 +1139,8 @@
       937.1,
       339.4
     ],
-    "floorPx": 1162,
+    "deskPx": 978.7,
+    "floorPx": 1311.9,
     "sides": {
       "px": 36,
       "left": "/cinema/side-left-phone.png",
