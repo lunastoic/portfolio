@@ -82,6 +82,9 @@ interface Manifest {
     lampOff: string;
     lavaOff: { on: string; off: string };
     deckDy: number;
+    /** The decks drawn this much bigger, grown from deckAnchor (art px), before deckDy lifts them. */
+    deckScale?: number;
+    deckAnchor?: number[];
     /** Art px from the room's top to the floor's back edge: the standing view frames on it. */
     floorPx: number;
     sides: { px: number; left: string; right: string; leftOff: string; rightOff: string };
@@ -210,10 +213,23 @@ const WALL_TEXT: WallText[] = [
   { lines: ["DATA STRUCTURES & ALGORITHMS"], x: 722.6, y: 778.8, size: 17.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
   { lines: ["COMPUTER ORGANIZATION"], x: 722.6, y: 812.1, size: 17.5, color: SPINE, align: "left", track: 0.1, weight: 600 },
 ];
-const wallTextStyle = (t: WallText, deckDy = 0): CSSProperties => ({
-  left: `${((t.x + (art.textDx ?? 0)) / art.size.width) * 100}%`,
-  top: `${((t.y + (t.y < DECK_TEXT_BELOW ? deckDy : 0)) / art.size.height) * 100}%`,
-  fontSize: `${(t.size / art.size.width) * 100}cqw`,
+/** Where the decks are drawn: grown `scale` times from `anchor` (art px), then `dy` art px higher. */
+interface DeckPlace {
+  scale: number;
+  anchor: number[];
+  dy: number;
+}
+const DECKS_AS_DRAWN: DeckPlace = { scale: 1, anchor: [0, 0], dy: 0 };
+const wallTextStyle = (t: WallText, deck: DeckPlace = DECKS_AS_DRAWN): CSSProperties => {
+  // the words on the decks follow them (on phones, bigger and higher); the spines' stay put
+  const d = t.y < DECK_TEXT_BELOW ? deck : DECKS_AS_DRAWN;
+  const x = d.anchor[0] + (t.x - d.anchor[0]) * d.scale, y = d.anchor[1] - (d.anchor[1] - t.y) * d.scale + d.dy;
+  return wallTextAt(t, x, y, t.size * d.scale);
+};
+const wallTextAt = (t: WallText, x: number, y: number, size: number): CSSProperties => ({
+  left: `${((x + (art.textDx ?? 0)) / art.size.width) * 100}%`,
+  top: `${(y / art.size.height) * 100}%`,
+  fontSize: `${(size / art.size.width) * 100}cqw`,
   color: t.color,
   fontWeight: t.weight ?? 600,
   letterSpacing: `${t.track ?? 0}em`,
@@ -957,7 +973,7 @@ export default function CinemaScene() {
   // upright, the room beside it is the phones' own sliver (the bands' width); otherwise the desktop's wide strips
   const sides = phone ? phone.sides : art.sides;
   const sideWidth = `${((phone ? phone.sides.px : SIDE_PX) / art.size.width) * 100}%`;
-  const deckDy = phone ? phone.deckDy : 0;
+  const deckPlace: DeckPlace = phone ? { scale: phone.deckScale ?? 1, anchor: phone.deckAnchor ?? [0, 0], dy: phone.deckDy } : DECKS_AS_DRAWN;
   const bandSpan: CSSProperties = { left: `${(-PHONE_SIDE / art.size.width) * 100}%`, width: `${((art.size.width + 2 * PHONE_SIDE) / art.size.width) * 100}%` };
   const bandTop = `${(art.bands.top.px / art.size.height) * 100}%`;
   const bandTopOver = `${(art.bands.top.over / art.size.height) * 100}%`;
@@ -1030,7 +1046,7 @@ export default function CinemaScene() {
             <p
               key={t.lines.map((l) => (typeof l === "string" ? l : l.map((r) => r.text).join(""))).join(" ")}
               className={`cinema__wall-text${t.edged ? " cinema__wall-gold" : ""}${t.y > 500 ? " cinema__wall-text--desk" : ""}`}
-              style={wallTextStyle(t, deckDy)}
+              style={wallTextStyle(t, deckPlace)}
             >
               {t.lines.map((line, i) => (
                 <span key={i}>

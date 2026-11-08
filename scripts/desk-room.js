@@ -6,6 +6,8 @@ const W = 640, H = 316, K = W / 461, LH = 227;
  *  glass's scanlines land as before), so it moves without changing size,
  *  and leaves a strip of wall between it and the studs under the low deck. */
 const MONITOR_DROP = 4 / K;
+/** The point the phones' bigger decks grow from (u): the middle of the foot of the low deck's studs. */
+const DECK_ANCHOR = [225, 81.5];
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -533,22 +535,28 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   };
 
   // ------------------------------------------------ the decks
-  // opt.deckLift: pixel rows the decks and their studs sit higher (the phones' room, for more wall between the low
-  // deck and the monitor); whole rows, in fours, so their dither lands as it does unlifted
-  const DL = (opt.deckLift || 0) / K;
+  // opt.deckScale / opt.deckLift (the phones' room): the decks and their studs drawn DECK_SCALE times as big, grown
+  // up from the foot of the low deck's studs (DECK_ANCHOR, u), and deckLift pixel rows higher, for more wall between
+  // the low deck and the monitor. Each is drawn at its new size (its masks and shading read back in the deck's own
+  // u), so its lines stay one pixel; unscaled and unlifted it is the desktop's drawing exactly.
+  const DS = opt.deckScale || 1, DL = (opt.deckLift || 0) / K, [DAX, DAY] = DECK_ANCHOR;
+  const tx = (x) => DAX + (x - DAX) * DS, ty = (y) => DAY - (DAY - y) * DS - DL;
+  const ix = (x) => DAX + (x - DAX) / DS, iy = (y) => DAY - (DAY - y - DL) / DS;
+  const back = (f) => (typeof f === 'function' ? (x, y, X, Y) => f(ix(x), iy(y), X, Y) : f);
+  const dshape = (box, mask, ramp, shade, o) => shape([tx(box[0]), ty(box[1]), tx(box[2]), ty(box[3])], back(mask), ramp, back(shade), o);
   // the studs they rest on: in toward the middle, but not centred under it
-  for (const [x, y0] of [[192, 39], [252, 39], [192, 78.5], [252, 78.5]]) { const y = y0 - DL; shape([x, y, x + 6, y + 3], rect(x, y, x + 6, y + 3), 'silver', vg(y, y + 3, 0.8, 0.3)); }
+  for (const [x, y] of [[192, 39], [252, 39], [192, 78.5], [252, 78.5]]) dshape([x, y, x + 6, y + 3], rect(x, y, x + 6, y + 3), 'silver', vg(y, y + 3, 0.8, 0.3));
   const deckShade = (y0, y1, sheen) => (x, y) => (y < y0 + 2 ? 0.9 : y > y1 - 2.6 ? 0.16 : 0.58 - 0.18 * ((y - y0) / (y1 - y0)) + (Math.abs(x - y * 1.4 - sheen) < 3 ? 0.14 : 0));
   // a deck without its trucks and wheels: the maple ply shows as a rim round the printed face, and the bolt holes
   // the trucks hang from go through it, four at each end
   const deck = (x0, y0, x1, y1, face, sheen) => {
-    shape([x0, y0, x1, y1], pill(x0, y0, x1, y1), 'deckWood', (x, y) => (y < y0 + 1.4 ? 0.92 : y > y1 - 1.6 ? 0.3 : 0.62));
-    shape([x0 + 1.9, y0 + 1.9, x1 - 1.9, y1 - 1.9], pill(x0 + 1.9, y0 + 1.9, x1 - 1.9, y1 - 1.9), face, deckShade(y0 + 1.9, y1 - 1.9, sheen), { outline: false });
+    dshape([x0, y0, x1, y1], pill(x0, y0, x1, y1), 'deckWood', (x, y) => (y < y0 + 1.4 ? 0.92 : y > y1 - 1.6 ? 0.3 : 0.62));
+    dshape([x0 + 1.9, y0 + 1.9, x1 - 1.9, y1 - 1.9], pill(x0 + 1.9, y0 + 1.9, x1 - 1.9, y1 - 1.9), face, deckShade(y0 + 1.9, y1 - 1.9, sheen), { outline: false });
     const cy = (y0 + y1) / 2;
-    for (const hx of [x0 + 19, x0 + 24, x1 - 24, x1 - 19]) for (const hy of [cy - 3, cy + 3]) shape([hx - 1.4, hy - 1.4, hx + 1.4, hy + 1.4], ell(hx, hy, 1.05, 1.05), 'ink', 0.2, { outline: false });
+    for (const hx of [x0 + 19, x0 + 24, x1 - 24, x1 - 19]) for (const hy of [cy - 3, cy + 3]) dshape([hx - 1.4, hy - 1.4, hx + 1.4, hy + 1.4], ell(hx, hy, 1.05, 1.05), 'ink', 0.2, { outline: false });
   };
-  deck(146, 2 - DL, 304, 39 - DL, 'deckA', 120 - 1.4 * DL); // the sheen keeps its place on the deck
-  deck(145, 42 - DL, 303, 78.5 - DL, 'deckB', 175 - 1.4 * DL);
+  deck(146, 2, 304, 39, 'deckA', 120);
+  deck(145, 42, 303, 78.5, 'deckB', 175);
 
   // ------------------------------------------------ the poster
   shape([344, 85, 380, 131], rect(344, 85, 380, 131), 'frame', (x, y) => (x < 346 || y < 87 ? 0.8 : x > 378 || y > 129 ? 0.2 : 0.5));
@@ -951,5 +959,5 @@ const THEMES = [
   },
 ];
 
-if (typeof module !== 'undefined') module.exports = { MONITOR_DROP, drawRoom, controllerImage, drawControllerHD, THEMES, SHARED, W, H, K };
+if (typeof module !== 'undefined') module.exports = { MONITOR_DROP, DECK_ANCHOR, drawRoom, controllerImage, drawControllerHD, THEMES, SHARED, W, H, K };
 

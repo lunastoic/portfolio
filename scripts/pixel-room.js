@@ -10,7 +10,7 @@
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
-const { drawRoom, THEMES, W, H, K, MONITOR_DROP: MD } = require('./desk-room.js');
+const { drawRoom, THEMES, W, H, K, MONITOR_DROP: MD, DECK_ANCHOR } = require('./desk-room.js');
 
 const CIN = path.join(__dirname, '..', 'public', 'cinema');
 const S = 3; // site art px per pixel
@@ -19,7 +19,7 @@ const WS = W + 2 * SIDE; // the whole drawing's width, pixels
 // for phones held upright: pixels of room drawn above it (440 u: the wall, the ceiling over it) and below it (400 u: the desk's front, the dark
 // under it, the skirting and the floor); the top band runs OVER pixels down into the room, over the shadow along its top edge
 const TOP = Math.round(440 * K), BOTTOM = Math.round(400 * K), OVER = 5; // tall enough for the tallest phones: the ceiling above, the floor below
-const DECK_LIFT = 8; // pixel rows the decks sit higher in the phones' room, for more wall between the low deck and the monitor
+const DECK_LIFT = 12, DECK_SCALE = 1.3; // the phones' decks: this many pixel rows higher and this much bigger, for more wall between the low deck and the monitor
 const BAND_SIDE = 12; // pixels the phones' bands reach past each side of the room, so the tablet and the controller fit with wall round them
 const F = K * S; // art px per u
 const AW = W * S, AH = H * S; // the art's size
@@ -85,7 +85,7 @@ async function cut(withIt, withoutIt, file) {
   await save(dark, 'side-right-off.png', [SIDE + W, WS]);
   // the phones' room, held upright: the decks DECK_LIFT rows higher, and the room above and below it (the ceiling,
   // the desk's legs, the floor); its own four backdrops, and the bands lit and unlit
-  const tall = { top: TOP, bottom: BOTTOM, deckLift: DECK_LIFT, phone: true }, ROOM_ROWS = [TOP, TOP + H], ROOM_COLS = [SIDE, SIDE + W];
+  const tall = { top: TOP, bottom: BOTTOM, deckLift: DECK_LIFT, deckScale: DECK_SCALE, phone: true }, ROOM_ROWS = [TOP, TOP + H], ROOM_COLS = [SIDE, SIDE + W];
   const phoneLit = render(true, true, MOVING, tall), phoneDark = render(false, true, MOVING, tall);
   await saveRows(phoneLit, 'room-phone.png', ROOM_COLS, ROOM_ROWS);
   await saveRows(phoneDark, 'desk-off-phone.png', ROOM_COLS, ROOM_ROWS);
@@ -172,6 +172,8 @@ async function cut(withIt, withoutIt, file) {
       lampOff: '/cinema/desk-off-phone.png',
       lavaOff: { on: '/cinema/room-lava-off-phone.png', off: '/cinema/desk-off-lava-off-phone.png' },
       deckDy: -DECK_LIFT * S,
+      deckScale: DECK_SCALE,
+      deckAnchor: DECK_ANCHOR.map((v) => +(v * F).toFixed(1)), // art px: the decks' words grow from here too
       floorPx: +(F * (227 + 52)).toFixed(1), // the floor's back edge (art px from the room's top): the phones frame on it
       sides: { px: BAND_SIDE * S, left: '/cinema/side-left-phone.png', right: '/cinema/side-right-phone.png', leftOff: '/cinema/side-left-phone-off.png', rightOff: '/cinema/side-right-phone-off.png' },
     },
