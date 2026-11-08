@@ -27,7 +27,7 @@ function rampAround(h) {
 const WALL_PICTURE = require('./wall-picture.js');
 
 const SHARED = {
-  ceiling: R(['#8c857a', '#b1a99c', '#d2cbbd', '#e8e2d5', '#f6f2ea']), // the phones' closet: an off-white ceiling, warm like old plaster
+  ceiling: R(['#6a6258', '#857c70', '#a0968a', '#b8aea2', '#cfc6ba']), // the phones' closet: a muted warm greige ceiling, lighter than the wall but not glaring
   floorWood: R(['#3a2212', '#58361e', '#7a5030', '#9c6c46', '#c08e62']), // and brown floorboards, a plainer wood than the desk's orange
   steel: R(['#0b0b0f', '#15151b', '#212128', '#2f2f38', '#4a4a55']), // the desk's black metal frame (the phones' room)
   ink: R(['#0a0504', '#0e0806', '#130b08', '#180f0a', '#1e130d']),
@@ -393,7 +393,7 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
     // eye's vanishing point as the desk's creases run down and out, and a trim like the skirting runs under it
     if (y < ceilingLine(x) + CROWN) {
       const c = ceilingLine(x);
-      if (y < c - 0.6) put(X, Y, 'ceiling', 0.58 + 0.12 * clamp((y - c + 140) / 140, 0, 1) + (hash((X - OX) >> 2, Y >> 1, 11) > 0.93 ? 0.03 : 0)); // off-white, a touch brighter at its back edge
+      if (y < c - 0.6) put(X, Y, 'ceiling', 0.58 + 0.12 * clamp((y - c + 140) / 140, 0, 1) + (hash((X - OX) >> 2, Y >> 1, 11) > 0.93 ? 0.03 : 0)); // greige, a touch brighter at its back edge
       else if (y < c + 0.6) put(X, Y, 'ink', 0.3);
       else { const t = y - c; put(X, Y, 'deckWood', t > CROWN - 1 ? 0.04 : t < 1.4 ? 0.62 : t < 4.6 ? 0.36 : t < 5.4 ? 0.55 : 0.18); }
       continue;
@@ -883,7 +883,7 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   // the decks keep their own colours in the dark: the monitor's glow lights the wall above it, but tinting the low
   // deck turned its plum blue-grey (the high one sits out of reach), so they only go dark under the room's night
   const deckRamps = new Set(['deckA', 'deckB', 'deckAText', 'deckBText', 'deckWood'].map((nm) => rampId.get(nm)).filter((r) => r !== undefined));
-  // the phones' off-white ceiling and brown floor are far from every light: with the lamp off they go as dark as the room
+  // the phones' greige ceiling and brown floor are far from every light: with the lamp off they go as dark as the room
   // round them, where the night's one step down alone would leave them pale
   const farRamps = new Set(['ceiling', 'floorWood'].map((nm) => rampId.get(nm)).filter((r) => r !== undefined));
   for (let Y = -OT; Y < H + OB; Y++) for (let X = 0; X < WW; X++) {
