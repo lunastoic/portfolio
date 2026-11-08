@@ -369,17 +369,20 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
   // the wall and the floorboards running toward you
   const APRON = DESK_FRONT, SKIRT = PHONE_FLOOR - 6, FLOOR = PHONE_FLOOR;
   const FSLOPE = 0.45; // the floor's edges with the side walls
+  // the phones' desk ends: past the closet's corners the desk's front edge and its board shear down and out with the
+  // crease above them, so the desk sits snug between the side walls (none inside the closet, none on desktop)
+  const shear = (x) => (PHONE ? (x < CL ? CL - x : x > CR ? x - CR : 0) * SLOPE : 0);
   for (let Y = -OT; Y < H + OB; Y++) for (let X = 0; X < WW; X++) {
-    const x = (X - OX + 0.5) / K, y = (Y + 0.5) / K;
-    if (y >= LH) {
+    const x = (X - OX + 0.5) / K, y = (Y + 0.5) / K, edge = LH + shear(x), board = APRON + shear(x);
+    if (y >= edge) {
       const side = x < CL || x > CR, sideFloor = FLOOR + (x < CL ? CL - x : x > CR ? x - CR : 0) * FSLOPE;
-      if (y < APRON) put(X, Y, 'desk', y > APRON - 1.2 ? 0.04 : 0.2 + 0.06 * Math.sin(x * 0.19 + 2 * Math.sin(y * 0.9)));
+      if (y < board) put(X, Y, 'desk', y > board - 1.2 ? 0.04 : 0.2 + 0.06 * Math.sin(x * 0.19 + 2 * Math.sin(y * 0.9)));
       else if (side && y < sideFloor) {
         // a side wall, in the shade under the desk: its corner with the back wall, and its skirting on the slant
         if (Math.abs(x - CL) < 0.6 || Math.abs(x - CR) < 0.6) put(X, Y, 'ink', 0.3);
         else if (y > sideFloor - (FLOOR - SKIRT)) put(X, Y, 'deckWood', y < sideFloor - (FLOOR - SKIRT) + 1 ? 0.22 : y > sideFloor - 1 ? 0.03 : 0.08);
-        else put(X, Y, 'wall', (y < APRON + 3 ? 0.02 : 0.1) + (hash(X - OX, Y, 7) > 0.93 ? 0.05 : 0));
-      } else if (y < SKIRT) put(X, Y, 'wall', (y < APRON + 3 ? 0.02 : 0.15) + (hash(X - OX, Y, 7) > 0.93 ? 0.06 : 0));
+        else put(X, Y, 'wall', (y < board + 3 ? 0.02 : 0.1) + (hash(X - OX, Y, 7) > 0.93 ? 0.05 : 0));
+      } else if (y < SKIRT) put(X, Y, 'wall', (y < board + 3 ? 0.02 : 0.15) + (hash(X - OX, Y, 7) > 0.93 ? 0.06 : 0));
       else if (y < FLOOR) put(X, Y, 'deckWood', y < SKIRT + 1 ? 0.3 : y > FLOOR - 1 ? 0.04 : 0.12);
       else {
         // boards running across the room, parallel to the wall, seen through the room's camera (CAM below): a board
@@ -408,8 +411,8 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
       if (y < 3 && !OT) s = Math.min(s, 0.1);
       if (y > crease(x) - 2.2) s = Math.min(s, 0.12); // the shadow where the wall meets the desk
       put(X, Y, 'wall', s);
-    } else if (y >= LH - 4.5) {
-      put(X, Y, 'desk', y < LH - 3.5 ? 0.62 : 0.12);
+    } else if (y >= edge - 4.5) {
+      put(X, Y, 'desk', y < edge - 3.5 ? 0.62 : 0.12);
     } else {
       const r = Math.floor((y - DESK - 1) / 9), ry = (y - DESK - 1) - r * 9;
       const joint = Math.abs(((x + 400 + r * 71) % 157)) < 0.7;
@@ -442,7 +445,8 @@ function drawRoom(theme, on, lavaOn = true, opt = {}) {
     const leg = (l, r, foot) => {
       // contact shadow on the floor round its foot
       for (let Y = Math.round(foot * K) - 1; Y <= Math.round(foot * K) + 2; Y++) for (let X = Math.round(l * K) + OX - 3; X <= Math.round(r * K) + OX + 3; X++) { const i = (Y + OT) * WW + X; if (Y >= -OT && Y < H + OB && X >= 0 && X < WW && RB[i] >= 0 && !EB[i]) SB[i] = Math.max(0, SB[i] - 0.08); }
-      fill([[l, APRON], [r, APRON], [r, foot], [l, foot]], (f, y) => tube(f, y, APRON));
+      const tl = APRON + shear(l), tr = APRON + shear(r); // its top under the desk's board, sheared with it at the desk's ends
+      fill([[l, tl], [r, tr], [r, foot], [l, foot]], (f, y) => tube(f, y, Math.min(tl, tr)));
       fill([[l - 0.7, foot - 1.6], [r + 0.7, foot - 1.6], [r + 0.7, foot], [l - 0.7, foot]], () => 0.1); // its foot
     };
     // the bar between a front leg (its inner face at xf, foot yf) and a back leg (inner face xb, foot yb), a little
